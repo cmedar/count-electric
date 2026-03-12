@@ -217,36 +217,100 @@ The Streamlit dashboard will expose the following views:
 
 ## Setup & Installation
 
-> ⚠️ Setup instructions will be completed in Phase 1. Placeholder below.
-
 ### Prerequisites
-- AWS account (free tier) — S3 bucket + EC2 t2.micro + IAM role
+- AWS account (free tier)
 - Databricks Community Edition account
-- Python 3.11+
+- Python 3.12+
 - Git
 - GitHub repository with Actions enabled
 
-### Secrets required in GitHub
-| Secret | Description |
-|---|---|
-| `EC2_HOST` | Public IP or DNS of your EC2 instance |
-| `EC2_USER` | SSH user (e.g. `ec2-user` or `ubuntu`) |
-| `EC2_SSH_KEY` | Private key for SSH access (contents of `.pem` file) |
-| `DATABRICKS_HOST` | Your Databricks workspace URL |
-| `DATABRICKS_TOKEN` | Databricks personal access token |
-| `AFDC_API_KEY` | US DOE AFDC API key |
+---
 
-> AWS credentials are NOT stored as GitHub Secrets — the EC2 instance uses an IAM role with S3 access instead.
+### 1. AWS S3
 
-### Quick Start
+1. Go to **S3 → Create bucket**
+   - Name: `count-electric` (must be globally unique)
+   - Region: your preferred region (e.g. `eu-west-1`)
+   - Leave all other defaults
+
+---
+
+### 2. AWS EC2
+
+1. Go to **EC2 → Launch instance**
+   - Name: `count-electric`
+   - AMI: Ubuntu Server 24.04 LTS (free tier)
+   - Instance type: `t2.micro`
+   - Key pair: create new → download `.pem` file
+   - Security group: allow inbound SSH (port 22) from your IP only
+
+2. Create an **IAM role** for S3 access (no keys stored on EC2):
+   - **IAM → Roles → Create role** → EC2 → attach `AmazonS3FullAccess`
+   - Name: `count-electric-ec2-role`
+   - Attach to instance: **EC2 → Actions → Security → Modify IAM role**
+
+3. SSH in and set up the project:
 ```bash
-# Clone the repo
+chmod 400 ~/Downloads/count-electric-key.pem
+ssh -i ~/Downloads/count-electric-key.pem ubuntu@YOUR_EC2_IP
+
+# On EC2:
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3.12 python3-pip python3-venv git
 git clone https://github.com/YOUR_USERNAME/count-electric.git
 cd count-electric
-
-# Install dependencies
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+pip install "apache-airflow==2.10.5" \
+  --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
+export AIRFLOW_HOME=~/airflow
+airflow db init
 ```
+
+---
+
+### 3. GitHub Actions — Deploy Pipeline
+
+Pushes to `main` automatically deploy to EC2 via SSH. The workflow dynamically whitelists the runner IP, deploys, then removes it.
+
+**GitHub Secrets required** (repo → Settings → Secrets → Actions):
+
+| Secret | Description |
+|---|---|
+| `EC2_HOST` | Public IP of your EC2 instance |
+| `EC2_USER` | `ubuntu` |
+| `EC2_SSH_KEY` | Full contents of your `.pem` file |
+| `EC2_SG_ID` | Security group ID (e.g. `sg-0abc123...`) |
+| `AWS_ACCESS_KEY_ID` | IAM user key — deploy-only permissions |
+| `AWS_SECRET_ACCESS_KEY` | Matching secret |
+| `AWS_REGION` | e.g. `eu-west-1` |
+| `DATABRICKS_HOST` | Your Databricks workspace URL *(Phase 2)* |
+| `DATABRICKS_TOKEN` | Databricks personal access token *(Phase 2)* |
+| `AFDC_API_KEY` | US DOE AFDC API key *(Phase 2)* |
+
+**IAM policy for the deploy user** (scoped to security group only):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:RevokeSecurityGroupIngress"
+    ],
+    "Resource": "arn:aws:ec2:REGION:ACCOUNT_ID:security-group/SG_ID"
+  }]
+}
+```
+
+> AWS credentials for S3 access are NOT stored as secrets — the EC2 instance uses an IAM role instead.
+
+---
+
+### 4. Databricks Community Edition
+
+> Setup instructions will be added when completing Phase 1.
 
 ---
 
@@ -290,4 +354,4 @@ count-electric/
 
 ---
 
-*README last updated: Phase 1 — Project Design*
+*README last updated: Phase 1 — Infrastructure setup complete (S3, EC2, GitHub Actions)*

@@ -78,7 +78,9 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Orchestration:** Apache Airflow (local) schedules the full pipeline — ingest → Bronze → Silver → Gold — on a weekly cadence (EV registration data is typically published monthly or quarterly).
+**Orchestration:** Apache Airflow (running on EC2) schedules the full pipeline — ingest → Bronze → Silver → Gold — on a weekly cadence (EV registration data is typically published monthly or quarterly).
+
+**Deployment:** GitHub Actions deploys code to EC2 via SSH on every push to `main`. AWS credentials are never stored in the repo — EC2 uses an IAM role for S3 access, and secrets are managed via GitHub Secrets.
 
 ---
 
@@ -138,13 +140,15 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 |---|---|
 | Ingestion | Python 3.11, `requests`, `boto3` |
 | Storage | AWS S3 (free tier) |
+| Compute | AWS EC2 (t2.micro, free tier) |
 | Processing | Databricks Community Edition, Apache Spark |
 | Table format | Delta Lake |
 | Governance | Unity Catalog |
-| Orchestration | Apache Airflow (local) |
+| Orchestration | Apache Airflow (on EC2) |
 | Dashboard | Streamlit |
+| CI/CD | GitHub Actions (deploy to EC2 via SSH) |
+| Secrets | GitHub Secrets (CI/CD) + AWS IAM role (EC2) |
 | Version control | Git / GitHub |
-| Environment | `.env` + `requirements.txt` |
 
 ---
 
@@ -177,8 +181,10 @@ The Streamlit dashboard will expose the following views:
 
 ### Phase 1 — Foundation ✅ (current)
 - [x] Project design and README
-- [ ] Repository structure setup
-- [ ] AWS S3 bucket creation and folder structure
+- [x] Repository structure setup
+- [x] AWS S3 bucket creation and folder structure
+- [ ] AWS EC2 instance setup (Airflow + deployment target)
+- [ ] GitHub Actions deployment pipeline (SSH deploy to EC2)
 - [ ] Databricks Community Edition workspace setup
 - [ ] Unity Catalog configuration
 
@@ -213,11 +219,23 @@ The Streamlit dashboard will expose the following views:
 > ⚠️ Setup instructions will be completed in Phase 1. Placeholder below.
 
 ### Prerequisites
-- AWS account (free tier)
+- AWS account (free tier) — S3 bucket + EC2 t2.micro + IAM role
 - Databricks Community Edition account
 - Python 3.11+
-- Apache Airflow (local)
 - Git
+- GitHub repository with Actions enabled
+
+### Secrets required in GitHub
+| Secret | Description |
+|---|---|
+| `EC2_HOST` | Public IP or DNS of your EC2 instance |
+| `EC2_USER` | SSH user (e.g. `ec2-user` or `ubuntu`) |
+| `EC2_SSH_KEY` | Private key for SSH access (contents of `.pem` file) |
+| `DATABRICKS_HOST` | Your Databricks workspace URL |
+| `DATABRICKS_TOKEN` | Databricks personal access token |
+| `AFDC_API_KEY` | US DOE AFDC API key |
+
+> AWS credentials are NOT stored as GitHub Secrets — the EC2 instance uses an IAM role with S3 access instead.
 
 ### Quick Start
 ```bash
@@ -227,13 +245,6 @@ cd count-electric
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Fill in your AWS credentials and Databricks token
-
-# Run ingestion (manual)
-python ingestion/ingest_iea.py
 ```
 
 ---

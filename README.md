@@ -1,4 +1,5 @@
-# Count Electric — counting electric cars so you don't have to
+### Count Electric   
+# Counting electric cars on the streets, so you don't have to
 
 You've probably noticed more EVs on the street lately. But are they actually taking over, or does it just feel that way? **Count Electric** is a data engineering project that answers exactly that — tracking global EV adoption trends across countries, manufacturers, and years, so the numbers can tell the story.
 

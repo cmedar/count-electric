@@ -34,9 +34,15 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           script: |
+            if [ ! -d ~/count-electric ]; then
+              git clone https://github.com/cmedar/count-electric.git ~/count-electric
+            fi
             cd ~/count-electric
             git fetch origin main
             git reset --hard origin/main
+            if [ ! -d venv ]; then
+              python3 -m venv venv
+            fi
             source venv/bin/activate
             pip install -r requirements.txt
             echo "Deployment complete."

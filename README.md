@@ -180,16 +180,16 @@ The Streamlit dashboard will expose the following views:
 
 ## Project Phases & Roadmap
 
-### Phase 1 — Foundation ✅ (current)
+### Phase 1 — Foundation ✅
 - [x] Project design and README
 - [x] Repository structure setup
 - [x] AWS S3 bucket creation and folder structure
-- [ ] AWS EC2 instance setup (Airflow + deployment target)
-- [ ] GitHub Actions deployment pipeline (SSH deploy to EC2)
+- [x] AWS EC2 instance setup (Docker + deployment target)
+- [x] GitHub Actions deployment pipeline (SSH deploy to EC2)
 - [ ] Databricks Community Edition workspace setup
 - [ ] Unity Catalog configuration
 
-### Phase 2 — Ingestion
+### Phase 2 — Ingestion ⬅️ (current)
 - [ ] Python ingest scripts for each data source
 - [ ] S3 landing zone populated with raw files
 - [ ] Bronze Delta tables created and loaded

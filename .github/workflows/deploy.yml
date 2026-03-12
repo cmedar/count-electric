@@ -59,7 +59,7 @@ jobs:
             sudo docker build -t count-electric .
             sudo docker stop count-electric-app 2>/dev/null || true
             sudo docker rm count-electric-app 2>/dev/null || true
-            sudo docker run -d --name count-electric-app --restart unless-stopped count-electric
+            sudo docker run -d --name count-electric-app --restart unless-stopped -p 8501:8501 count-electric
             echo "Deployment complete."
 
       - name: Remove runner IP from security group

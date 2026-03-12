@@ -14,4 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project code
 COPY . .
 
-CMD ["python3", "-c", "print('Count Electric container running.')"]
+EXPOSE 8501
+
+CMD ["streamlit", "run", "streamlit/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

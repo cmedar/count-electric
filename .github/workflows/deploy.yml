@@ -34,17 +34,32 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           script: |
+            # Install Docker if not present
+            if ! command -v docker &> /dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y ca-certificates curl
+              sudo install -m 0755 -d /etc/apt/keyrings
+              sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+              sudo chmod a+r /etc/apt/keyrings/docker.asc
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+              sudo usermod -aG docker $USER
+            fi
+
+            # Clone or update repo
             if [ ! -d ~/count-electric ]; then
               git clone https://github.com/cmedar/count-electric.git ~/count-electric
             fi
             cd ~/count-electric
             git fetch origin main
             git reset --hard origin/main
-            if [ ! -d venv ]; then
-              python3 -m venv venv
-            fi
-            source venv/bin/activate
-            pip install -r requirements.txt
+
+            # Build and restart container
+            sudo docker build -t count-electric .
+            sudo docker stop count-electric-app 2>/dev/null || true
+            sudo docker rm count-electric-app 2>/dev/null || true
+            sudo docker run -d --name count-electric-app --restart unless-stopped count-electric
             echo "Deployment complete."
 
       - name: Remove runner IP from security group

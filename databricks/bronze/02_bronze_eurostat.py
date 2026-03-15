@@ -13,14 +13,17 @@
 # MAGIC | Code | Fuel type |
 # MAGIC |---|---|
 # MAGIC | `TOTAL` | All fuel types — total market size |
-# MAGIC | `EL` | Electric / BEV |
-# MAGIC | `PHEV` | Plug-in hybrid |
-# MAGIC | `HEV` | Non-plug-in hybrid |
-# MAGIC | `PETROL` | Petrol / gasoline (ICE) |
-# MAGIC | `DIESEL` | Diesel (ICE) |
+# MAGIC | `ELC` | Electric / BEV |
+# MAGIC | `ELC_PET_PI` | Plug-in hybrid petrol (PHEV) |
+# MAGIC | `ELC_DIE_PI` | Plug-in hybrid diesel (PHEV) |
+# MAGIC | `ELC_PET_HYB` | Non-plug-in hybrid petrol |
+# MAGIC | `ELC_DIE_HYB` | Non-plug-in hybrid diesel |
+# MAGIC | `PET` | Petrol / gasoline (ICE) |
+# MAGIC | `DIE` | Diesel (ICE) |
 # MAGIC | `LPG` | LPG |
-# MAGIC | `NG` | Natural gas |
-# MAGIC | `H2` | Hydrogen |
+# MAGIC | `GAS` | Natural gas |
+# MAGIC | `HYD_FCELL` | Hydrogen fuel cell |
+# MAGIC | `ALT` | All alternative fuels combined |
 # MAGIC
 # MAGIC Romania geo code: **`RO`**
 
@@ -208,7 +211,7 @@ display(
     df_bronze
     .filter(
         (F.col("geo")     == "RO") &
-        (F.col("mot_nrg").isin("EL", "PETROL", "DIESEL", "TOTAL", "PHEV"))
+        (F.col("mot_nrg").isin("ELC", "PET", "DIE", "TOTAL", "ELC_PET_PI", "ELC_DIE_PI"))
     )
     .select("time", "mot_nrg", "value")
     .orderBy("mot_nrg", "time")

@@ -27,13 +27,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 # Eurostat API — ROAD_EQR_CARPDA dataset
-# mot_nrg values we care about:
-#   EL  = Electric (BEV)
-#   PHEV = Plug-in hybrid
-#   HEV  = Non-plug-in hybrid
-#   LPG  = LPG
-#   TOTAL = All fuel types combined (used to calculate ICE share)
-#   PETROL, DIESEL = traditional ICE
+# mot_nrg values we care about (actual codes from the dataset):
+#   ELC         = Electric (BEV)
+#   ELC_PET_PI  = Plug-in hybrid petrol (PHEV)
+#   ELC_DIE_PI  = Plug-in hybrid diesel (PHEV)
+#   ELC_PET_HYB = Non-plug-in hybrid petrol
+#   ELC_DIE_HYB = Non-plug-in hybrid diesel
+#   PET         = Petrol / gasoline (ICE)
+#   DIE         = Diesel (ICE)
+#   LPG         = LPG
+#   GAS         = Natural gas
+#   HYD_FCELL   = Hydrogen fuel cell
+#   TOTAL       = All fuel types combined (used to calculate ICE share)
 EUROSTAT_URL = (
     "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/ROAD_EQR_CARPDA"
     "?format=JSON"

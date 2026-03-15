@@ -29,9 +29,12 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 **Count Electric** answers the following analytical questions:
 
 - Which countries are leading global EV adoption, and how is that changing year-on-year?
+- As EV registrations grow, are petrol and diesel (ICE) registrations actually declining — and how fast?
+- Where does Romania sit in the European EV adoption picture, and how does it compare to leaders like Norway or Germany?
 - Which EV manufacturers and models are growing fastest?
-- What does the regional breakdown of EV registrations look like across Europe and the US?
 - How has the global EV market share evolved over the last 5 years?
+
+> **Romania focus:** All dashboards include a Romania lens. Country-level data is available from 2010 onwards via IEA and Eurostat. Bucharest city-level data is not currently published as open data by DRPCIV (Romania's vehicle registry).
 
 The project is intentionally scoped to EV adoption trends to allow depth over breadth — both in the data engineering architecture and the quality of insights produced.
 
@@ -49,7 +52,7 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 ┌─────────────────────────────────────────────────────────┐
 │                 INGESTION LAYER                         │
 │         Python ingest scripts (API / CSV fetch)         │
-│              Orchestrated via Apache Airflow            │
+│    (Airflow orchestration deferred to Phase 2)          │
 └────────────────────────┬────────────────────────────────┘
                          │
                          ▼
@@ -79,9 +82,9 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Orchestration:** Apache Airflow (running on EC2) schedules the full pipeline — ingest → Bronze → Silver → Gold — on a weekly cadence (EV registration data is typically published monthly or quarterly).
+**Orchestration:** Apache Airflow will schedule the full pipeline — ingest → Bronze → Silver → Gold — on a weekly cadence. Airflow is deferred to Phase 2 (excluded from the current Docker image to stay within t2.micro memory limits).
 
-**Deployment:** GitHub Actions deploys code to EC2 via SSH on every push to `main`. AWS credentials are never stored in the repo — EC2 uses an IAM role for S3 access, and secrets are managed via GitHub Secrets.
+**Deployment:** GitHub Actions builds a Docker image and deploys it to EC2 on every push to `main`. The container runs Streamlit on port 8501. AWS credentials are never stored in the repo — EC2 uses an IAM role for S3 access, and secrets are managed via GitHub Secrets.
 
 ---
 
@@ -145,7 +148,8 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 | Processing | Databricks Community Edition, Apache Spark |
 | Table format | Delta Lake |
 | Governance | Unity Catalog |
-| Orchestration | Apache Airflow (on EC2) |
+| Containerisation | Docker (app runs as a container on EC2) |
+| Orchestration | Apache Airflow *(deferred to Phase 2 — too heavy for t2.micro)* |
 | Dashboard | Streamlit |
 | CI/CD | GitHub Actions (deploy to EC2 via SSH) |
 | Secrets | GitHub Secrets (CI/CD) + AWS IAM role (EC2) |
@@ -155,20 +159,24 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 
 ## Data Sources
 
-| Source | Data | Format | Cadence |
-|---|---|---|---|
-| [IEA Global EV Data Explorer](https://www.iea.org/data-and-statistics/data-tools/global-ev-data-explorer) | EV registrations by country, year, powertrain | CSV download | Annual |
-| [EU Open Data Portal](https://data.europa.eu) | New car registrations by fuel type, EU countries | CSV / API | Monthly |
-| [US DOE AFDC](https://afdc.energy.gov/api) | US EV registration data by state and model | API (JSON) | Annual |
-| [CarQuery API](http://www.carqueryapi.com) | Vehicle make/model/year metadata | API (JSON) | Static |
+| Source | Data | Format | Cadence | Status |
+|---|---|---|---|---|
+| [IEA Global EV Data Explorer](https://www.iea.org/data-and-statistics/data-tools/global-ev-data-explorer) | EV sales & stock by country, year, powertrain (BEV/PHEV/FCEV). Global including Romania. 2010–2024. | CSV API | Annual | ✅ Ingestion script complete |
+| [Eurostat ROAD_EQR_CARPDA](https://ec.europa.eu/eurostat/databrowser/view/ROAD_EQR_CARPDA/) | **New car registrations by fuel type** — petrol, diesel, BEV, PHEV, hybrid, LPG for all EU countries including Romania. Core dataset for EV vs ICE comparison. | JSON-stat2 API | Annual | ✅ Ingestion script complete |
+| [EAFO (EU Alt. Fuels Observatory)](https://alternative-fuels-observatory.ec.europa.eu/) | Romania EV fleet totals, market share, BEV vs PHEV breakdown | API / Web | Annual | Planned Phase 2 |
+| [CarQuery API](http://www.carqueryapi.com) | Vehicle make/model/year metadata | API (JSON) | Static | Deferred to Phase 3 |
 
-> All sources are free and publicly available. No API keys required for IEA and EU Open Data; AFDC requires a free key registration.
+> All sources are free and publicly available. No API keys required.
+>
+> **Note on Bucharest city-level data:** DRPCIV (Romania's national vehicle registry) does not currently publish open data. Country-level Romania data is available from IEA and Eurostat. Bucharest-specific breakdowns would require a direct public data request to DRPCIV or Bucharest City Hall under Legea 544/2001.
 
 ---
 
 ## Key Insights & Dashboard
 
-The Streamlit dashboard will expose the following views:
+The Streamlit app is live on EC2 at port 8501 (served via Docker). Currently it shows an **S3 Landing Zone browser** — a table of all raw files in the S3 bucket with key, size, and last-modified timestamp. This validates ingestion before the Gold layer is ready.
+
+Planned dashboard views:
 
 1. **Global EV Adoption Map** — choropleth map of EV market share by country, with year slider
 2. **Top 10 Countries by YoY Growth** — bar chart, filterable by region
@@ -184,16 +192,19 @@ The Streamlit dashboard will expose the following views:
 - [x] Project design and README
 - [x] Repository structure setup
 - [x] AWS S3 bucket creation and folder structure
-- [x] AWS EC2 instance setup (Docker + deployment target)
-- [x] GitHub Actions deployment pipeline (SSH deploy to EC2)
+- [x] AWS EC2 instance setup (t2.micro, free tier)
+- [x] Dockerised app — Dockerfile + container running Streamlit on port 8501
+- [x] GitHub Actions deployment pipeline — builds Docker image and deploys to EC2 via SSH
 - [ ] Databricks Community Edition workspace setup
 - [ ] Unity Catalog configuration
 
 ### Phase 2 — Ingestion ⬅️ (current)
-- [ ] Python ingest scripts for each data source
-- [ ] S3 landing zone populated with raw files
-- [ ] Bronze Delta tables created and loaded
-- [ ] Airflow DAG: ingest job scheduled
+- [x] IEA Global EV Data ingestion script (`ingestion/ingest_iea.py`) — fetches CSV and lands to `s3://count-electric/landing/raw/iea/`
+- [x] Eurostat ROAD_EQR_CARPDA ingestion script (`ingestion/ingest_eurostat.py`) — EV vs ICE new registrations for all EU countries including Romania
+- [x] Databricks Bronze notebooks (`databricks/bronze/`) — S3 mount setup, IEA Bronze table, Eurostat Bronze table
+- [ ] Run Bronze notebooks in Databricks and verify Romania data
+- [ ] EAFO ingestion script (Romania fleet + market share detail)
+- [ ] Airflow DAG: ingest job scheduled (deferred — Airflow excluded from Docker for now)
 
 ### Phase 3 — Transformation
 - [ ] Silver layer: cleaning, typing, deduplication notebooks
@@ -354,4 +365,4 @@ count-electric/
 
 ---
 
-*README last updated: Phase 1 — Infrastructure setup complete (S3, EC2, GitHub Actions)*
+*README last updated: Phase 2 in progress — Docker deployment live, IEA ingestion script complete, Streamlit S3 browser running on port 8501*

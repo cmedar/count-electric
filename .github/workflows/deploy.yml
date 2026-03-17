@@ -62,6 +62,15 @@ jobs:
             sudo docker run -d --name count-electric-app --restart unless-stopped -p 8501:8501 count-electric
             echo "Deployment complete."
 
+      - name: Sync Databricks Git Folder
+        run: |
+          curl -s -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"branch": "main"}' \
+            "${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
+          echo "Databricks sync triggered."
+
       - name: Remove runner IP from security group
         if: always()
         run: |

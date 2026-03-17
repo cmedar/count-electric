@@ -84,7 +84,7 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 
 **Orchestration:** Apache Airflow will schedule the full pipeline — ingest → Bronze → Silver → Gold — on a weekly cadence. Airflow is deferred to Phase 2 (excluded from the current Docker image to stay within t2.micro memory limits).
 
-**Deployment:** GitHub Actions builds a Docker image and deploys it to EC2 on every push to `main`. The container runs Streamlit on port 8501. AWS credentials are never stored in the repo — EC2 uses an IAM role for S3 access, and secrets are managed via GitHub Secrets.
+**Deployment:** GitHub Actions builds a Docker image and deploys it to EC2 on every push to `main`. The container runs Streamlit on port 8501. In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date. AWS credentials are never stored in the repo — EC2 uses an IAM role for S3 access, and secrets are managed via GitHub Secrets.
 
 ---
 
@@ -195,14 +195,15 @@ Planned dashboard views:
 - [x] AWS EC2 instance setup (t2.micro, free tier)
 - [x] Dockerised app — Dockerfile + container running Streamlit on port 8501
 - [x] GitHub Actions deployment pipeline — builds Docker image and deploys to EC2 via SSH
-- [ ] Databricks Community Edition workspace setup
-- [ ] Unity Catalog configuration
+- [x] Databricks free tier workspace setup (serverless compute)
+- [x] Unity Catalog — storage credential + external location connected to S3
+- [x] Databricks Git folder synced via GitHub Actions on every push
 
 ### Phase 2 — Ingestion ⬅️ (current)
 - [x] IEA Global EV Data ingestion script (`ingestion/ingest_iea.py`) — fetches CSV and lands to `s3://count-electric/landing/raw/iea/`
 - [x] Eurostat ROAD_EQR_CARPDA ingestion script (`ingestion/ingest_eurostat.py`) — EV vs ICE new registrations for all EU countries including Romania
 - [x] Databricks Bronze notebooks (`databricks/bronze/`) — S3 mount setup, IEA Bronze table, Eurostat Bronze table
-- [ ] Run Bronze notebooks in Databricks and verify Romania data
+- [x] Bronze notebooks run in Databricks — Romania data verified in both tables
 - [ ] EAFO ingestion script (Romania fleet + market share detail)
 - [ ] Airflow DAG: ingest job scheduled (deferred — Airflow excluded from Docker for now)
 
@@ -296,8 +297,9 @@ Pushes to `main` automatically deploy to EC2 via SSH. The workflow dynamically w
 | `AWS_ACCESS_KEY_ID` | IAM user key — deploy-only permissions |
 | `AWS_SECRET_ACCESS_KEY` | Matching secret |
 | `AWS_REGION` | e.g. `eu-west-1` |
-| `DATABRICKS_HOST` | Your Databricks workspace URL *(Phase 2)* |
-| `DATABRICKS_TOKEN` | Databricks personal access token *(Phase 2)* |
+| `DATABRICKS_HOST` | Your Databricks workspace URL (e.g. `https://dbc-xxxxx.cloud.databricks.com`) |
+| `DATABRICKS_TOKEN` | Databricks personal access token |
+| `DATABRICKS_REPO_ID` | Databricks Git folder repo ID (from `/api/2.0/workspace/list`) |
 | `AFDC_API_KEY` | US DOE AFDC API key *(Phase 2)* |
 
 **IAM policy for the deploy user** (scoped to security group only):
@@ -319,9 +321,23 @@ Pushes to `main` automatically deploy to EC2 via SSH. The workflow dynamically w
 
 ---
 
-### 4. Databricks Community Edition
+### 4. Databricks
 
-> Setup instructions will be added when completing Phase 1.
+1. Create a free account at **databricks.com** (free tier — serverless compute + Unity Catalog included)
+2. **Storage Credential** — Catalog → External Data → Storage Credentials → Create (AWS IAM Role)
+   - Create an IAM role with a cross-account trust policy (Databricks account `414351767826`)
+   - Attach S3 read/write policy scoped to the `count-electric` bucket
+3. **External Location** — Catalog → External Data → External Locations → Create
+   - URL: `s3://count-electric`, credential: the role from step 2
+4. **Git Folder** — Workspace → your user folder → Add → Git folder → connect GitHub repo
+5. **Secrets** — install Databricks CLI, run `databricks configure --token`, then:
+   ```bash
+   databricks secrets create-scope --scope count-electric
+   databricks secrets put --scope count-electric --key aws-access-key-id
+   databricks secrets put --scope count-electric --key aws-secret-access-key
+   databricks secrets put --scope count-electric --key aws-region
+   ```
+6. Add `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_REPO_ID` to GitHub Secrets — subsequent pushes auto-sync notebooks
 
 ---
 
@@ -365,4 +381,4 @@ count-electric/
 
 ---
 
-*README last updated: Phase 2 in progress — Docker deployment live, IEA ingestion script complete, Streamlit S3 browser running on port 8501*
+*README last updated: Phase 2 in progress — Databricks fully connected (serverless, Unity Catalog, Git sync), Bronze tables live, Romania data verified*

@@ -13,7 +13,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-import streamlit.components.v1 as components
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -183,11 +182,11 @@ page = st.session_state.page
 
 def _nav_link(label: str) -> str:
     css_class = "active" if page == label else ""
-    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}" target="_self">{label}</a>'
+    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}" target="_top">{label}</a>'
 
 st.markdown(
     f"""<div class="md3-top-bar">
-    <a href="?p=About" target="_self" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <a href="?p=About" target="_top" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
         {CAR_ICON.format(size=26, color="#00897B")}
         <span style="font-size:1.15rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
     </a>
@@ -199,29 +198,6 @@ st.markdown(
 </div>""",
     unsafe_allow_html=True,
 )
-
-# Intercept nav link clicks in the parent window so they navigate in-place
-# instead of opening a new tab (Streamlit serves inside an iframe).
-components.html("""
-<script>
-(function() {
-    function patchLinks() {
-        var links = window.parent.document.querySelectorAll('.top-nav a, .md3-top-bar > a');
-        links.forEach(function(a) {
-            if (a.dataset.patched) return;
-            a.dataset.patched = '1';
-            a.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.parent.location.href = a.getAttribute('href');
-            });
-        });
-    }
-    // Run immediately and after a short delay to catch late renders
-    patchLinks();
-    setTimeout(patchLinks, 300);
-})();
-</script>
-""", height=0)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

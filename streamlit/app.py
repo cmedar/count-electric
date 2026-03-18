@@ -31,87 +31,146 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap');
+/* ── Google Fonts — Roboto type scale ── */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap');
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
 
-/* ── Global ── */
-html, body, [class*="css"] {
-    font-family: 'Roboto', sans-serif;
+/* ── MD3 color tokens ── */
+:root {
+    --md-primary:           #00897B;
+    --md-primary-dark:      #00695C;
+    --md-primary-container: #B2DFDB;
+    --md-on-primary:        #FFFFFF;
+    --md-surface:           #FFFFFF;
+    --md-surface-variant:   #E0F2F1;
+    --md-background:        #F4FBFA;
+    --md-on-surface:        #1C1B1F;
+    --md-on-surface-variant:#49454F;
+    --md-outline:           #CAE6E3;
+    --md-shadow:            rgba(0, 105, 92, 0.08);
+}
+
+/* ── Global — force Roboto everywhere ── */
+html, body, [class*="css"], * {
+    font-family: 'Roboto', sans-serif !important;
+    -webkit-font-smoothing: antialiased;
 }
 .stApp {
-    background-color: #F4FBFA;
+    background-color: var(--md-background);
+    color: var(--md-on-surface);
 }
 
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background-color: #FFFFFF;
-    border-right: 1px solid #E0F2F1;
+/* ── MD3 type scale ── */
+h1 {
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 1.75rem !important;   /* Display Small — was ~2rem, -2pt */
+    font-weight: 400 !important;
+    letter-spacing: -0.25px !important;
+    color: var(--md-primary-dark) !important;
+    line-height: 1.3 !important;
 }
-[data-testid="stSidebar"] .stRadio label {
-    font-size: 15px;
-    font-weight: 400;
-    color: #004D40;
-    padding: 6px 0;
+h2 {
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 1.25rem !important;   /* Headline Small */
+    font-weight: 500 !important;
+    letter-spacing: 0px !important;
+    color: var(--md-primary) !important;
+    line-height: 1.4 !important;
+}
+h3 {
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 1.05rem !important;   /* Title Large */
+    font-weight: 500 !important;
+    letter-spacing: 0.1px !important;
+    color: var(--md-primary) !important;
+}
+p, li, span, label, div {
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: 0.15px;
+    color: var(--md-on-surface);
+}
+
+/* ── Sidebar — MD3 Navigation Drawer ── */
+[data-testid="stSidebar"] {
+    background-color: var(--md-surface);
+    border-right: 1px solid var(--md-outline);
+}
+[data-testid="stSidebar"] label {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.1px !important;
+    color: var(--md-primary-dark) !important;
+    padding: 8px 12px !important;
+    border-radius: 28px !important;
+    transition: background 0.15s ease;
+}
+[data-testid="stSidebar"] label:hover {
+    background-color: var(--md-surface-variant) !important;
 }
 [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
-    gap: 4px;
+    gap: 2px;
 }
-
-/* ── Headings ── */
-h1 { color: #00695C; font-weight: 500; letter-spacing: -0.5px; }
-h2 { color: #00796B; font-weight: 500; }
-h3 { color: #00897B; font-weight: 500; }
 
 /* ── Buttons — MD3 filled ── */
 .stButton > button {
-    background-color: #00897B;
-    color: #FFFFFF;
-    border: none;
-    border-radius: 20px;
-    padding: 10px 28px;
-    font-family: 'Roboto', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    transition: all 0.2s ease;
+    background-color: var(--md-primary) !important;
+    color: var(--md-on-primary) !important;
+    border: none !important;
+    border-radius: 20px !important;
+    padding: 10px 28px !important;
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.1px !important;
+    box-shadow: 0 1px 2px var(--md-shadow), 0 2px 6px var(--md-shadow) !important;
+    transition: box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 .stButton > button:hover {
-    background-color: #00796B;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-}
-.stButton > button:active {
-    background-color: #00695C;
-    box-shadow: none;
+    background-color: var(--md-primary-dark) !important;
+    box-shadow: 0 2px 8px var(--md-shadow), 0 4px 16px var(--md-shadow) !important;
 }
 
-/* ── Cards ── */
+/* ── Cards — MD3 Elevated ── */
 .md-card {
-    background: #FFFFFF;
+    background: var(--md-surface);
     border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    padding: 24px 28px;
+    box-shadow: 0 1px 2px var(--md-shadow), 0 2px 8px var(--md-shadow);
     margin-bottom: 20px;
+    border: 1px solid var(--md-outline);
 }
 
-/* ── Phase badges ── */
-.phase-done    { background:#E8F5E9; color:#1B5E20; padding:16px; border-radius:12px; border-left:4px solid #43A047; }
-.phase-current { background:#E3F2FD; color:#0D47A1; padding:16px; border-radius:12px; border-left:4px solid #1E88E5; }
-.phase-planned { background:#FAFAFA; color:#616161; padding:16px; border-radius:12px; border-left:4px solid #BDBDBD; }
+/* ── Phase cards ── */
+.phase-done    { background:#E8F5E9; color:#1B5E20; padding:14px 16px; border-radius:12px; border-left:4px solid #43A047; font-size:13px; line-height:1.6; }
+.phase-current { background:#E8F0FE; color:#1A237E; padding:14px 16px; border-radius:12px; border-left:4px solid #3949AB; font-size:13px; line-height:1.6; }
+.phase-planned { background:#FAFAFA; color:#616161; padding:14px 16px; border-radius:12px; border-left:4px solid #BDBDBD; font-size:13px; line-height:1.6; }
 
 /* ── Dataframe ── */
-[data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; }
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--md-outline);
+}
 
-/* ── Success / Info / Error ── */
-[data-testid="stSuccess"] { border-radius: 12px; }
-[data-testid="stInfo"]    { border-radius: 12px; }
-[data-testid="stError"]   { border-radius: 12px; }
+/* ── Alerts ── */
+[data-testid="stSuccess"],
+[data-testid="stInfo"],
+[data-testid="stError"],
+[data-testid="stWarning"] { border-radius: 12px !important; }
 
 /* ── Divider ── */
-hr { border-color: #E0F2F1; }
+hr { border-color: var(--md-outline) !important; margin: 24px 0 !important; }
 
-/* ── Caption ── */
-.stCaption { color: #78909C; font-size: 12px; }
+/* ── Caption / helper text ── */
+small, .stCaption, [data-testid="stCaptionContainer"] {
+    font-size: 12px !important;
+    color: var(--md-on-surface-variant) !important;
+    letter-spacing: 0.4px !important;
+}
+
+/* ── Code blocks ── */
+code { font-family: 'Roboto Mono', monospace !important; font-size: 13px !important; }
 </style>
 """, unsafe_allow_html=True)
 

@@ -31,11 +31,9 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap');
-
 /* ── Global ── */
 html, body, [class*="css"] {
-    font-family: 'Roboto', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 .stApp {
     background-color: #F4FBFA;
@@ -138,7 +136,7 @@ h3 { color: #00897B; font-weight: 500; }
     border: none;
     border-radius: 20px;
     padding: 10px 28px;
-    font-family: 'Roboto', sans-serif;
+    font-family: inherit;
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.4px;
@@ -479,7 +477,7 @@ elif page == "Data Preview":
             )
             fig.update_layout(
                 plot_bgcolor="white", paper_bgcolor="white",
-                font_family="Roboto",
+                font_family="system-ui, -apple-system, sans-serif",
                 hovermode="x unified",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 margin=dict(l=0, r=0, t=32, b=0),
@@ -527,7 +525,7 @@ elif page == "Data Preview":
                     title="By fuel category",
                 )
                 fig2.update_layout(
-                    plot_bgcolor="white", paper_bgcolor="white", font_family="Roboto",
+                    plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     hovermode="x unified",
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                     margin=dict(l=0, r=0, t=48, b=0),
@@ -551,7 +549,7 @@ elif page == "Data Preview":
                     title="Electric vs Petrol vs Diesel",
                 )
                 fig3.update_layout(
-                    plot_bgcolor="white", paper_bgcolor="white", font_family="Roboto",
+                    plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     hovermode="x unified",
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                     margin=dict(l=0, r=0, t=48, b=0),

@@ -226,24 +226,26 @@ if page == "About":
 
     # Architecture diagram
     st.subheader("Architecture")
-    st.graphviz_chart("""
+    col_diag, _ = st.columns([1, 1])
+    with col_diag:
+        st.graphviz_chart("""
 digraph pipeline {
     rankdir=TB
     bgcolor=transparent
-    graph [fontname="Roboto", splines=ortho, nodesep=0.6, ranksep=0.7]
-    node  [fontname="Roboto", fontsize=12, style="rounded,filled", shape=box, margin="0.3,0.2"]
-    edge  [fontname="Roboto", fontsize=10, color="#78909C", arrowsize=0.8]
+    graph [fontname="Helvetica", splines=ortho, nodesep=0.3, ranksep=0.4]
+    node  [fontname="Helvetica", fontsize=10, style="rounded,filled", shape=box, margin="0.2,0.12", width=2]
+    edge  [fontname="Helvetica", fontsize=9, color="#78909C", arrowsize=0.7]
 
-    sources  [label="Data Sources\nIEA · Eurostat",               fillcolor="#E3F2FD", color="#1565C0", fontcolor="#0D47A1"]
-    ingest   [label="Ingestion Layer\nPython · EC2 · Docker",      fillcolor="#E8F5E9", color="#2E7D32", fontcolor="#1B5E20"]
-    s3       [label="AWS S3\ns3://count-electric/landing/",        fillcolor="#FFF8E1", color="#F57F17", fontcolor="#E65100"]
-    databricks [label="Databricks Serverless\nBronze → Silver → Gold · Delta Lake", fillcolor="#F3E5F5", color="#6A1B9A", fontcolor="#4A148C"]
-    streamlit [label="Streamlit Dashboard\nThis app · EC2 · port 8501",             fillcolor="#E0F2F1", color="#00695C", fontcolor="#004D40"]
+    sources    [label="Data Sources\nIEA · Eurostat",             fillcolor="#E3F2FD", color="#1565C0", fontcolor="#0D47A1"]
+    ingest     [label="Ingestion · EC2 · Docker",                 fillcolor="#E8F5E9", color="#2E7D32", fontcolor="#1B5E20"]
+    s3         [label="AWS S3  landing/raw/",                     fillcolor="#FFF8E1", color="#F57F17", fontcolor="#E65100"]
+    databricks [label="Databricks  Bronze→Silver→Gold",           fillcolor="#F3E5F5", color="#6A1B9A", fontcolor="#4A148C"]
+    streamlit  [label="Streamlit Dashboard  :8501",               fillcolor="#E0F2F1", color="#00695C", fontcolor="#004D40"]
 
-    sources   -> ingest    [label="  API / CSV  "]
-    ingest    -> s3        [label="  raw files  "]
-    s3        -> databricks [label="  Delta Lake  "]
-    databricks -> streamlit [label="  Gold layer (Phase 4)  ", style=dashed]
+    sources    -> ingest     [label=" API/CSV "]
+    ingest     -> s3         [label=" raw files "]
+    s3         -> databricks [label=" Delta Lake "]
+    databricks -> streamlit  [label=" Gold (Phase 4) ", style=dashed]
 }
 """, use_container_width=True)
 

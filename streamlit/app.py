@@ -22,9 +22,9 @@ S3_BUCKET = os.getenv("S3_BUCKET", "count-electric")
 
 st.set_page_config(
     page_title="Count Electric",
-    page_icon="⚡",
+    page_icon="🚗",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Material Design 3 — light teal theme ─────────────────────────────────────
@@ -109,12 +109,16 @@ h3 { color: #00897B; font-weight: 500; }
 /* ── Divider ── */
 hr { border-color: #E0F2F1; }
 
+/* ── Hide sidebar entirely ── */
+[data-testid="collapsedControl"],
+[data-testid="stSidebar"] { display: none !important; }
+
 /* ── Caption ── */
 .stCaption { color: #78909C; font-size: 12px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar navigation ────────────────────────────────────────────────────────
+# ── Header ───────────────────────────────────────────────────────────────────
 
 CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{size}" height="{size}" fill="{color}">
   <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3H5.77L6.85 7zM19 17H5v-5h14v5z"/>
@@ -122,15 +126,15 @@ CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width=
   <path d="M12 5V3M10 3h4"/>
 </svg>"""
 
-with st.sidebar:
-    st.markdown(
-        f"""<div style="display:flex;align-items:center;gap:10px;padding:4px 0 8px 0">
-        {CAR_ICON.format(size=28, color="#00897B")}
-        <span style="font-size:18px;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
-        </div>
-        <p style="color:#B0BEC5;font-size:11px;margin:0">Phase 2 of 5 · Bronze & Silver live</p>""",
-        unsafe_allow_html=True,
-    )
+st.markdown(
+    f"""<div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">
+    {CAR_ICON.format(size=36, color="#00897B")}
+    <span style="font-size:1.9rem;font-weight:500;color:#00695C;letter-spacing:-0.5px">Count Electric</span>
+    </div>
+    <p style="color:#78909C;font-size:14px;margin:0 0 16px 0;letter-spacing:0.15px">
+    Counting the shift from combustion to electric — country by country, year by year.</p>""",
+    unsafe_allow_html=True,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -200,15 +204,6 @@ tab_about, tab_ingest, tab_data = st.tabs(["About", "Ingestion", "Data Preview"]
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
 with tab_about:
-    st.markdown(
-        f"""<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
-        {CAR_ICON.format(size=42, color="#00897B")}
-        <span style="font-size:2rem;font-weight:500;color:#00695C;letter-spacing:-0.5px">Count Electric</span>
-        </div>
-        <p style="color:#78909C;font-size:15px;margin:0 0 20px 0">
-        Counting the shift from combustion to electric — country by country, year by year.</p>""",
-        unsafe_allow_html=True,
-    )
     st.markdown("---")
 
     # Mission

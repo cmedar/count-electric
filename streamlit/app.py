@@ -268,18 +268,15 @@ with a special focus on <strong>Romania</strong>.</p>
 </div>
 """, unsafe_allow_html=True)
 
-    # Architecture + Tech Stack side by side
-    col_arch, col_tech = st.columns([1, 1])
-
-    with col_arch:
-        st.subheader("Architecture")
-        st.graphviz_chart("""
+    # Architecture — full width
+    st.subheader("Architecture")
+    st.graphviz_chart("""
 digraph pipeline {
     rankdir=LR
     bgcolor=transparent
-    graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.35, size="6,1.6"]
+    graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.5, size="10,1.6"]
     node  [fontname="Helvetica", fontsize=13, style="rounded,filled", shape=box,
-           margin="0.15,0.1", width=1.4, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
+           margin="0.15,0.1", width=1.6, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
     edge  [fontname="Helvetica", fontsize=10, color="#80CBC4", arrowsize=0.55]
 
     sources    [label="Data Sources\nIEA · Eurostat"]
@@ -295,6 +292,9 @@ digraph pipeline {
 }
 """, use_container_width=True)
 
+    # Tech Stack + Databricks concepts side by side
+    col_tech, col_db = st.columns(2)
+
     with col_tech:
         st.subheader("Tech Stack")
         st.markdown("""
@@ -308,6 +308,21 @@ digraph pipeline {
 | Governance | Unity Catalog |
 | Dashboard | Streamlit |
 | CI/CD | GitHub Actions |
+""")
+
+    with col_db:
+        st.subheader("Databricks Concepts")
+        st.markdown("""
+| Concept | Used for |
+|---|---|
+| Serverless compute | Running notebooks without managing clusters |
+| Unity Catalog | Data governance and access control |
+| External Location | S3 access via IAM cross-account role |
+| Delta Lake | ACID-compliant table format |
+| Medallion architecture | Bronze → Silver → Gold pipeline |
+| Git Folder sync | Auto-deploy notebooks from GitHub |
+| Secrets | Storing AWS credentials securely |
+| SQL Warehouse | Querying Delta tables |
 """)
 
     st.subheader("Project Roadmap")

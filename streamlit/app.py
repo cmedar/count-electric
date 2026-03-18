@@ -263,18 +263,20 @@ if page == "About":
 
     # Mission
     st.markdown("""
-<div class="md-card">
-<h3 style="margin-top:0">What is this?</h3>
-<p>You've probably noticed more EVs on the street lately. But are they actually taking over, or does it just feel that way?</p>
-<p><strong>Count Electric</strong> answers that with data — tracking EV adoption trends globally and comparing them directly against petrol and diesel registrations, so you can see one grow while the other shrinks.</p>
-<p>Built as a data engineering portfolio project with a special focus on <strong>Romania</strong>.</p>
+<div class="md-card" style="padding:16px 24px;margin-bottom:16px">
+<h3 style="margin:0 0 6px 0;font-size:1rem">What is this?</h3>
+<p style="margin:0;font-size:14px;color:#546E7A;line-height:1.5">
+You've probably noticed more EVs on the street lately — but are they actually taking over?
+<strong>Count Electric</strong> answers that with data, tracking EV adoption country by country, year by year,
+with a special focus on <strong>Romania</strong>.</p>
 </div>
 """, unsafe_allow_html=True)
 
-    # Architecture diagram — constrained width
-    st.subheader("Architecture")
-    _, diag_col, _ = st.columns([3, 1, 3])
-    with diag_col:
+    # Architecture + Tech Stack side by side
+    col_arch, col_tech = st.columns([1, 1])
+
+    with col_arch:
+        st.subheader("Architecture")
         st.graphviz_chart("""
 digraph pipeline {
     rankdir=TB
@@ -297,11 +299,7 @@ digraph pipeline {
 }
 """, use_container_width=True)
 
-    st.markdown("---")
-
-    # Tech stack + Data sources side by side
-    col1, col2 = st.columns(2)
-    with col1:
+    with col_tech:
         st.subheader("Tech Stack")
         st.markdown("""
 | Layer | Technology |
@@ -315,17 +313,6 @@ digraph pipeline {
 | Dashboard | Streamlit |
 | CI/CD | GitHub Actions |
 """)
-
-    with col2:
-        st.subheader("Data Sources")
-        st.markdown("""
-| Source | Coverage |
-|---|---|
-| **IEA Global EV Data** | EV sales & stock, 2010–2024, global incl. Romania |
-| **Eurostat ROAD_EQR_CARPDA** | New registrations by fuel type — EV vs ICE |
-| **EAFO** | Romania EV fleet detail *(planned)* |
-""")
-        st.info("**Romania focus:** Country-level data 2013–2024. Bucharest city-level data is not published as open data by DRPCIV.")
 
     st.markdown("---")
     st.subheader("Project Roadmap")

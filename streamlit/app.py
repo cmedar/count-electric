@@ -46,6 +46,13 @@ header[data-testid="stHeader"] {
     display: none !important;
 }
 
+/* ── Hide sidebar collapse/expand button — drawer is always open ── */
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"],
+button[data-testid="baseButton-header"] {
+    display: none !important;
+}
+
 /* ── Top App Bar ── */
 .md3-top-bar {
     position: fixed;
@@ -186,12 +193,19 @@ CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width=
 
 # ── Top App Bar ───────────────────────────────────────────────────────────────
 
+# ── Logo click → home navigation ─────────────────────────────────────────────
+
+if st.query_params.get("nav") == "home":
+    st.session_state.page = "About"
+    st.query_params.clear()
+    st.rerun()
+
 st.markdown(
     f"""<div class="md3-top-bar">
-    <div style="display:flex;align-items:center;gap:12px">
+    <a href="?nav=home" style="text-decoration:none;display:flex;align-items:center;gap:12px;cursor:pointer">
         {CAR_ICON.format(size=28, color="#00897B")}
         <span style="font-size:1.2rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
-    </div>
+    </a>
     <span style="margin-left:auto;font-size:12px;color:#90A4AE;letter-spacing:0.3px">
         Counting the shift from combustion to electric
     </span>
@@ -296,7 +310,7 @@ if page == "About":
 
     # Architecture diagram — constrained width
     st.subheader("Architecture")
-    _, diag_col, _ = st.columns([1, 1, 1])
+    _, diag_col, _ = st.columns([3, 2, 3])
     with diag_col:
         st.graphviz_chart("""
 digraph pipeline {

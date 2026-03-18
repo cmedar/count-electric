@@ -1,6 +1,6 @@
 """
 Count Electric — Streamlit App
-Material Design 3 light theme, Top App Bar + Navigation Drawer.
+Material Design 3 light theme, Top App Bar with inline navigation.
 """
 
 import json
@@ -24,7 +24,7 @@ st.set_page_config(
     page_title="Count Electric",
     page_icon="🚗",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Material Design 3 — light teal theme ─────────────────────────────────────
@@ -39,14 +39,10 @@ html, body, [class*="css"] {
     background-color: #F4FBFA;
 }
 
-/* ── Hide native Streamlit header ── */
-header[data-testid="stHeader"] {
-    display: none !important;
-}
-
-/* ── Hide sidebar toggle buttons — drawer is always open ── */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="stSidebar"] [data-testid="stBaseButton-headerNoPadding"] {
+/* ── Hide native Streamlit header + sidebar ── */
+header[data-testid="stHeader"],
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"] {
     display: none !important;
 }
 
@@ -62,65 +58,39 @@ header[data-testid="stHeader"] {
     display: flex;
     align-items: center;
     padding: 0 24px;
+    gap: 32px;
     z-index: 1000;
 }
 
-/* ── Push all content below the top bar ── */
-section[data-testid="stSidebar"] {
-    top: 64px !important;
-    height: calc(100vh - 64px) !important;
-}
-.main .block-container {
-    padding-top: 88px !important;
-}
-
-/* ── Sidebar / Navigation Drawer ── */
-[data-testid="stSidebar"] {
-    background-color: #FFFFFF;
-    border-right: 1px solid #E0F2F1;
-}
-
-/* Section label */
-[data-testid="stSidebar"] .nav-section-label {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.8px;
-    color: #90A4AE;
-    text-transform: uppercase;
-    padding: 16px 16px 8px 16px;
-}
-
-/* Hide default radio circles */
-[data-testid="stSidebar"] .stRadio [data-baseweb="radio"] > div:first-child {
-    display: none !important;
-}
-
-/* Nav item label */
-[data-testid="stSidebar"] .stRadio label {
-    border-radius: 28px;
-    padding: 10px 20px;
-    width: 100%;
-    margin: 2px 0;
-    font-size: 14px;
-    font-weight: 400;
-    color: #37474F;
-    cursor: pointer;
-    transition: background 0.15s ease;
+/* ── Nav links inside top bar ── */
+.top-nav {
     display: flex;
     align-items: center;
+    gap: 4px;
+    margin-left: 24px;
 }
-[data-testid="stSidebar"] .stRadio label:hover {
+.top-nav a {
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #546E7A;
+    padding: 8px 16px;
+    border-radius: 20px;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.top-nav a:hover {
     background: #F0FAF9;
+    color: #00695C;
 }
-/* Active pill */
-[data-testid="stSidebar"] .stRadio [aria-checked="true"] label {
-    background: #E0F2F1 !important;
-    color: #00695C !important;
-    font-weight: 500 !important;
+.top-nav a.active {
+    background: #E0F2F1;
+    color: #00695C;
 }
-[data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
-    gap: 0;
-    padding: 0 8px;
+
+/* ── Push content below top bar ── */
+.main .block-container {
+    padding-top: 88px !important;
 }
 
 /* Headings */
@@ -190,44 +160,40 @@ CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width=
 
 # ── Top App Bar ───────────────────────────────────────────────────────────────
 
-# ── Logo click → home navigation ─────────────────────────────────────────────
+# ── Session state + query param routing ──────────────────────────────────────
 
-if st.query_params.get("nav") == "home":
-    st.session_state.page = "About"
-    st.query_params.clear()
-    st.rerun()
-
-st.markdown(
-    f"""<div class="md3-top-bar">
-    <a href="?nav=home" style="text-decoration:none;display:flex;align-items:center;gap:12px;cursor:pointer">
-        {CAR_ICON.format(size=28, color="#00897B")}
-        <span style="font-size:1.2rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
-    </a>
-    <span style="margin-left:auto;font-size:12px;color:#90A4AE;letter-spacing:0.3px">
-        Counting the shift from combustion to electric
-    </span>
-</div>""",
-    unsafe_allow_html=True,
-)
-
-# ── Session state ─────────────────────────────────────────────────────────────
+NAV_ITEMS = ["About", "Ingestion", "Data Preview"]
 
 if "page" not in st.session_state:
     st.session_state.page = "About"
 
-# ── Navigation Drawer ─────────────────────────────────────────────────────────
+if "p" in st.query_params and st.query_params["p"] in NAV_ITEMS:
+    st.session_state.page = st.query_params["p"]
+    st.query_params.clear()
+    st.rerun()
 
-NAV_ITEMS = ["About", "Ingestion", "Data Preview"]
+page = st.session_state.page
 
-with st.sidebar:
-    st.markdown('<p class="nav-section-label">Navigation</p>', unsafe_allow_html=True)
-    page = st.radio(
-        "",
-        NAV_ITEMS,
-        index=NAV_ITEMS.index(st.session_state.page),
-        label_visibility="collapsed",
-    )
-    st.session_state.page = page
+# ── Top App Bar with inline nav ───────────────────────────────────────────────
+
+def _nav_link(label: str) -> str:
+    css_class = "active" if page == label else ""
+    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}">{label}</a>'
+
+st.markdown(
+    f"""<div class="md3-top-bar">
+    <a href="?p=About" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
+        {CAR_ICON.format(size=26, color="#00897B")}
+        <span style="font-size:1.15rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
+    </a>
+    <nav class="top-nav">
+        {_nav_link("About")}
+        {_nav_link("Ingestion")}
+        {_nav_link("Data Preview")}
+    </nav>
+</div>""",
+    unsafe_allow_html=True,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

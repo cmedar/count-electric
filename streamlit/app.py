@@ -97,6 +97,12 @@ div[data-testid="stHorizontalBlock"] .stRadio [aria-checked="true"] label {
     padding-top: 0 !important;
 }
 
+/* ── Hide fullscreen button on all elements ── */
+[data-testid="StyledFullScreenButton"],
+[data-testid="stElementToolbar"] {
+    display: none !important;
+}
+
 /* Headings */
 h1 { color: #00695C; font-weight: 500; letter-spacing: -0.5px; }
 h2 { color: #00796B; font-weight: 500; }
@@ -281,9 +287,9 @@ digraph pipeline {
     rankdir=TB
     bgcolor=transparent
     graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.3]
-    node  [fontname="Helvetica", fontsize=9, style="rounded,filled", shape=box,
+    node  [fontname="Helvetica", fontsize=13, style="rounded,filled", shape=box,
            margin="0.12,0.08", width=1.6, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
-    edge  [fontname="Helvetica", fontsize=8, color="#80CBC4", arrowsize=0.55]
+    edge  [fontname="Helvetica", fontsize=11, color="#80CBC4", arrowsize=0.55]
 
     sources    [label="Data Sources\nIEA · Eurostat"]
     ingest     [label="Ingestion\nEC2 · Docker"]

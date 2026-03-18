@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -198,6 +199,29 @@ st.markdown(
 </div>""",
     unsafe_allow_html=True,
 )
+
+# Intercept nav link clicks in the parent window so they navigate in-place
+# instead of opening a new tab (Streamlit serves inside an iframe).
+components.html("""
+<script>
+(function() {
+    function patchLinks() {
+        var links = window.parent.document.querySelectorAll('.top-nav a, .md3-top-bar > a');
+        links.forEach(function(a) {
+            if (a.dataset.patched) return;
+            a.dataset.patched = '1';
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.parent.location.href = a.getAttribute('href');
+            });
+        });
+    }
+    // Run immediately and after a short delay to catch late renders
+    patchLinks();
+    setTimeout(patchLinks, 300);
+})();
+</script>
+""", height=0)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

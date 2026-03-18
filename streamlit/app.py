@@ -22,7 +22,7 @@ S3_BUCKET = os.getenv("S3_BUCKET", "count-electric")
 
 st.set_page_config(
     page_title="Count Electric",
-    page_icon="🚗",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -31,159 +31,106 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* ── Google Fonts — Roboto type scale ── */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap');
 
-/* ── MD3 color tokens ── */
-:root {
-    --md-primary:           #00897B;
-    --md-primary-dark:      #00695C;
-    --md-primary-container: #B2DFDB;
-    --md-on-primary:        #FFFFFF;
-    --md-surface:           #FFFFFF;
-    --md-surface-variant:   #E0F2F1;
-    --md-background:        #F4FBFA;
-    --md-on-surface:        #1C1B1F;
-    --md-on-surface-variant:#49454F;
-    --md-outline:           #CAE6E3;
-    --md-shadow:            rgba(0, 105, 92, 0.08);
-}
-
-/* ── Global — force Roboto everywhere ── */
-html, body, [class*="css"], * {
-    font-family: 'Roboto', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
+/* ── Global ── */
+html, body, [class*="css"] {
+    font-family: 'Roboto', sans-serif;
 }
 .stApp {
-    background-color: var(--md-background);
-    color: var(--md-on-surface);
+    background-color: #F4FBFA;
 }
 
-/* ── MD3 type scale ── */
-h1 {
-    font-family: 'Roboto', sans-serif !important;
-    font-size: 1.75rem !important;   /* Display Small — was ~2rem, -2pt */
-    font-weight: 400 !important;
-    letter-spacing: -0.25px !important;
-    color: var(--md-primary-dark) !important;
-    line-height: 1.3 !important;
-}
-h2 {
-    font-family: 'Roboto', sans-serif !important;
-    font-size: 1.25rem !important;   /* Headline Small */
-    font-weight: 500 !important;
-    letter-spacing: 0px !important;
-    color: var(--md-primary) !important;
-    line-height: 1.4 !important;
-}
-h3 {
-    font-family: 'Roboto', sans-serif !important;
-    font-size: 1.05rem !important;   /* Title Large */
-    font-weight: 500 !important;
-    letter-spacing: 0.1px !important;
-    color: var(--md-primary) !important;
-}
-p, li, span, label, div {
-    font-size: 14px;
-    line-height: 1.6;
-    letter-spacing: 0.15px;
-    color: var(--md-on-surface);
-}
-
-/* ── Sidebar — MD3 Navigation Drawer ── */
+/* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background-color: var(--md-surface);
-    border-right: 1px solid var(--md-outline);
+    background-color: #FFFFFF;
+    border-right: 1px solid #E0F2F1;
 }
-[data-testid="stSidebar"] label {
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.1px !important;
-    color: var(--md-primary-dark) !important;
-    padding: 8px 12px !important;
-    border-radius: 28px !important;
-    transition: background 0.15s ease;
-}
-[data-testid="stSidebar"] label:hover {
-    background-color: var(--md-surface-variant) !important;
+[data-testid="stSidebar"] .stRadio label {
+    font-size: 15px;
+    font-weight: 400;
+    color: #004D40;
+    padding: 6px 0;
 }
 [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
-    gap: 2px;
+    gap: 4px;
 }
+
+/* ── Headings ── */
+h1 { color: #00695C; font-weight: 500; letter-spacing: -0.5px; }
+h2 { color: #00796B; font-weight: 500; }
+h3 { color: #00897B; font-weight: 500; }
 
 /* ── Buttons — MD3 filled ── */
 .stButton > button {
-    background-color: var(--md-primary) !important;
-    color: var(--md-on-primary) !important;
-    border: none !important;
-    border-radius: 20px !important;
-    padding: 10px 28px !important;
-    font-family: 'Roboto', sans-serif !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.1px !important;
-    box-shadow: 0 1px 2px var(--md-shadow), 0 2px 6px var(--md-shadow) !important;
-    transition: box-shadow 0.2s ease, background-color 0.2s ease !important;
+    background-color: #00897B;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 28px;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
 }
 .stButton > button:hover {
-    background-color: var(--md-primary-dark) !important;
-    box-shadow: 0 2px 8px var(--md-shadow), 0 4px 16px var(--md-shadow) !important;
+    background-color: #00796B;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+.stButton > button:active {
+    background-color: #00695C;
+    box-shadow: none;
 }
 
-/* ── Cards — MD3 Elevated ── */
+/* ── Cards ── */
 .md-card {
-    background: var(--md-surface);
+    background: #FFFFFF;
     border-radius: 16px;
-    padding: 24px 28px;
-    box-shadow: 0 1px 2px var(--md-shadow), 0 2px 8px var(--md-shadow);
+    padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
     margin-bottom: 20px;
-    border: 1px solid var(--md-outline);
 }
 
-/* ── Phase cards ── */
-.phase-done    { background:#E8F5E9; color:#1B5E20; padding:14px 16px; border-radius:12px; border-left:4px solid #43A047; font-size:13px; line-height:1.6; }
-.phase-current { background:#E8F0FE; color:#1A237E; padding:14px 16px; border-radius:12px; border-left:4px solid #3949AB; font-size:13px; line-height:1.6; }
-.phase-planned { background:#FAFAFA; color:#616161; padding:14px 16px; border-radius:12px; border-left:4px solid #BDBDBD; font-size:13px; line-height:1.6; }
+/* ── Phase badges ── */
+.phase-done    { background:#E8F5E9; color:#1B5E20; padding:16px; border-radius:12px; border-left:4px solid #43A047; }
+.phase-current { background:#E3F2FD; color:#0D47A1; padding:16px; border-radius:12px; border-left:4px solid #1E88E5; }
+.phase-planned { background:#FAFAFA; color:#616161; padding:16px; border-radius:12px; border-left:4px solid #BDBDBD; }
 
 /* ── Dataframe ── */
-[data-testid="stDataFrame"] {
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid var(--md-outline);
-}
+[data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; }
 
-/* ── Alerts ── */
-[data-testid="stSuccess"],
-[data-testid="stInfo"],
-[data-testid="stError"],
-[data-testid="stWarning"] { border-radius: 12px !important; }
+/* ── Success / Info / Error ── */
+[data-testid="stSuccess"] { border-radius: 12px; }
+[data-testid="stInfo"]    { border-radius: 12px; }
+[data-testid="stError"]   { border-radius: 12px; }
 
 /* ── Divider ── */
-hr { border-color: var(--md-outline) !important; margin: 24px 0 !important; }
+hr { border-color: #E0F2F1; }
 
-/* ── Caption / helper text ── */
-small, .stCaption, [data-testid="stCaptionContainer"] {
-    font-size: 12px !important;
-    color: var(--md-on-surface-variant) !important;
-    letter-spacing: 0.4px !important;
-}
-
-/* ── Code blocks ── */
-code { font-family: 'Roboto Mono', monospace !important; font-size: 13px !important; }
+/* ── Caption ── */
+.stCaption { color: #78909C; font-size: 12px; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Sidebar navigation ────────────────────────────────────────────────────────
 
+CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{size}" height="{size}" fill="{color}">
+  <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3H5.77L6.85 7zM19 17H5v-5h14v5z"/>
+  <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
+  <path d="M12 5V3M10 3h4"/>
+</svg>"""
+
 with st.sidebar:
-    st.markdown("""
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-  <span class="material-icons-round" style="font-size:32px;color:#00897B;">electric_car</span>
-  <span style="font-size:20px;font-weight:500;color:#00695C;">Count Electric</span>
-</div>
-<p style='color:#78909C;font-size:13px;margin-top:0;'>EV adoption tracker</p>
-""", unsafe_allow_html=True)
+    st.markdown(
+        f"""<div style="display:flex;align-items:center;gap:10px;padding:4px 0 2px 0">
+        {CAR_ICON.format(size=28, color="#00897B")}
+        <span style="font-size:18px;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
+        </div>
+        <p style="color:#78909C;font-size:12px;margin:0 0 8px 0;letter-spacing:0.3px">EV adoption tracker</p>""",
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
     page = st.radio(
         "Navigation",
@@ -262,15 +209,15 @@ CATEGORY_COLORS = {
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
 if page == "About":
-    st.markdown("""
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
-  <span class="material-icons-round" style="font-size:44px;color:#00897B;">electric_car</span>
-  <span style="font-size:2.2rem;font-weight:500;color:#00695C;letter-spacing:-0.5px;">Count Electric</span>
-</div>
-<p style="color:#78909C;font-size:16px;margin-top:0;margin-bottom:24px;">
-  Counting the shift from combustion to electric — country by country, year by year.
-</p>
-""", unsafe_allow_html=True)
+    st.markdown(
+        f"""<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
+        {CAR_ICON.format(size=42, color="#00897B")}
+        <span style="font-size:2rem;font-weight:500;color:#00695C;letter-spacing:-0.5px">Count Electric</span>
+        </div>
+        <p style="color:#78909C;font-size:15px;margin:0 0 20px 0">
+        Counting the shift from combustion to electric — country by country, year by year.</p>""",
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
 
     # Mission
@@ -283,28 +230,28 @@ if page == "About":
 </div>
 """, unsafe_allow_html=True)
 
-    # Architecture diagram
+    # Architecture diagram — constrained width
     st.subheader("Architecture")
-    col_diag, _ = st.columns([1, 1])
-    with col_diag:
+    _, diag_col, _ = st.columns([0.5, 2, 1.5])
+    with diag_col:
         st.graphviz_chart("""
 digraph pipeline {
     rankdir=TB
     bgcolor=transparent
-    graph [fontname="Helvetica", splines=ortho, nodesep=0.3, ranksep=0.4]
-    node  [fontname="Helvetica", fontsize=10, style="rounded,filled", shape=box, margin="0.2,0.12", width=2]
-    edge  [fontname="Helvetica", fontsize=9, color="#78909C", arrowsize=0.7]
+    graph [fontname="Helvetica", splines=ortho, nodesep=0.25, ranksep=0.35]
+    node  [fontname="Helvetica", fontsize=9, style="rounded,filled", shape=box, margin="0.15,0.1", width=1.8]
+    edge  [fontname="Helvetica", fontsize=8, color="#90A4AE", arrowsize=0.6]
 
-    sources    [label="Data Sources\nIEA · Eurostat",             fillcolor="#E3F2FD", color="#1565C0", fontcolor="#0D47A1"]
-    ingest     [label="Ingestion · EC2 · Docker",                 fillcolor="#E8F5E9", color="#2E7D32", fontcolor="#1B5E20"]
-    s3         [label="AWS S3  landing/raw/",                     fillcolor="#FFF8E1", color="#F57F17", fontcolor="#E65100"]
-    databricks [label="Databricks  Bronze→Silver→Gold",           fillcolor="#F3E5F5", color="#6A1B9A", fontcolor="#4A148C"]
-    streamlit  [label="Streamlit Dashboard  :8501",               fillcolor="#E0F2F1", color="#00695C", fontcolor="#004D40"]
+    sources    [label="Data Sources  IEA · Eurostat",        fillcolor="#E3F2FD", color="#1565C0", fontcolor="#0D47A1"]
+    ingest     [label="Ingestion  EC2 · Docker",             fillcolor="#E8F5E9", color="#2E7D32", fontcolor="#1B5E20"]
+    s3         [label="AWS S3  landing/raw/",                fillcolor="#FFF8E1", color="#F57F17", fontcolor="#E65100"]
+    databricks [label="Databricks  Bronze→Silver→Gold",      fillcolor="#F3E5F5", color="#6A1B9A", fontcolor="#4A148C"]
+    streamlit  [label="Streamlit  :8501",                    fillcolor="#E0F2F1", color="#00695C", fontcolor="#004D40"]
 
-    sources    -> ingest     [label=" API/CSV "]
-    ingest     -> s3         [label=" raw files "]
-    s3         -> databricks [label=" Delta Lake "]
-    databricks -> streamlit  [label=" Gold (Phase 4) ", style=dashed]
+    sources    -> ingest     [label="API/CSV"]
+    ingest     -> s3         [label="raw files"]
+    s3         -> databricks [label="Delta Lake"]
+    databricks -> streamlit  [label="Gold  Ph.4", style=dashed]
 }
 """, use_container_width=True)
 

@@ -264,8 +264,6 @@ CATEGORY_COLORS = {
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
 if page == "About":
-    st.markdown("---")
-
     # Mission
     st.markdown("""
 <div class="md-card" style="padding:16px 24px;margin-bottom:16px">
@@ -319,7 +317,6 @@ digraph pipeline {
 | CI/CD | GitHub Actions |
 """)
 
-    st.markdown("---")
     st.subheader("Project Roadmap")
 
     cols = st.columns(5)

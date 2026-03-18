@@ -275,12 +275,12 @@ with a special focus on <strong>Romania</strong>.</p>
         st.subheader("Architecture")
         st.graphviz_chart("""
 digraph pipeline {
-    rankdir=TB
+    rankdir=LR
     bgcolor=transparent
-    graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.3]
+    graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.35, size="6,1.6"]
     node  [fontname="Helvetica", fontsize=13, style="rounded,filled", shape=box,
-           margin="0.12,0.08", width=1.6, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
-    edge  [fontname="Helvetica", fontsize=11, color="#80CBC4", arrowsize=0.55]
+           margin="0.15,0.1", width=1.4, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
+    edge  [fontname="Helvetica", fontsize=10, color="#80CBC4", arrowsize=0.55]
 
     sources    [label="Data Sources\nIEA · Eurostat"]
     ingest     [label="Ingestion\nEC2 · Docker"]
@@ -291,7 +291,7 @@ digraph pipeline {
     sources    -> ingest     [label="API/CSV"]
     ingest     -> s3         [label="raw files"]
     s3         -> databricks [label="Delta Lake"]
-    databricks -> streamlit  [label="Gold  Ph.4", style=dashed]
+    databricks -> streamlit  [label="Gold Ph.4", style=dashed]
 }
 """, use_container_width=True)
 

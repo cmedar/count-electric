@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,6 +100,13 @@ header[data-testid="stHeader"],
     display: none !important;
 }
 
+/* ── Hide Streamlit's default tab bar (driven by HTML nav instead) ── */
+[data-baseweb="tab-list"],
+[data-baseweb="tab-border"],
+[data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+
 /* Headings */
 h1 { color: #00695C; font-weight: 500; letter-spacing: -0.5px; }
 h2 { color: #00796B; font-weight: 500; }
@@ -164,36 +172,18 @@ CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width=
   <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
 </svg>"""
 
-# ── Session state + query param routing ──────────────────────────────────────
-
-NAV_ITEMS = ["About", "Ingestion", "Data Preview"]
-
-if "page" not in st.session_state:
-    st.session_state.page = "About"
-
-if "p" in st.query_params and st.query_params["p"] in NAV_ITEMS:
-    st.session_state.page = st.query_params["p"]
-    st.query_params.clear()
-    st.rerun()
-
-page = st.session_state.page
-
-# ── Top App Bar ───────────────────────────────────────────────────────────────
-
-def _nav_link(label: str) -> str:
-    css_class = "active" if page == label else ""
-    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}" target="_top">{label}</a>'
+# ── Top App Bar (visual only — JS drives tab switching below) ────────────────
 
 st.markdown(
     f"""<div class="md3-top-bar">
-    <a href="?p=About" target="_top" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <a href="#" data-tab="0" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
         {CAR_ICON.format(size=26, color="#00897B")}
         <span style="font-size:1.15rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
     </a>
     <nav class="top-nav">
-        {_nav_link("About")}
-        {_nav_link("Ingestion")}
-        {_nav_link("Data Preview")}
+        <a href="#" data-tab="0" class="active">About</a>
+        <a href="#" data-tab="1">Ingestion</a>
+        <a href="#" data-tab="2">Data Preview</a>
     </nav>
 </div>""",
     unsafe_allow_html=True,
@@ -260,9 +250,13 @@ CATEGORY_COLORS = {
     "Hybrid": "#FFA726", "Other": "#B0BEC5", "Total": "#5C6BC0",
 }
 
+# ── Pages — all rendered at once, tab bar hidden, JS drives switching ─────────
+
+_tab_about, _tab_ingest, _tab_data = st.tabs(["About", "Ingestion", "Data Preview"])
+
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
-if page == "About":
+with _tab_about:
     # Mission
     st.markdown("""
 <div class="md-card" style="padding:16px 24px;margin-bottom:16px">
@@ -338,7 +332,7 @@ digraph pipeline {
 
 # ── PAGE: INGESTION ───────────────────────────────────────────────────────────
 
-elif page == "Ingestion":
+with _tab_ingest:
     st.title("Ingestion Control")
     st.markdown("Fetch latest data from sources and land raw files to S3. Runs directly on the server.")
     st.markdown("---")
@@ -401,7 +395,7 @@ Lands to <code>s3://count-electric/landing/raw/eurostat/</code></p>
 
 # ── PAGE: DATA PREVIEW ────────────────────────────────────────────────────────
 
-elif page == "Data Preview":
+with _tab_data:
     st.title("Data Preview")
     st.markdown("Reading directly from the S3 landing zone — raw data, pre-Gold layer. For pipeline validation and early insights.")
     st.markdown("---")
@@ -513,3 +507,59 @@ elif page == "Data Preview":
 
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")
+
+# ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
+# Streamlit tab switching is purely client-side (no rerun). We find the hidden
+# [data-baseweb="tab"] buttons in the parent window and click them when a nav
+# link is clicked. Active pill state is also updated client-side.
+
+components.html("""
+<script>
+(function () {
+    var doc = window.parent.document;
+
+    function switchTab(index) {
+        var tabs = doc.querySelectorAll('[data-baseweb="tab"]');
+        if (tabs[index]) tabs[index].click();
+
+        // Update active pill in the nav
+        doc.querySelectorAll('.top-nav a').forEach(function (a, i) {
+            a.classList.toggle('active', i === index);
+        });
+    }
+
+    function attachListeners() {
+        // Nav links
+        var navLinks = doc.querySelectorAll('.top-nav a');
+        if (!navLinks.length) return false;
+
+        navLinks.forEach(function (a) {
+            if (a._ce) return;
+            a._ce = true;
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                switchTab(parseInt(a.getAttribute('data-tab'), 10));
+            });
+        });
+
+        // Logo → always About (tab 0)
+        var logo = doc.querySelector('.md3-top-bar > a');
+        if (logo && !logo._ce) {
+            logo._ce = true;
+            logo.addEventListener('click', function (e) {
+                e.preventDefault();
+                switchTab(0);
+            });
+        }
+
+        return true;
+    }
+
+    // Retry until elements exist (Streamlit renders async)
+    var attempts = 0;
+    var timer = setInterval(function () {
+        if (attachListeners() || ++attempts > 100) clearInterval(timer);
+    }, 50);
+}());
+</script>
+""", height=0)

@@ -124,26 +124,13 @@ CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width=
 
 with st.sidebar:
     st.markdown(
-        f"""<div style="display:flex;align-items:center;gap:10px;padding:4px 0 2px 0">
+        f"""<div style="display:flex;align-items:center;gap:10px;padding:4px 0 8px 0">
         {CAR_ICON.format(size=28, color="#00897B")}
         <span style="font-size:18px;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
         </div>
-        <p style="color:#78909C;font-size:12px;margin:0 0 8px 0;letter-spacing:0.3px">EV adoption tracker</p>""",
+        <p style="color:#B0BEC5;font-size:11px;margin:0">Phase 2 of 5 · Bronze & Silver live</p>""",
         unsafe_allow_html=True,
     )
-    st.markdown("---")
-    page = st.radio(
-        "Navigation",
-        options=["About", "Ingestion", "Data Preview"],
-        label_visibility="collapsed",
-        format_func=lambda x: {
-            "About":        "🏠  About",
-            "Ingestion":    "⚡  Ingestion",
-            "Data Preview": "📊  Data Preview",
-        }[x],
-    )
-    st.markdown("---")
-    st.markdown("<p style='color:#B0BEC5;font-size:11px;'>Phase 2 of 5 · Bronze & Silver live</p>", unsafe_allow_html=True)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -206,9 +193,13 @@ CATEGORY_COLORS = {
     "Hybrid": "#FFA726", "Other": "#B0BEC5", "Total": "#5C6BC0",
 }
 
+# ── Tabs ─────────────────────────────────────────────────────────────────────
+
+tab_about, tab_ingest, tab_data = st.tabs(["About", "Ingestion", "Data Preview"])
+
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
-if page == "About":
+with tab_about:
     st.markdown(
         f"""<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
         {CAR_ICON.format(size=42, color="#00897B")}
@@ -232,21 +223,22 @@ if page == "About":
 
     # Architecture diagram — constrained width
     st.subheader("Architecture")
-    _, diag_col, _ = st.columns([0.5, 2, 1.5])
+    _, diag_col, _ = st.columns([1, 1, 1])
     with diag_col:
         st.graphviz_chart("""
 digraph pipeline {
     rankdir=TB
     bgcolor=transparent
-    graph [fontname="Helvetica", splines=ortho, nodesep=0.25, ranksep=0.35]
-    node  [fontname="Helvetica", fontsize=9, style="rounded,filled", shape=box, margin="0.15,0.1", width=1.8]
-    edge  [fontname="Helvetica", fontsize=8, color="#90A4AE", arrowsize=0.6]
+    graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.3]
+    node  [fontname="Helvetica", fontsize=9, style="rounded,filled", shape=box,
+           margin="0.12,0.08", width=1.6, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
+    edge  [fontname="Helvetica", fontsize=8, color="#80CBC4", arrowsize=0.55]
 
-    sources    [label="Data Sources  IEA · Eurostat",        fillcolor="#E3F2FD", color="#1565C0", fontcolor="#0D47A1"]
-    ingest     [label="Ingestion  EC2 · Docker",             fillcolor="#E8F5E9", color="#2E7D32", fontcolor="#1B5E20"]
-    s3         [label="AWS S3  landing/raw/",                fillcolor="#FFF8E1", color="#F57F17", fontcolor="#E65100"]
-    databricks [label="Databricks  Bronze→Silver→Gold",      fillcolor="#F3E5F5", color="#6A1B9A", fontcolor="#4A148C"]
-    streamlit  [label="Streamlit  :8501",                    fillcolor="#E0F2F1", color="#00695C", fontcolor="#004D40"]
+    sources    [label="Data Sources\nIEA · Eurostat"]
+    ingest     [label="Ingestion\nEC2 · Docker"]
+    s3         [label="AWS S3\nlanding/raw/"]
+    databricks [label="Databricks\nBronze→Silver→Gold"]
+    streamlit  [label="Streamlit\n:8501"]
 
     sources    -> ingest     [label="API/CSV"]
     ingest     -> s3         [label="raw files"]
@@ -308,7 +300,7 @@ digraph pipeline {
 
 # ── PAGE: INGESTION ───────────────────────────────────────────────────────────
 
-elif page == "Ingestion":
+with tab_ingest:
     st.title("Ingestion Control")
     st.markdown("Fetch latest data from sources and land raw files to S3. Runs directly on the server.")
     st.markdown("---")
@@ -371,7 +363,7 @@ Lands to <code>s3://count-electric/landing/raw/eurostat/</code></p>
 
 # ── PAGE: DATA PREVIEW ────────────────────────────────────────────────────────
 
-elif page == "Data Preview":
+with tab_data:
     st.title("Data Preview")
     st.markdown("Reading directly from the S3 landing zone — raw data, pre-Gold layer. For pipeline validation and early insights.")
     st.markdown("---")

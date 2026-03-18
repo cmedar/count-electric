@@ -178,11 +178,11 @@ page = st.session_state.page
 
 def _nav_link(label: str) -> str:
     css_class = "active" if page == label else ""
-    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}">{label}</a>'
+    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}" target="_self">{label}</a>'
 
 st.markdown(
     f"""<div class="md3-top-bar">
-    <a href="?p=About" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <a href="?p=About" target="_self" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
         {CAR_ICON.format(size=26, color="#00897B")}
         <span style="font-size:1.15rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
     </a>

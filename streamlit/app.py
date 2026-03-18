@@ -44,10 +44,9 @@ header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* ── Hide sidebar collapse/expand button — drawer is always open ── */
-[data-testid="collapsedControl"],
+/* ── Hide sidebar toggle buttons — drawer is always open ── */
 [data-testid="stSidebarCollapsedControl"],
-button[data-testid="baseButton-header"] {
+[data-testid="stSidebar"] [data-testid="stBaseButton-headerNoPadding"] {
     display: none !important;
 }
 
@@ -308,7 +307,7 @@ if page == "About":
 
     # Architecture diagram — constrained width
     st.subheader("Architecture")
-    _, diag_col, _ = st.columns([3, 2, 3])
+    _, diag_col, _ = st.columns([3, 1, 3])
     with diag_col:
         st.graphviz_chart("""
 digraph pipeline {

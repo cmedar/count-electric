@@ -22,7 +22,7 @@ S3_BUCKET = os.getenv("S3_BUCKET", "count-electric")
 
 st.set_page_config(
     page_title="Count Electric",
-    page_icon="⚡",
+    page_icon="🚗",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -32,6 +32,7 @@ st.set_page_config(
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons+Round');
 
 /* ── Global ── */
 html, body, [class*="css"] {
@@ -117,8 +118,13 @@ hr { border-color: #E0F2F1; }
 # ── Sidebar navigation ────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown("## ⚡ Count Electric")
-    st.markdown("<p style='color:#78909C;font-size:13px;margin-top:-12px;'>EV adoption tracker</p>", unsafe_allow_html=True)
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+  <span class="material-icons-round" style="font-size:32px;color:#00897B;">electric_car</span>
+  <span style="font-size:20px;font-weight:500;color:#00695C;">Count Electric</span>
+</div>
+<p style='color:#78909C;font-size:13px;margin-top:0;'>EV adoption tracker</p>
+""", unsafe_allow_html=True)
     st.markdown("---")
     page = st.radio(
         "Navigation",
@@ -197,8 +203,15 @@ CATEGORY_COLORS = {
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
 if page == "About":
-    st.title("Count Electric")
-    st.markdown("##### Counting the shift from combustion to electric — country by country, year by year.")
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+  <span class="material-icons-round" style="font-size:44px;color:#00897B;">electric_car</span>
+  <span style="font-size:2.2rem;font-weight:500;color:#00695C;letter-spacing:-0.5px;">Count Electric</span>
+</div>
+<p style="color:#78909C;font-size:16px;margin-top:0;margin-bottom:24px;">
+  Counting the shift from combustion to electric — country by country, year by year.
+</p>
+""", unsafe_allow_html=True)
     st.markdown("---")
 
     # Mission

@@ -264,7 +264,7 @@ if page == "About":
     st.markdown("""
 <div class="md-card" style="padding:16px 24px;margin-bottom:16px">
 <h3 style="margin:0 0 6px 0;font-size:1rem">What is this?</h3>
-<p style="margin:0;font-size:14px;color:#546E7A;line-height:1.5">
+<p style="margin:0;line-height:1.5">
 You've probably noticed more EVs on the street lately — but are they actually taking over?
 <strong>Count Electric</strong> answers that with data, tracking EV adoption country by country, year by year,
 with a special focus on <strong>Romania</strong>.</p>

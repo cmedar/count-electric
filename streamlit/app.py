@@ -46,51 +46,55 @@ header[data-testid="stHeader"],
     display: none !important;
 }
 
-/* ── Top App Bar ── */
-.md3-top-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 64px;
+/* ── App header row ── */
+.app-header {
     background: #FFFFFF;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    gap: 32px;
-    z-index: 1000;
+    border-bottom: 1px solid #E0F2F1;
+    padding: 0 8px;
+    margin-bottom: 24px;
 }
 
-/* ── Nav links inside top bar ── */
-.top-nav {
+/* ── Horizontal nav radio — pill style ── */
+div[data-testid="stHorizontalBlock"] .stRadio {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-left: 24px;
+    height: 64px;
 }
-.top-nav a {
-    text-decoration: none;
+div[data-testid="stHorizontalBlock"] .stRadio > label {
+    display: none;
+}
+div[data-testid="stHorizontalBlock"] .stRadio [data-baseweb="radio-group"] {
+    flex-direction: row;
+    gap: 4px;
+}
+div[data-testid="stHorizontalBlock"] .stRadio [data-baseweb="radio"] {
+    margin: 0;
+}
+div[data-testid="stHorizontalBlock"] .stRadio [data-baseweb="radio"] > div:first-child {
+    display: none;
+}
+div[data-testid="stHorizontalBlock"] .stRadio label {
+    padding: 8px 16px;
+    border-radius: 20px;
     font-size: 14px;
     font-weight: 500;
     color: #546E7A;
-    padding: 8px 16px;
-    border-radius: 20px;
-    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
     white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
 }
-.top-nav a:hover {
+div[data-testid="stHorizontalBlock"] .stRadio label:hover {
     background: #F0FAF9;
     color: #00695C;
 }
-.top-nav a.active {
-    background: #E0F2F1;
-    color: #00695C;
+div[data-testid="stHorizontalBlock"] .stRadio [aria-checked="true"] label {
+    background: #E0F2F1 !important;
+    color: #00695C !important;
 }
 
-/* ── Push content below top bar ── */
+/* ── Reduce top padding ── */
 .main .block-container {
-    padding-top: 88px !important;
+    padding-top: 0 !important;
 }
 
 /* Headings */
@@ -158,42 +162,37 @@ CAR_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width=
   <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
 </svg>"""
 
-# ── Top App Bar ───────────────────────────────────────────────────────────────
-
-# ── Session state + query param routing ──────────────────────────────────────
+# ── Session state ─────────────────────────────────────────────────────────────
 
 NAV_ITEMS = ["About", "Ingestion", "Data Preview"]
 
 if "page" not in st.session_state:
     st.session_state.page = "About"
 
-if "p" in st.query_params and st.query_params["p"] in NAV_ITEMS:
-    st.session_state.page = st.query_params["p"]
-    st.query_params.clear()
-    st.rerun()
+# ── Header row: logo + nav ────────────────────────────────────────────────────
 
-page = st.session_state.page
+col_brand, col_nav = st.columns([3, 5])
 
-# ── Top App Bar with inline nav ───────────────────────────────────────────────
-
-def _nav_link(label: str) -> str:
-    css_class = "active" if page == label else ""
-    return f'<a href="?p={label.replace(" ", "+")}" class="{css_class}" target="_self">{label}</a>'
-
-st.markdown(
-    f"""<div class="md3-top-bar">
-    <a href="?p=About" target="_self" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex-shrink:0">
+with col_brand:
+    st.markdown(
+        f"""<div style="display:flex;align-items:center;gap:10px;height:64px">
         {CAR_ICON.format(size=26, color="#00897B")}
         <span style="font-size:1.15rem;font-weight:500;color:#00695C;letter-spacing:-0.3px">Count Electric</span>
-    </a>
-    <nav class="top-nav">
-        {_nav_link("About")}
-        {_nav_link("Ingestion")}
-        {_nav_link("Data Preview")}
-    </nav>
-</div>""",
-    unsafe_allow_html=True,
-)
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+with col_nav:
+    page = st.radio(
+        "",
+        NAV_ITEMS,
+        index=NAV_ITEMS.index(st.session_state.page),
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    st.session_state.page = page
+
+st.markdown('<div style="border-bottom:1px solid #E0F2F1;margin-bottom:24px"></div>', unsafe_allow_html=True)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

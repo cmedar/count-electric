@@ -356,7 +356,42 @@ Python and SQL cells share the same Spark session — a table created in a `%sql
 
 ---
 
-### 15. Control Plane vs Data Plane
+### 15. Databricks SQL Warehouse — External Query Endpoint
+
+A **SQL Warehouse** is a dedicated query server that external applications connect to over HTTP. It is separate from the serverless compute used by notebooks.
+
+Think of the Gold Delta tables as a database sitting on disk (S3). The data is there, but nothing is listening for incoming connections from the outside world. A SQL Warehouse is what listens — it accepts SQL queries from external clients, runs them against Delta tables, and returns results.
+
+**Why not use a regular cluster?**
+
+| | Notebook / Job Cluster | SQL Warehouse |
+|---|---|---|
+| Purpose | ETL, ML, data engineering | Analytics queries from external apps |
+| Lifecycle | Start → run notebook → shut down | Always-on (auto-suspends when idle) |
+| External access | Not directly connectable | Exposes HTTP endpoint for JDBC/ODBC |
+| Latency | Startup time on each run | Sub-second for cached/small queries |
+
+**How it connects to Streamlit:**
+
+```python
+from databricks import sql
+
+conn = sql.connect(
+    server_hostname="your-workspace.cloud.databricks.com",  # DATABRICKS_HOST
+    http_path="/sql/1.0/warehouses/abc123def456",           # DATABRICKS_HTTP_PATH
+    access_token="dapiXXXXXXXX",                            # DATABRICKS_TOKEN
+)
+```
+
+The `http_path` is the address of your specific SQL Warehouse. Find it in Databricks → **SQL Warehouses** → your warehouse → **Connection Details → HTTP Path**.
+
+Results are cached in Streamlit for 1 hour via `@st.cache_data(ttl=3600)` — so the warehouse only wakes up on the first visit (or after the cache expires), then auto-suspends again.
+
+> Used in `streamlit/app.py` — `load_romania_summary()` and `load_top10_ev_share()` both dial into the SQL Warehouse to query `gold.romania_ev_summary` and `gold.ev_market_share`.
+
+---
+
+### 16. Control Plane vs Data Plane
 - **Control Plane** — Databricks' infrastructure (UI, job scheduler, cluster manager). Runs in Databricks' AWS account.
 - **Data Plane** — where compute actually runs and where data lives. Runs in **your** AWS account. Your S3 data never leaves your account.
 
@@ -408,16 +443,17 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 - [x] Silver notebooks (`01_silver_iea.py`, `02_silver_eurostat.py`) — deduplication, type casting, fuel category mapping, ISO country codes
 - [x] Streamlit ingestion UI — run IEA/Eurostat scripts from browser, S3 file listing
 
-### Phase 3 — Gold Layer 🔵 (current)
+### Phase 3 — Gold Layer ✅
 - [x] `01_gold_market_share.py` — EV market share % + YoY growth per country/year using pivot + Window lag
 - [x] `02_gold_romania.py` — Romania vs EU average, EU rank via Window rank, IEA stock join
-- [ ] Connect Streamlit dashboard to Gold tables (replace raw S3 preview with Gold metrics)
 
-### Phase 4 — Dashboard
-- [ ] Romania EV share vs EU average chart
-- [ ] Country leaderboard by EV market share
-- [ ] YoY growth trend chart
-- [ ] EV vs ICE displacement view
+### Phase 4 — Dashboard 🔵 (current)
+- [x] Databricks SQL Warehouse connection via `databricks-sql-connector`
+- [x] Romania EV share vs EU average (dual line chart)
+- [x] Year-over-year EV growth % (bar chart, colour by sign)
+- [x] Romania EU rank over time (inverted y-axis — lower rank = better)
+- [x] Top 10 EU countries by EV share in latest year (horizontal bar)
+- [ ] Wire up `DATABRICKS_HTTP_PATH` secret in GitHub + EC2
 
 ### Phase 5 — Polish
 - [ ] README final screenshots
@@ -463,6 +499,8 @@ git clone https://github.com/YOUR_USERNAME/count-electric.git
 | `DATABRICKS_HOST` | Workspace URL (e.g. `https://dbc-xxxxx.cloud.databricks.com`) |
 | `DATABRICKS_TOKEN` | Databricks personal access token |
 | `DATABRICKS_REPO_ID` | Git folder repo ID (from `/api/2.0/workspace/list`) |
+| `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path (e.g. `/sql/1.0/warehouses/abc123`) |
+| `S3_BUCKET` | S3 bucket name (`count-electric`) |
 
 ### 4. Databricks
 
@@ -530,4 +568,4 @@ count-electric/
 
 ---
 
-*Phase 3 complete — Gold layer live in Databricks (`gold.ev_market_share`, `gold.romania_ev_summary`). Next: connect Streamlit dashboard to Gold tables.*
+*Phase 4 in progress — Dashboard tab built, wired to Databricks SQL Warehouse. Remaining: set `DATABRICKS_HTTP_PATH` GitHub Secret to go live.*

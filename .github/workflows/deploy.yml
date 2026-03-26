@@ -63,9 +63,6 @@ jobs:
               -e DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}" \
               -e DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}" \
               -e DATABRICKS_HTTP_PATH="${{ secrets.DATABRICKS_HTTP_PATH }}" \
-              -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
-              -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-              -e AWS_REGION="${{ secrets.AWS_REGION }}" \
               count-electric
             echo "Deployment complete."
 

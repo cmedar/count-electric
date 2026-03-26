@@ -263,8 +263,8 @@ with _tab_about:
 <div class="md-card" style="padding:16px 24px;margin-bottom:16px">
 <h3 style="margin:0 0 6px 0;font-size:1rem">What is this?</h3>
 <p style="margin:0;line-height:1.5">
-You've probably noticed more EVs on the street lately — but are they actually taking over?
-<strong>Count Electric</strong> answers that with data, tracking EV adoption country by country, year by year,
+You've probably noticed more and more electric cars on the street lately — but are they actually taking over?
+<strong>Count Electric</strong> answers that with data, tracking electric cars adoption country by country, year by year,
 with a special focus on <strong>Romania</strong>.</p>
 </div>
 """, unsafe_allow_html=True)
@@ -602,12 +602,23 @@ with _tab_dash:
                 x=df_ro["year"], y=df_ro["ev_market_share_pct"],
                 mode="lines+markers", name="Romania",
                 line=dict(color="#00BFA5", width=2), marker=dict(size=6),
+                hovertemplate="Romania %{x}: %{y:.2f}%<extra></extra>",
             ))
             fig1.add_trace(go.Scatter(
                 x=df_ro["year"], y=df_ro["eu_avg_ev_share_pct"],
                 mode="lines+markers", name="EU Average",
                 line=dict(color="#5C6BC0", width=2, dash="dash"), marker=dict(size=6),
+                hovertemplate="EU Avg %{x}: %{y:.2f}%<extra></extra>",
             ))
+            # Annotate the gap in the latest year
+            latest = df_ro.dropna(subset=["vs_eu_avg_pp"]).iloc[-1]
+            gap_text = f"{latest['vs_eu_avg_pp']:+.1f} pp vs EU" if not pd.isna(latest["vs_eu_avg_pp"]) else ""
+            if gap_text:
+                fig1.add_annotation(
+                    x=latest["year"], y=latest["ev_market_share_pct"],
+                    text=gap_text, showarrow=True, arrowhead=2, arrowcolor="#888",
+                    ax=40, ay=-30, font=dict(size=11, color="#555"),
+                )
             fig1.update_layout(**_layout, yaxis_title="EV Market Share (%)", xaxis_title="Year")
             fig1.update_xaxes(showgrid=False)
             fig1.update_yaxes(gridcolor="#F0F0F0")
@@ -624,6 +635,17 @@ with _tab_dash:
                 hovertemplate="%{x}: %{y:.1f}%<extra></extra>",
             ))
             fig2.add_hline(y=0, line_color="#BDBDBD", line_width=1)
+            # Colour legend as annotations
+            fig2.add_annotation(
+                x=0.01, y=1.08, xref="paper", yref="paper",
+                text="▮ Growth", showarrow=False,
+                font=dict(size=11, color="#00BFA5"), xanchor="left",
+            )
+            fig2.add_annotation(
+                x=0.15, y=1.08, xref="paper", yref="paper",
+                text="▮ Decline", showarrow=False,
+                font=dict(size=11, color="#EF5350"), xanchor="left",
+            )
             fig2.update_layout(**_layout, yaxis_title="YoY Growth (%)", xaxis_title="Year", showlegend=False)
             fig2.update_xaxes(showgrid=False)
             fig2.update_yaxes(gridcolor="#F0F0F0")
@@ -639,11 +661,20 @@ with _tab_dash:
                 x=df_rank["year"], y=df_rank["ev_share_rank"],
                 mode="lines+markers", name="EU Rank",
                 line=dict(color="#FFA726", width=2), marker=dict(size=8),
-                hovertemplate="Year %{x}: Rank #%{y}<extra></extra>",
+                hovertemplate="Year %{x}: Rank #%{y} of %{customdata}<extra></extra>",
+                customdata=df_rank["eu_country_total"],
             ))
+            # Label each point with its rank
+            for _, row in df_rank.iterrows():
+                fig3.add_annotation(
+                    x=row["year"], y=row["ev_share_rank"],
+                    text=f"#{int(row['ev_share_rank'])}",
+                    showarrow=False, yshift=14,
+                    font=dict(size=10, color="#FFA726"),
+                )
             fig3.update_layout(
                 **_layout,
-                yaxis=dict(title="EU Rank", autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
+                yaxis=dict(title="EU Rank (lower = better)", autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
                 xaxis_title="Year",
             )
             fig3.update_xaxes(showgrid=False)
@@ -660,10 +691,20 @@ with _tab_dash:
                 orientation="h",
                 marker_color=["#00695C" if c == "RO" else "#00BFA5" for c in df_top_s["country_code"]],
                 hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
+                text=[f"{v:.1f}%" for v in df_top_s["ev_market_share_pct"]],
+                textposition="outside",
+                textfont=dict(size=11),
             ))
+            # Romania highlight annotation
+            if "RO" in df_top_s["country_code"].values:
+                fig4.add_annotation(
+                    x=0.99, y=0.01, xref="paper", yref="paper",
+                    text="▮ Romania", showarrow=False,
+                    font=dict(size=11, color="#00695C"), xanchor="right",
+                )
             fig4.update_layout(**_layout, xaxis_title="EV Market Share (%)", showlegend=False)
             fig4.update_layout(hovermode="y unified")
-            fig4.update_xaxes(gridcolor="#F0F0F0")
+            fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
             fig4.update_yaxes(showgrid=False)
             st.plotly_chart(fig4, use_container_width=True)
 

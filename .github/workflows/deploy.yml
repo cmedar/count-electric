@@ -59,7 +59,15 @@ jobs:
             sudo docker build -t count-electric .
             sudo docker stop count-electric-app 2>/dev/null || true
             sudo docker rm count-electric-app 2>/dev/null || true
-            sudo docker run -d --name count-electric-app --restart unless-stopped -p 8501:8501 count-electric
+            sudo docker run -d --name count-electric-app --restart unless-stopped -p 8501:8501 \
+              -e DATABRICKS_HOST="${{ secrets.DATABRICKS_HOST }}" \
+              -e DATABRICKS_TOKEN="${{ secrets.DATABRICKS_TOKEN }}" \
+              -e DATABRICKS_HTTP_PATH="${{ secrets.DATABRICKS_HTTP_PATH }}" \
+              -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+              -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+              -e AWS_REGION="${{ secrets.AWS_REGION }}" \
+              -e S3_BUCKET="${{ secrets.S3_BUCKET }}" \
+              count-electric
             echo "Deployment complete."
 
       - name: Sync Databricks Git Folder

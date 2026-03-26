@@ -1,11 +1,11 @@
-### Count Electric   
+### Count Electric
 # Counting electric cars on the streets, so you don't have to
 
-You've probably noticed more EVs on the street lately. But are they actually taking over, or does it just feel that way? **Count Electric** is a data engineering project that answers exactly that — tracking global EV adoption trends across countries, manufacturers, and years, so the numbers can tell the story.
+You've probably noticed more EVs on the street lately. But are they actually taking over, or does it just feel that way? **Count Electric** is a data engineering project that answers exactly that — tracking global EV adoption trends across countries and years, so the numbers can tell the story.
 
 Raw data is ingested from public APIs into AWS S3, processed through a **medallion architecture on Databricks**, and surfaced via an interactive **Streamlit dashboard**.
 
-> Built to demonstrate end-to-end data engineering skills: pipeline design, Delta Lake, Spark optimisation, orchestration, and data governance with Unity Catalog.
+> Built to demonstrate end-to-end data engineering skills: pipeline design, Delta Lake, Spark transformations, Window functions, data governance with Unity Catalog, and CI/CD automation.
 
 ---
 
@@ -17,7 +17,6 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 - [Databricks Concepts Covered](#databricks-concepts-covered)
 - [Tech Stack](#tech-stack)
 - [Data Sources](#data-sources)
-- [Key Insights & Dashboard](#key-insights--dashboard)
 - [Project Phases & Roadmap](#project-phases--roadmap)
 - [Setup & Installation](#setup--installation)
 - [Repository Structure](#repository-structure)
@@ -28,113 +27,340 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 
 **Count Electric** answers the following analytical questions:
 
-- Which countries are leading global EV adoption, and how is that changing year-on-year?
+- Which countries are leading EV adoption in Europe, and how is that changing year-on-year?
 - As EV registrations grow, are petrol and diesel (ICE) registrations actually declining — and how fast?
-- Where does Romania sit in the European EV adoption picture, and how does it compare to leaders like Norway or Germany?
-- Which EV manufacturers and models are growing fastest?
-- How has the global EV market share evolved over the last 5 years?
+- Where does Romania sit in the European EV adoption picture, and how does it compare to the EU average?
+- What is Romania's EV market share rank among EU countries, and is it improving?
 
 > **Romania focus:** All dashboards include a Romania lens. Country-level data is available from 2010 onwards via IEA and Eurostat. Bucharest city-level data is not currently published as open data by DRPCIV (Romania's vehicle registry).
-
-The project is intentionally scoped to EV adoption trends to allow depth over breadth — both in the data engineering architecture and the quality of insights produced.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      DATA SOURCES                       │
-│  IEA Global EV Data  │  EU Open Data  │  US DOE / AFDC  │
-└────────────┬────────────────┬──────────────────┬────────┘
-             │                │                  │
-             ▼                ▼                  ▼
-┌─────────────────────────────────────────────────────────┐
-│                 INGESTION LAYER                         │
-│         Python ingest scripts (API / CSV fetch)         │
-│    (Airflow orchestration deferred to Phase 2)          │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                    AWS S3                               │
-│         s3://count-electric/landing/raw/                  │
-│         (raw files: JSON, CSV — append only)            │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│           DATABRICKS COMMUNITY EDITION                  │
-│                                                         │
-│  ┌─────────┐    ┌─────────┐    ┌─────────────────────┐ │
-│  │ BRONZE  │ →  │ SILVER  │ →  │        GOLD         │ │
-│  │  Delta  │    │  Delta  │    │       Delta          │ │
-│  └─────────┘    └─────────┘    └─────────────────────┘ │
-│                                                         │
-│  Unity Catalog  │  Spark Jobs  │  Delta Lake            │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                 STREAMLIT DASHBOARD                     │
-│     Reads from Gold layer via Databricks SQL connector  │
-│     Deployed locally (or Streamlit Community Cloud)     │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│                  DATA SOURCES                    │
+│   IEA Global EV Data    │   Eurostat ROAD_EQR    │
+└────────────┬─────────────────────┬───────────────┘
+             │                     │
+             ▼                     ▼
+┌──────────────────────────────────────────────────┐
+│              INGESTION (EC2 + Docker)            │
+│   ingest_iea.py          ingest_eurostat.py      │
+│   Python + requests + boto3                      │
+└─────────────────────────┬────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────┐
+│                   AWS S3                         │
+│     s3://count-electric/landing/raw/             │
+│     (raw CSV + JSON files, append-only)          │
+└─────────────────────────┬────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────┐
+│       DATABRICKS (serverless + Unity Catalog)    │
+│                                                  │
+│  ┌──────────┐   ┌──────────┐   ┌─────────────┐  │
+│  │  BRONZE  │ → │  SILVER  │ → │    GOLD     │  │
+│  │  Delta   │   │  Delta   │   │    Delta    │  │
+│  └──────────┘   └──────────┘   └─────────────┘  │
+│                                                  │
+│  Unity Catalog  │  Delta Lake  │  Window fns     │
+└─────────────────────────┬────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────┐
+│            STREAMLIT DASHBOARD                   │
+│   Deployed on EC2 via Docker, port 8501          │
+│   MD3 design, Bootstrap-style tab navigation     │
+└──────────────────────────────────────────────────┘
 ```
 
-**Orchestration:** Apache Airflow will schedule the full pipeline — ingest → Bronze → Silver → Gold — on a weekly cadence. Airflow is deferred to Phase 2 (excluded from the current Docker image to stay within t2.micro memory limits).
-
-**Deployment:** GitHub Actions builds a Docker image and deploys it to EC2 on every push to `main`. The container runs Streamlit on port 8501. In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date. AWS credentials are never stored in the repo — EC2 uses an IAM role for S3 access, and secrets are managed via GitHub Secrets.
+**Deployment:** GitHub Actions builds a Docker image and deploys it to EC2 on every push to `main`. In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date.
 
 ---
 
 ## Medallion Layer Design
 
 ### Bronze — Raw Ingestion
-- **Purpose:** Land raw data exactly as received, no transformations
-- **Format:** Delta tables (converted from raw CSV/JSON)
-- **Schema:** Append-only, includes ingestion timestamp and source identifier
-- **Location:** `s3://count-electric/bronze/`
+- **Purpose:** Land raw data exactly as received, no transformations applied
+- **Format:** Delta tables (converted from raw CSV/JSON on S3)
+- **Schema:** Source fields preserved + `ingested_at` timestamp + `source_file` name
 - **Key tables:**
-  - `bronze.ev_registrations_raw` — registration counts by country/year/fuel type
-  - `bronze.ev_models_raw` — make/model/segment metadata
-  - `bronze.country_metadata_raw` — country codes, regions, population
+  - `bronze.ev_iea_raw` — IEA global EV sales & stock, 3 454 rows, 2010–2024
+  - `bronze.car_registrations_eurostat_raw` — Eurostat new car registrations by fuel type, 6 257 rows
 
 ### Silver — Cleaned & Conformed
-- **Purpose:** Typed, deduplicated, standardised data ready for analysis
-- **Transformations:** Null handling, type casting, country code standardisation (ISO 3166), deduplication on natural keys, schema validation
-- **Format:** Delta tables with schema enforcement
-- **Location:** `s3://count-electric/silver/`
+- **Purpose:** Typed, deduplicated, standardised data ready for aggregation
+- **Transformations applied:**
+
+| Notebook | Transformation | Detail |
+|---|---|---|
+| `01_silver_iea.py` | Deduplicate | Natural key: `(region, parameter, mode, powertrain, year)` |
+| `01_silver_iea.py` | Filter mode | Cars only — drops Buses, Trucks, 2-wheelers |
+| `01_silver_iea.py` | Country code mapping | IEA country names → ISO 3166-1 alpha-2 via `create_map` |
+| `02_silver_eurostat.py` | Cast year | `time` string → `year` integer |
+| `02_silver_eurostat.py` | Fuel category | Groups `ELC/ELC_PET_PI/ELC_DIE_PI` → `Electric`, `PET/DIE` → `ICE`, etc. |
+| `02_silver_eurostat.py` | Drop aggregates | Removes EU27/EEA rows — Gold will re-aggregate as needed |
+
 - **Key tables:**
-  - `silver.ev_registrations` — clean registration records with country, year, fuel type, count
-  - `silver.ev_models` — standardised model catalogue
-  - `silver.countries` — reference/dimension table
+  - `silver.ev_registrations_iea` — clean IEA data, columns: `country_code, country_name, year, parameter, powertrain, ev_count, unit`
+  - `silver.car_registrations_eurostat` — clean Eurostat data, columns: `country_code, year, fuel_type_code, fuel_type_label, fuel_category, new_registrations`
 
 ### Gold — Aggregated Insights
-- **Purpose:** Business-ready aggregations for the dashboard
-- **Transformations:** Window functions, year-on-year growth rates, market share calculations, regional rollups
-- **Format:** Delta tables, partitioned by region and year
-- **Location:** `s3://count-electric/gold/`
+- **Purpose:** Business-ready metrics for the dashboard
 - **Key tables:**
-  - `gold.ev_market_share_by_country` — EV % of total new registrations per country per year
-  - `gold.ev_yoy_growth` — year-on-year growth rates by country and manufacturer
-  - `gold.top_ev_models_global` — top growing models by registration volume
-  - `gold.regional_summary` — aggregated Europe vs US vs RoW view
+  - `gold.ev_market_share` — EV market share % and YoY growth per country/year (from Eurostat)
+  - `gold.romania_ev_summary` — Romania deep-dive: EV share vs EU average, EU rank, IEA stock data joined
+
+**`gold.ev_market_share` schema:**
+
+| Column | Description |
+|---|---|
+| `country_code` | ISO 3166-1 alpha-2 |
+| `year` | Calendar year |
+| `total_registrations` | Total new car registrations (Eurostat TOTAL) |
+| `electric_registrations` | Sum of BEV + PHEV registrations |
+| `ice_registrations` | Sum of petrol + diesel registrations |
+| `ev_market_share_pct` | `electric / total * 100` |
+| `ev_yoy_growth_pct` | YoY % change in electric registrations |
+| `ev_share_yoy_change_pp` | YoY change in market share (percentage points) |
+
+**`gold.romania_ev_summary` schema:**
+
+| Column | Description |
+|---|---|
+| `ev_market_share_pct` | Romania EV share % |
+| `eu_avg_ev_share_pct` | EU-wide weighted average EV share % |
+| `vs_eu_avg_pp` | Romania minus EU average (positive = above average) |
+| `ev_yoy_growth_pct` | Romania EV registrations YoY growth |
+| `ev_sales_iea` | New EV sales from IEA (BEV + PHEV combined) |
+| `ev_stock_iea` | Cumulative EVs on the road (IEA) |
+| `ev_share_rank` | Romania's rank among 27 EU countries by EV share |
 
 ---
 
 ## Databricks Concepts Covered
 
-| Concept | Where Applied |
-|---|---|
-| **Delta Lake** | All three medallion layers stored as Delta tables; time travel used for auditability |
-| **Schema enforcement & evolution** | Silver layer enforces schema; Bronze allows evolution for new source fields |
-| **Spark transformations** | Window functions (LAG, RANK) for YoY growth; broadcast joins for dimension tables; partitioning strategy on Gold layer |
-| **Spark optimisation** | Partition pruning, Z-ordering on high-cardinality columns (country, year), caching of Silver layer for Gold aggregations |
-| **Unity Catalog** | Three-level namespace: `count_electric.bronze`, `count_electric.silver`, `count_electric.gold`; column-level tagging; lineage tracking |
-| **Data governance** | Source tagging at Bronze, PII-free by design, data quality checks logged to a `quality_log` table |
-| **Workflows / Jobs** | Databricks notebook jobs chained: ingest → bronze → silver → gold (Community Edition: triggered via Airflow or manually) |
-| **Delta time travel** | Used to compare current Gold snapshot vs previous week's run |
+This section documents every Databricks/Spark concept used in the project, with the exact notebook and real code context. Useful for interviews and for circling back when a concept needs refreshing.
+
+---
+
+### 1. Serverless Compute
+No cluster to provision. Databricks spins up compute on demand when a notebook runs and terminates it after. You pay only for execution time, not idle time.
+
+> Used throughout — all notebooks run on Databricks serverless, no cluster configuration required.
+
+---
+
+### 2. Unity Catalog — Three-Level Namespace
+Databricks organises data as `catalog.schema.table`. In this project:
+- **Catalog:** the default workspace catalog
+- **Schemas:** `bronze`, `silver`, `gold`
+- **Tables:** `bronze.ev_iea_raw`, `silver.car_registrations_eurostat`, `gold.ev_market_share`, etc.
+
+```sql
+CREATE SCHEMA IF NOT EXISTS gold
+COMMENT 'Count Electric — aggregated metrics ready for the dashboard';
+```
+
+---
+
+### 3. External Location + Storage Credential
+Databricks serverless cannot use IAM instance profiles directly. Instead:
+1. An AWS IAM role is created with a **cross-account trust policy** pointing to Databricks' master role (`arn:aws:iam::414351767826:role/unity-catalog-prod-UCMasterRole-...`)
+2. That role is registered as a **Storage Credential** in Unity Catalog
+3. An **External Location** maps `s3://count-electric` to that credential
+
+This means notebooks read/write S3 without any AWS keys in code — access is governed by Unity Catalog.
+
+---
+
+### 4. Delta Lake — ACID writes
+All tables are stored as Delta (not plain Parquet). Every write is atomic — if a notebook fails mid-write, the table is not corrupted.
+
+```python
+df_silver.write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")   # allow schema changes between runs
+    .saveAsTable("silver.ev_registrations_iea")
+```
+
+`overwriteSchema` lets the schema evolve between notebook runs without manually dropping and recreating the table.
+
+---
+
+### 5. Databricks Git Folder (Repos API)
+Notebooks are stored in a **Git folder** in the Databricks Workspace, linked to this GitHub repo. On every push to `main`, the GitHub Actions workflow calls the Databricks Repos API to pull the latest commit:
+
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+  -d '{"branch": "main"}' \
+  "$DATABRICKS_HOST/api/2.0/repos/$DATABRICKS_REPO_ID"
+```
+
+No manual notebook uploads — code changes deploy automatically.
+
+---
+
+### 6. Lazy Evaluation — Transformations vs Actions
+Spark does not execute transformations (`withColumn`, `groupBy`, `filter`, `join`) when they are defined. It builds a **DAG** and executes the entire chain only when an **action** is called (`write`, `count`, `show`, `collect`).
+
+```python
+df_cat   = df_silver.groupBy(...).agg(...)   # nothing runs
+df_pivot = df_cat.groupBy(...).pivot(...)    # nothing runs
+df_share = df_pivot.withColumn(...)          # nothing runs
+
+df_share.write.saveAsTable(...)              # ← ACTION: full DAG executes here
+```
+
+This is why errors (e.g. division by zero) surface at the write step, not where the transformation was written.
+
+---
+
+### 7. `groupBy` + `agg`
+Collapses many rows into one per group, applying aggregate functions.
+
+```python
+# Sum all fuel type registrations per country and year
+df_cat = (
+    df_silver
+    .groupBy("country_code", "year", "fuel_category")
+    .agg(F.sum("new_registrations").alias("registrations"))
+)
+```
+
+> Used in `01_gold_market_share.py` to aggregate Eurostat fuel type rows into category-level totals before pivoting.
+
+---
+
+### 8. `pivot` — Reshape Rows into Columns
+Turns distinct values in one column into separate columns. Converts a tall/narrow DataFrame into a wide one.
+
+```python
+# Before: one row per (country, year, fuel_category)
+# After:  one row per (country, year) with Electric/ICE/Hybrid/Total as columns
+df_pivot = (
+    df_cat
+    .groupBy("country_code", "year")
+    .pivot("fuel_category", ["Electric", "ICE", "Hybrid", "Other", "Total"])
+    .agg(F.first("registrations"))
+)
+```
+
+> Used in `01_gold_market_share.py` and `02_gold_romania.py` (also pivots IEA `parameter` values into `ev_sales` / `ev_stock` columns).
+
+---
+
+### 9. Window Functions — `lag` and `rank`
+Window functions compute a value for each row by looking at a *window* of surrounding rows, without collapsing the DataFrame like `groupBy` does.
+
+**`lag` — look back N rows (previous year value):**
+```python
+w_country = Window.partitionBy("country_code").orderBy("year")
+
+df_yoy = df_share.withColumn(
+    "electric_prev_year",
+    F.lag("electric_registrations", 1).over(w_country)
+)
+# RO 2021: electric=2000, lag=null  (no prior year)
+# RO 2022: electric=3500, lag=2000  → YoY growth = +75%
+# RO 2023: electric=5100, lag=3500  → YoY growth = +45.7%
+```
+
+**`rank` — rank each row within a partition:**
+```python
+w_year = Window.partitionBy("year").orderBy(F.desc("ev_market_share_pct"))
+
+df_rank = df_ms.withColumn("ev_share_rank", F.rank().over(w_year))
+# Ranks all EU countries by EV share within each year
+# Romania's rank tells us: are we 15th? 20th? Is it improving?
+```
+
+> Used in `01_gold_market_share.py` (lag for YoY) and `02_gold_romania.py` (rank for Romania EU position).
+
+---
+
+### 10. `create_map` — In-Memory Lookup Table
+Builds a Spark map column from a Python dictionary, used for efficient row-level lookups without a join.
+
+```python
+IEA_COUNTRY_CODES = {"Romania": "RO", "Germany": "DE", ...}
+mapping_expr = F.create_map([F.lit(x) for pair in IEA_COUNTRY_CODES.items() for x in pair])
+
+df = df.withColumn("country_code", mapping_expr[F.col("region")])
+```
+
+> Used in `01_silver_iea.py` to map IEA country names to ISO codes. Faster than a join for small lookup tables.
+
+---
+
+### 11. `createOrReplaceTempView` — Session-Scoped SQL Tables
+Registers a DataFrame under a name so it can be referenced by subsequent Spark SQL or DataFrame joins. Lives only for the duration of the Spark session — nothing is written to disk or the catalog.
+
+```python
+df_eu.createOrReplaceTempView("eu_avg")
+# Now joinable by name in the same session:
+df_joined = df_ro.join(spark.table("eu_avg"), on="year", how="left")
+```
+
+> Used in `02_gold_romania.py` to make the EU average DataFrame joinable by name.
+
+---
+
+### 12. `F.when` — Null-Safe Conditional Expressions
+The Spark equivalent of SQL `CASE WHEN`. Used here to guard against division by zero — returns `NULL` instead of raising an error when the denominator is 0.
+
+```python
+.withColumn(
+    "ev_market_share_pct",
+    F.round(
+        F.when(F.col("total_registrations") > 0,
+               F.col("electric_registrations") / F.col("total_registrations") * 100),
+        2
+    )
+)
+```
+
+> Used in both Gold notebooks. Without the guard, Databricks raises `SQLSTATE: 22012` (division by zero) at write time due to ANSI SQL mode being enabled by default.
+
+---
+
+### 13. `OPTIMIZE` + `ZORDER BY` — Delta Performance
+Delta Lake writes many small Parquet files during incremental ingestion. `OPTIMIZE` compacts them into fewer, larger files for faster reads.
+
+`ZORDER BY` physically co-locates rows with the same column values in the same files. When a query filters `WHERE country_code = 'RO'`, Databricks reads only the files that contain Romanian data and skips the rest (**data skipping**).
+
+```sql
+OPTIMIZE gold.ev_market_share ZORDER BY (country_code, year)
+```
+
+> Applied to both Gold tables after writing.
+
+---
+
+### 14. Spark SQL `MAGIC %sql` cells
+Databricks notebooks support mixed Python and SQL cells. `# MAGIC %sql` switches a cell to SQL mode:
+
+```sql
+-- Create schema if not already present
+CREATE SCHEMA IF NOT EXISTS silver
+COMMENT 'Count Electric — cleaned and conformed data';
+```
+
+Python and SQL cells share the same Spark session — a table created in a `%sql` cell is immediately readable with `spark.table(...)` in a Python cell.
+
+---
+
+### 15. Control Plane vs Data Plane
+- **Control Plane** — Databricks' infrastructure (UI, job scheduler, cluster manager). Runs in Databricks' AWS account.
+- **Data Plane** — where compute actually runs and where data lives. Runs in **your** AWS account. Your S3 data never leaves your account.
+
+The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the Databricks control plane permission to spin up compute resources in the customer data plane.
 
 ---
 
@@ -143,201 +369,123 @@ The project is intentionally scoped to EV adoption trends to allow depth over br
 | Layer | Technology |
 |---|---|
 | Ingestion | Python 3.11, `requests`, `boto3` |
-| Storage | AWS S3 (free tier) |
-| Compute | AWS EC2 (t2.micro, free tier) |
-| Processing | Databricks Community Edition, Apache Spark |
+| Storage | AWS S3 |
+| Compute | AWS EC2 t2.micro + Docker |
+| Processing | Databricks serverless, Apache Spark |
 | Table format | Delta Lake |
-| Governance | Unity Catalog |
-| Containerisation | Docker (app runs as a container on EC2) |
-| Orchestration | Apache Airflow *(deferred to Phase 2 — too heavy for t2.micro)* |
-| Dashboard | Streamlit |
-| CI/CD | GitHub Actions (deploy to EC2 via SSH) |
-| Secrets | GitHub Secrets (CI/CD) + AWS IAM role (EC2) |
-| Version control | Git / GitHub |
+| Governance | Unity Catalog + External Location (IAM cross-account role) |
+| Dashboard | Streamlit (MD3 theme, Bootstrap-style tab navigation) |
+| CI/CD | GitHub Actions — EC2 deploy + Databricks Git sync on push to `main` |
 
 ---
 
 ## Data Sources
 
-| Source | Data | Format | Cadence | Status |
-|---|---|---|---|---|
-| [IEA Global EV Data Explorer](https://www.iea.org/data-and-statistics/data-tools/global-ev-data-explorer) | EV sales & stock by country, year, powertrain (BEV/PHEV/FCEV). Global including Romania. 2010–2024. | CSV API | Annual | ✅ Ingestion script complete |
-| [Eurostat ROAD_EQR_CARPDA](https://ec.europa.eu/eurostat/databrowser/view/ROAD_EQR_CARPDA/) | **New car registrations by fuel type** — petrol, diesel, BEV, PHEV, hybrid, LPG for all EU countries including Romania. Core dataset for EV vs ICE comparison. | JSON-stat2 API | Annual | ✅ Ingestion script complete |
-| [EAFO (EU Alt. Fuels Observatory)](https://alternative-fuels-observatory.ec.europa.eu/) | Romania EV fleet totals, market share, BEV vs PHEV breakdown | API / Web | Annual | Planned Phase 2 |
-| [CarQuery API](http://www.carqueryapi.com) | Vehicle make/model/year metadata | API (JSON) | Static | Deferred to Phase 3 |
+| Source | Data | Format | Status |
+|---|---|---|---|
+| [IEA Global EV Data Explorer](https://www.iea.org/data-and-statistics/data-tools/global-ev-data-explorer) | EV sales & stock by country/year/powertrain (BEV/PHEV). Global incl. Romania. 2010–2024. | CSV API | ✅ Live |
+| [Eurostat ROAD_EQR_CARPDA](https://ec.europa.eu/eurostat/databrowser/view/ROAD_EQR_CARPDA/) | New car registrations by fuel type — petrol, diesel, BEV, PHEV, hybrid for all EU countries. Core dataset for EV vs ICE comparison. | JSON-stat2 API | ✅ Live |
+| [EAFO](https://alternative-fuels-observatory.ec.europa.eu/) | Romania EV fleet detail | API | Planned |
 
-> All sources are free and publicly available. No API keys required.
->
-> **Note on Bucharest city-level data:** DRPCIV (Romania's national vehicle registry) does not currently publish open data. Country-level Romania data is available from IEA and Eurostat. Bucharest-specific breakdowns would require a direct public data request to DRPCIV or Bucharest City Hall under Legea 544/2001.
-
----
-
-## Key Insights & Dashboard
-
-The Streamlit app is live on EC2 at port 8501 (served via Docker). Currently it shows an **S3 Landing Zone browser** — a table of all raw files in the S3 bucket with key, size, and last-modified timestamp. This validates ingestion before the Gold layer is ready.
-
-Planned dashboard views:
-
-1. **Global EV Adoption Map** — choropleth map of EV market share by country, with year slider
-2. **Top 10 Countries by YoY Growth** — bar chart, filterable by region
-3. **EV Market Share Trend** — line chart of EV % of total registrations over time (global + per country)
-4. **Manufacturer Leaderboard** — top EV brands by registration volume globally
-5. **Europe vs US vs RoW** — stacked area chart of regional EV registration volumes
+> **Note on Bucharest city-level data:** DRPCIV (Romania's national vehicle registry) does not publish open data. Country-level Romania data is available from IEA and Eurostat.
 
 ---
 
 ## Project Phases & Roadmap
 
 ### Phase 1 — Foundation ✅
-- [x] Project design and README
-- [x] Repository structure setup
-- [x] AWS S3 bucket creation and folder structure
-- [x] AWS EC2 instance setup (t2.micro, free tier)
-- [x] Dockerised app — Dockerfile + container running Streamlit on port 8501
-- [x] GitHub Actions deployment pipeline — builds Docker image and deploys to EC2 via SSH
-- [x] Databricks free tier workspace setup (serverless compute)
-- [x] Unity Catalog — storage credential + external location connected to S3
-- [x] Databricks Git folder synced via GitHub Actions on every push
+- [x] AWS S3 bucket and folder structure
+- [x] AWS EC2 (t2.micro) + Docker container running Streamlit on port 8501
+- [x] GitHub Actions pipeline — builds Docker image, deploys to EC2 via SSH
+- [x] Databricks free tier — serverless compute, Unity Catalog enabled
+- [x] Storage Credential + External Location (`s3://count-electric` via IAM cross-account role)
+- [x] Databricks Git folder synced via GitHub Actions Repos API on every push
 
-### Phase 2 — Ingestion ⬅️ (current)
-- [x] IEA Global EV Data ingestion script (`ingestion/ingest_iea.py`) — fetches CSV and lands to `s3://count-electric/landing/raw/iea/`
-- [x] Eurostat ROAD_EQR_CARPDA ingestion script (`ingestion/ingest_eurostat.py`) — EV vs ICE new registrations for all EU countries including Romania
-- [x] Databricks Bronze notebooks (`databricks/bronze/`) — S3 mount setup, IEA Bronze table, Eurostat Bronze table
-- [x] Bronze notebooks run in Databricks — Romania data verified in both tables
-- [ ] EAFO ingestion script (Romania fleet + market share detail)
-- [ ] Airflow DAG: ingest job scheduled (deferred — Airflow excluded from Docker for now)
+### Phase 2 — Ingestion & Bronze/Silver ✅
+- [x] IEA ingestion script — fetches CSV, lands to `s3://count-electric/landing/raw/iea/`
+- [x] Eurostat ingestion script — fetches JSON-stat2, lands to `s3://count-electric/landing/raw/eurostat/`
+- [x] Bronze notebooks (`00_setup.py`, `01_bronze_iea.py`, `02_bronze_eurostat.py`) — verified in Databricks, Romania data confirmed
+- [x] Silver notebooks (`01_silver_iea.py`, `02_silver_eurostat.py`) — deduplication, type casting, fuel category mapping, ISO country codes
+- [x] Streamlit ingestion UI — run IEA/Eurostat scripts from browser, S3 file listing
 
-### Phase 3 — Transformation
-- [ ] Silver layer: cleaning, typing, deduplication notebooks
-- [ ] Gold layer: aggregation notebooks (YoY growth, market share, regional rollups)
-- [ ] Data quality checks logged to `quality_log` table
-- [ ] Z-ordering and partitioning applied to Gold tables
+### Phase 3 — Gold Layer 🔵 (current)
+- [x] `01_gold_market_share.py` — EV market share % + YoY growth per country/year using pivot + Window lag
+- [x] `02_gold_romania.py` — Romania vs EU average, EU rank via Window rank, IEA stock join
+- [ ] Connect Streamlit dashboard to Gold tables (replace raw S3 preview with Gold metrics)
 
 ### Phase 4 — Dashboard
-- [ ] Streamlit app scaffolded
-- [ ] Connected to Gold layer via Databricks SQL connector
-- [ ] All 5 dashboard views implemented
-- [ ] Deployed to Streamlit Community Cloud
+- [ ] Romania EV share vs EU average chart
+- [ ] Country leaderboard by EV market share
+- [ ] YoY growth trend chart
+- [ ] EV vs ICE displacement view
 
-### Phase 5 — Polish & Documentation
-- [ ] README updated with final architecture and screenshots
-- [ ] Notebook documentation and inline comments
-- [ ] Architecture diagram (visual)
-- [ ] LinkedIn post / portfolio write-up
+### Phase 5 — Polish
+- [ ] README final screenshots
+- [ ] Portfolio write-up
 
 ---
 
 ## Setup & Installation
 
 ### Prerequisites
-- AWS account (free tier)
-- Databricks Community Edition account
-- Python 3.12+
-- Git
+- AWS account (free tier sufficient)
+- Databricks account (free tier at databricks.com — serverless + Unity Catalog included)
+- Python 3.11+
+- Docker
 - GitHub repository with Actions enabled
-
----
 
 ### 1. AWS S3
 
-1. Go to **S3 → Create bucket**
-   - Name: `count-electric` (must be globally unique)
-   - Region: your preferred region (e.g. `eu-west-1`)
-   - Leave all other defaults
-
----
+Go to **S3 → Create bucket**, name it `count-electric`, leave defaults.
 
 ### 2. AWS EC2
 
-1. Go to **EC2 → Launch instance**
-   - Name: `count-electric`
-   - AMI: Ubuntu Server 24.04 LTS (free tier)
-   - Instance type: `t2.micro`
-   - Key pair: create new → download `.pem` file
-   - Security group: allow inbound SSH (port 22) from your IP only
-
-2. Create an **IAM role** for S3 access (no keys stored on EC2):
-   - **IAM → Roles → Create role** → EC2 → attach `AmazonS3FullAccess`
-   - Name: `count-electric-ec2-role`
-   - Attach to instance: **EC2 → Actions → Security → Modify IAM role**
-
-3. SSH in and set up the project:
+1. **EC2 → Launch instance** — Ubuntu 24.04 LTS, t2.micro, create key pair
+2. **IAM → Roles → Create role** — EC2 → attach `AmazonS3FullAccess`, name it `count-electric-ec2-role`
+3. Attach role to instance: **EC2 → Actions → Security → Modify IAM role**
+4. SSH in and run:
 ```bash
-chmod 400 ~/Downloads/count-electric-key.pem
-ssh -i ~/Downloads/count-electric-key.pem ubuntu@YOUR_EC2_IP
-
-# On EC2:
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3.12 python3-pip python3-venv git
+sudo apt update && sudo apt install -y docker.io git
 git clone https://github.com/YOUR_USERNAME/count-electric.git
-cd count-electric
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install "apache-airflow==2.10.5" \
-  --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
-export AIRFLOW_HOME=~/airflow
-airflow db init
 ```
 
----
+### 3. GitHub Actions Secrets
 
-### 3. GitHub Actions — Deploy Pipeline
-
-Pushes to `main` automatically deploy to EC2 via SSH. The workflow dynamically whitelists the runner IP, deploys, then removes it.
-
-**GitHub Secrets required** (repo → Settings → Secrets → Actions):
-
-| Secret | Description |
+| Secret | Value |
 |---|---|
-| `EC2_HOST` | Public IP of your EC2 instance |
+| `EC2_HOST` | EC2 public IP |
 | `EC2_USER` | `ubuntu` |
-| `EC2_SSH_KEY` | Full contents of your `.pem` file |
-| `EC2_SG_ID` | Security group ID (e.g. `sg-0abc123...`) |
-| `AWS_ACCESS_KEY_ID` | IAM user key — deploy-only permissions |
+| `EC2_SSH_KEY` | Contents of `.pem` file |
+| `EC2_SG_ID` | Security group ID (e.g. `sg-0abc123`) |
+| `AWS_ACCESS_KEY_ID` | IAM user key for deploy runner |
 | `AWS_SECRET_ACCESS_KEY` | Matching secret |
 | `AWS_REGION` | e.g. `eu-west-1` |
-| `DATABRICKS_HOST` | Your Databricks workspace URL (e.g. `https://dbc-xxxxx.cloud.databricks.com`) |
+| `DATABRICKS_HOST` | Workspace URL (e.g. `https://dbc-xxxxx.cloud.databricks.com`) |
 | `DATABRICKS_TOKEN` | Databricks personal access token |
-| `DATABRICKS_REPO_ID` | Databricks Git folder repo ID (from `/api/2.0/workspace/list`) |
-| `AFDC_API_KEY` | US DOE AFDC API key *(Phase 2)* |
-
-**IAM policy for the deploy user** (scoped to security group only):
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "ec2:AuthorizeSecurityGroupIngress",
-      "ec2:RevokeSecurityGroupIngress"
-    ],
-    "Resource": "arn:aws:ec2:REGION:ACCOUNT_ID:security-group/SG_ID"
-  }]
-}
-```
-
-> AWS credentials for S3 access are NOT stored as secrets — the EC2 instance uses an IAM role instead.
-
----
+| `DATABRICKS_REPO_ID` | Git folder repo ID (from `/api/2.0/workspace/list`) |
 
 ### 4. Databricks
 
-1. Create a free account at **databricks.com** (free tier — serverless compute + Unity Catalog included)
-2. **Storage Credential** — Catalog → External Data → Storage Credentials → Create (AWS IAM Role)
-   - Create an IAM role with a cross-account trust policy (Databricks account `414351767826`)
+1. Create account at **databricks.com** (free tier)
+2. **Catalog → External Data → Storage Credentials → Create** (AWS IAM Role)
+   - Create IAM role with cross-account trust policy for `arn:aws:iam::414351767826:role/unity-catalog-prod-UCMasterRole-...`
    - Attach S3 read/write policy scoped to the `count-electric` bucket
-3. **External Location** — Catalog → External Data → External Locations → Create
-   - URL: `s3://count-electric`, credential: the role from step 2
-4. **Git Folder** — Workspace → your user folder → Add → Git folder → connect GitHub repo
-5. **Secrets** — install Databricks CLI, run `databricks configure --token`, then:
-   ```bash
-   databricks secrets create-scope --scope count-electric
-   databricks secrets put --scope count-electric --key aws-access-key-id
-   databricks secrets put --scope count-electric --key aws-secret-access-key
-   databricks secrets put --scope count-electric --key aws-region
-   ```
-6. Add `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_REPO_ID` to GitHub Secrets — subsequent pushes auto-sync notebooks
+3. **Catalog → External Data → External Locations → Create** — URL: `s3://count-electric`
+4. **Workspace → Add → Git folder** — connect GitHub repo
+5. Add `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_REPO_ID` to GitHub Secrets
+
+### 5. Run the Pipeline
+
+In Databricks, run notebooks in order:
+```
+databricks/bronze/00_setup.py
+databricks/bronze/01_bronze_iea.py
+databricks/bronze/02_bronze_eurostat.py
+databricks/silver/01_silver_iea.py
+databricks/silver/02_silver_eurostat.py
+databricks/gold/01_gold_market_share.py
+databricks/gold/02_gold_romania.py
+```
 
 ---
 
@@ -348,37 +496,38 @@ count-electric/
 │
 ├── README.md
 ├── requirements.txt
-├── .env.example
+├── Dockerfile
+├── .gitignore
 │
-├── ingestion/                  # Python scripts to fetch from APIs and land to S3
-│   ├── ingest_iea.py
-│   ├── ingest_eu_open_data.py
-│   ├── ingest_afdc.py
-│   └── ingest_carquery.py
+├── ingestion/
+│   ├── ingest_iea.py           # IEA Global EV Data → S3
+│   └── ingest_eurostat.py      # Eurostat ROAD_EQR_CARPDA → S3
 │
 ├── databricks/
-│   ├── bronze/                 # Notebooks: raw → Bronze Delta tables
-│   ├── silver/                 # Notebooks: Bronze → Silver (clean & conform)
-│   ├── gold/                   # Notebooks: Silver → Gold (aggregations)
-│   └── utils/                  # Shared helpers (logging, quality checks)
-│
-├── airflow/
-│   └── dags/
-│       └── count_electric_pipeline.py
+│   ├── bronze/
+│   │   ├── 00_setup.py         # Create schemas, verify External Location
+│   │   ├── 01_bronze_iea.py    # S3 CSV → bronze.ev_iea_raw
+│   │   └── 02_bronze_eurostat.py  # S3 JSON → bronze.car_registrations_eurostat_raw
+│   ├── silver/
+│   │   ├── 01_silver_iea.py    # Dedupe, filter Cars, ISO country codes
+│   │   └── 02_silver_eurostat.py  # Cast year, fuel categories, drop aggregates
+│   ├── gold/
+│   │   ├── 01_gold_market_share.py  # pivot + Window lag → gold.ev_market_share
+│   │   └── 02_gold_romania.py       # join + Window rank → gold.romania_ev_summary
+│   ├── aws_iam/
+│   │   ├── trust_policy.json   # IAM cross-account trust for Databricks
+│   │   └── s3_access_policy.json
+│   └── utils/
+│       └── spark_utils.py
 │
 ├── streamlit/
-│   ├── app.py
-│   └── pages/
-│       ├── global_map.py
-│       ├── yoy_growth.py
-│       ├── market_share_trend.py
-│       ├── manufacturer_leaderboard.py
-│       └── regional_summary.py
+│   └── app.py                  # MD3 Streamlit app, Bootstrap-style tab nav
 │
-└── docs/
-    └── architecture.png        # To be added in Phase 5
+└── .github/
+    └── workflows/
+        └── deploy.yml          # EC2 deploy + Databricks Git sync on push
 ```
 
 ---
 
-*README last updated: Phase 2 in progress — Databricks fully connected (serverless, Unity Catalog, Git sync), Bronze tables live, Romania data verified*
+*Phase 3 complete — Gold layer live in Databricks (`gold.ev_market_share`, `gold.romania_ev_summary`). Next: connect Streamlit dashboard to Gold tables.*

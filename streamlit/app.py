@@ -259,11 +259,11 @@ _tab_about, _tab_ingest, _tab_data, _tab_dash = st.tabs(["About", "Ingestion", "
 
 with _tab_about:
     # Mission
+    st.subheader("What is this?")
     st.markdown("""
 <div class="md-card" style="padding:16px 24px;margin-bottom:16px">
-<h3 style="margin:0 0 6px 0;font-size:1rem">What is this?</h3>
-<p style="margin:0;line-height:1.5">
-You've probably noticed more and more electric cars on the street lately — but are they actually taking over?
+<p style="margin:0;line-height:2">
+You've probably noticed more and more <strong>electric cars</strong> on the street lately — but are they actually taking over?
 <strong>Count Electric</strong> answers that with data, tracking electric cars adoption country by country, year by year,
 with a special focus on <strong>Romania</strong>.</p>
 </div>
@@ -681,28 +681,43 @@ with _tab_dash:
             st.plotly_chart(fig3, use_container_width=True)
 
         with col_d:
-            st.subheader("Top 10 EU Countries — EV Market Share")
+            st.subheader("Top 10 EU Countries — EV Share of New Cars")
             latest_year = int(df_top["year"].iloc[0]) if not df_top.empty else "N/A"
-            st.caption(f"Source: gold.ev_market_share · {latest_year} · min 1 000 registrations")
-            df_top_s = df_top.sort_values("ev_market_share_pct", ascending=True)
+            st.caption(f"Source: gold.ev_market_share · {latest_year} · new car registrations · min 1 000 cars")
+
+            # If Romania isn't already in top 10, append it from the Romania summary
+            df_chart = df_top.copy()
+            if "RO" not in df_chart["country_code"].values and not df_ro.empty:
+                ro_latest = df_ro.dropna(subset=["ev_market_share_pct"]).iloc[-1]
+                df_chart = pd.concat([df_chart, pd.DataFrame([{
+                    "country_code": "RO",
+                    "year": int(ro_latest["year"]),
+                    "ev_market_share_pct": ro_latest["ev_market_share_pct"],
+                }])], ignore_index=True)
+
+            df_top_s = df_chart.sort_values("ev_market_share_pct", ascending=True)
+
+            def bar_color(code):
+                if code == "RO":
+                    return "#1565C0"   # blue — Romania
+                return "#00BFA5"       # teal — top 10
+
             fig4 = go.Figure(go.Bar(
                 x=df_top_s["ev_market_share_pct"],
                 y=df_top_s["country_code"],
                 orientation="h",
-                marker_color=["#00695C" if c == "RO" else "#00BFA5" for c in df_top_s["country_code"]],
-                hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
+                marker_color=[bar_color(c) for c in df_top_s["country_code"]],
+                hovertemplate="%{y}: %{x:.1f}% of new cars<extra></extra>",
                 text=[f"{v:.1f}%" for v in df_top_s["ev_market_share_pct"]],
                 textposition="outside",
                 textfont=dict(size=11),
             ))
-            # Romania highlight annotation
-            if "RO" in df_top_s["country_code"].values:
-                fig4.add_annotation(
-                    x=0.99, y=0.01, xref="paper", yref="paper",
-                    text="▮ Romania", showarrow=False,
-                    font=dict(size=11, color="#00695C"), xanchor="right",
-                )
-            fig4.update_layout(**_layout, xaxis_title="EV Market Share (%)", showlegend=False)
+            fig4.add_annotation(
+                x=0.99, y=0.01, xref="paper", yref="paper",
+                text="▮ Romania", showarrow=False,
+                font=dict(size=11, color="#1565C0"), xanchor="right",
+            )
+            fig4.update_layout(**_layout, xaxis_title="EV Share of New Cars (%)", showlegend=False)
             fig4.update_layout(hovermode="y unified")
             fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
             fig4.update_yaxes(showgrid=False)

@@ -237,17 +237,17 @@ def _parse_jsonstat2(raw: dict) -> pd.DataFrame:
 FUEL_LABELS = {
     "ELC": "Electric (BEV)", "ELC_PET_PI": "Plug-in hybrid (PHEV)",
     "ELC_DIE_PI": "Plug-in hybrid diesel", "ELC_PET_HYB": "Hybrid (non-plug-in)",
-    "ELC_DIE_HYB": "Hybrid diesel", "PET": "Petrol (ICE)", "DIE": "Diesel (ICE)",
+    "ELC_DIE_HYB": "Hybrid diesel", "PET": "Petrol (Combustion)", "DIE": "Diesel (Combustion)",
     "LPG": "LPG", "GAS": "Natural gas", "HYD_FCELL": "Hydrogen", "TOTAL": "Total",
 }
 FUEL_CATEGORIES = {
     "ELC": "Electric", "ELC_PET_PI": "Electric", "ELC_DIE_PI": "Electric",
     "ELC_PET_HYB": "Hybrid", "ELC_DIE_HYB": "Hybrid",
-    "PET": "ICE", "DIE": "ICE",
+    "PET": "Combustion", "DIE": "Combustion",
     "LPG": "Other", "GAS": "Other", "HYD_FCELL": "Other", "TOTAL": "Total",
 }
 CATEGORY_COLORS = {
-    "Electric": "#00BFA5", "ICE": "#EF5350",
+    "Electric": "#00BFA5", "Combustion": "#EF5350",
     "Hybrid": "#FFA726", "Other": "#B0BEC5", "Total": "#5C6BC0",
 }
 
@@ -506,8 +506,8 @@ with _tab_data:
                     labels={"value": "New registrations", "year": "Year", "fuel_label": ""},
                     color_discrete_map={
                         "Electric (BEV)": "#00BFA5",
-                        "Petrol (ICE)":   "#EF5350",
-                        "Diesel (ICE)":   "#B71C1C",
+                        "Petrol (Combustion)":   "#EF5350",
+                        "Diesel (Combustion)":   "#B71C1C",
                     },
                     title="Electric vs Petrol vs Diesel",
                 )

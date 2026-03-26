@@ -500,7 +500,8 @@ git clone https://github.com/YOUR_USERNAME/count-electric.git
 | `DATABRICKS_TOKEN` | Databricks personal access token |
 | `DATABRICKS_REPO_ID` | Git folder repo ID (from `/api/2.0/workspace/list`) |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path (e.g. `/sql/1.0/warehouses/abc123`) |
-| `S3_BUCKET` | S3 bucket name (`count-electric`) |
+
+> **Note:** `S3_BUCKET` is NOT a required secret — the app defaults to `count-electric` via `os.getenv("S3_BUCKET", "count-electric")`. Do not add it as a GitHub Secret: if the secret is missing, GitHub Actions expands it to `""` (empty string), which overrides the hardcoded default and causes boto3 to fail with an invalid bucket name error.
 
 ### 4. Databricks
 

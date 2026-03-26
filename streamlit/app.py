@@ -184,6 +184,7 @@ st.markdown(
         <a href="#" data-tab="0" class="active">About</a>
         <a href="#" data-tab="1">Ingestion</a>
         <a href="#" data-tab="2">Data Preview</a>
+        <a href="#" data-tab="3">Dashboard</a>
     </nav>
 </div>""",
     unsafe_allow_html=True,
@@ -252,7 +253,7 @@ CATEGORY_COLORS = {
 
 # ── Pages — all rendered at once, tab bar hidden, JS drives switching ─────────
 
-_tab_about, _tab_ingest, _tab_data = st.tabs(["About", "Ingestion", "Data Preview"])
+_tab_about, _tab_ingest, _tab_data, _tab_dash = st.tabs(["About", "Ingestion", "Data Preview", "Dashboard"])
 
 # ── PAGE: ABOUT ───────────────────────────────────────────────────────────────
 
@@ -331,8 +332,8 @@ digraph pipeline {
     phases = [
         ("done",    "Phase 1",  "Foundation",      "S3 · EC2 · Docker\nGitHub Actions\nDatabricks setup"),
         ("done",    "Phase 2",  "Ingestion",        "IEA · Eurostat\nBronze tables\nSilver tables"),
-        ("current", "Phase 3",  "Transformation",   "Gold layer\nYoY growth\nMarket share"),
-        ("planned", "Phase 4",  "Dashboard",        "Full charts\nCountry compare\nRomania lens"),
+        ("done",    "Phase 3",  "Transformation",   "Gold layer\nYoY growth\nMarket share"),
+        ("current", "Phase 4",  "Dashboard",        "Gold charts\nRomania vs EU\nCountry rank"),
         ("planned", "Phase 5",  "Polish",           "Docs\nArchitecture diagram\nPortfolio write-up"),
     ]
     for col, (status, phase, title, detail) in zip(cols, phases):
@@ -522,6 +523,150 @@ with _tab_data:
 
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")
+
+# ── PAGE: DASHBOARD ───────────────────────────────────────────────────────────
+
+DATABRICKS_HTTP_PATH = os.getenv("DATABRICKS_HTTP_PATH", "")
+
+def _db_connection():
+    from databricks import sql
+    return sql.connect(
+        server_hostname=os.getenv("DATABRICKS_HOST", "").replace("https://", ""),
+        http_path=DATABRICKS_HTTP_PATH,
+        access_token=os.getenv("DATABRICKS_TOKEN", ""),
+    )
+
+@st.cache_data(ttl=3600)
+def load_romania_summary() -> pd.DataFrame:
+    with _db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT year, electric_registrations, total_registrations,
+                       ev_market_share_pct, eu_avg_ev_share_pct, vs_eu_avg_pp,
+                       ev_yoy_growth_pct, ev_sales_iea, ev_stock_iea,
+                       ev_share_rank, eu_country_total
+                FROM gold.romania_ev_summary
+                ORDER BY year
+            """)
+            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+
+@st.cache_data(ttl=3600)
+def load_top10_ev_share() -> pd.DataFrame:
+    with _db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT country_code, year, electric_registrations,
+                       total_registrations, ev_market_share_pct
+                FROM gold.ev_market_share
+                WHERE year = (SELECT MAX(year) FROM gold.ev_market_share)
+                  AND total_registrations > 1000
+                ORDER BY ev_market_share_pct DESC
+                LIMIT 10
+            """)
+            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+
+with _tab_dash:
+    st.title("EV Dashboard")
+    st.markdown("Analytics from Databricks Gold Delta tables — cleaned, aggregated, production-ready data.")
+    st.markdown("---")
+
+    if not DATABRICKS_HTTP_PATH:
+        st.info(
+            "**Databricks SQL Warehouse not configured.** "
+            "Set the `DATABRICKS_HTTP_PATH` environment variable to enable this dashboard.  \n"
+            "Find it in Databricks → **SQL Warehouses** → your warehouse → **Connection Details → HTTP Path**."
+        )
+    else:
+        try:
+            df_ro  = load_romania_summary()
+            df_top = load_top10_ev_share()
+        except Exception as e:
+            st.error(f"Could not connect to Databricks: {e}")
+            st.stop()
+
+        _layout = dict(
+            plot_bgcolor="white", paper_bgcolor="white",
+            font_family="system-ui, -apple-system, sans-serif",
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=0, r=0, t=48, b=0),
+        )
+
+        col_a, col_b = st.columns(2)
+
+        with col_a:
+            st.subheader("Romania vs EU Average — EV Market Share")
+            st.caption("Source: gold.romania_ev_summary")
+            fig1 = go.Figure()
+            fig1.add_trace(go.Scatter(
+                x=df_ro["year"], y=df_ro["ev_market_share_pct"],
+                mode="lines+markers", name="Romania",
+                line=dict(color="#00BFA5", width=2), marker=dict(size=6),
+            ))
+            fig1.add_trace(go.Scatter(
+                x=df_ro["year"], y=df_ro["eu_avg_ev_share_pct"],
+                mode="lines+markers", name="EU Average",
+                line=dict(color="#5C6BC0", width=2, dash="dash"), marker=dict(size=6),
+            ))
+            fig1.update_layout(**_layout, yaxis_title="EV Market Share (%)", xaxis_title="Year")
+            fig1.update_xaxes(showgrid=False)
+            fig1.update_yaxes(gridcolor="#F0F0F0")
+            st.plotly_chart(fig1, use_container_width=True)
+
+        with col_b:
+            st.subheader("Romania — EV Registrations YoY Growth")
+            st.caption("Source: gold.romania_ev_summary")
+            df_yoy = df_ro.dropna(subset=["ev_yoy_growth_pct"]).copy()
+            colors = ["#00BFA5" if v >= 0 else "#EF5350" for v in df_yoy["ev_yoy_growth_pct"]]
+            fig2 = go.Figure(go.Bar(
+                x=df_yoy["year"], y=df_yoy["ev_yoy_growth_pct"],
+                marker_color=colors,
+                hovertemplate="%{x}: %{y:.1f}%<extra></extra>",
+            ))
+            fig2.add_hline(y=0, line_color="#BDBDBD", line_width=1)
+            fig2.update_layout(**_layout, yaxis_title="YoY Growth (%)", xaxis_title="Year", showlegend=False)
+            fig2.update_xaxes(showgrid=False)
+            fig2.update_yaxes(gridcolor="#F0F0F0")
+            st.plotly_chart(fig2, use_container_width=True)
+
+        col_c, col_d = st.columns(2)
+
+        with col_c:
+            st.subheader("Romania — EU Rank by EV Market Share")
+            st.caption("Source: gold.romania_ev_summary · Rank 1 = highest EV share in EU")
+            df_rank = df_ro.dropna(subset=["ev_share_rank"]).copy()
+            fig3 = go.Figure(go.Scatter(
+                x=df_rank["year"], y=df_rank["ev_share_rank"],
+                mode="lines+markers", name="EU Rank",
+                line=dict(color="#FFA726", width=2), marker=dict(size=8),
+                hovertemplate="Year %{x}: Rank #%{y}<extra></extra>",
+            ))
+            fig3.update_layout(
+                **_layout,
+                yaxis=dict(title="EU Rank", autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
+                xaxis_title="Year",
+            )
+            fig3.update_xaxes(showgrid=False)
+            st.plotly_chart(fig3, use_container_width=True)
+
+        with col_d:
+            st.subheader("Top 10 EU Countries — EV Market Share")
+            latest_year = int(df_top["year"].iloc[0]) if not df_top.empty else "N/A"
+            st.caption(f"Source: gold.ev_market_share · {latest_year} · min 1 000 registrations")
+            df_top_s = df_top.sort_values("ev_market_share_pct", ascending=True)
+            fig4 = go.Figure(go.Bar(
+                x=df_top_s["ev_market_share_pct"],
+                y=df_top_s["country_code"],
+                orientation="h",
+                marker_color=["#00695C" if c == "RO" else "#00BFA5" for c in df_top_s["country_code"]],
+                hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
+            ))
+            fig4.update_layout(
+                **_layout, xaxis_title="EV Market Share (%)", showlegend=False, hovermode="y unified",
+            )
+            fig4.update_xaxes(gridcolor="#F0F0F0")
+            fig4.update_yaxes(showgrid=False)
+            st.plotly_chart(fig4, use_container_width=True)
 
 # ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
 # Streamlit tab switching is purely client-side (no rerun). We find the hidden

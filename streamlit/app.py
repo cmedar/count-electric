@@ -661,9 +661,8 @@ with _tab_dash:
                 marker_color=["#00695C" if c == "RO" else "#00BFA5" for c in df_top_s["country_code"]],
                 hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
             ))
-            fig4.update_layout(
-                **_layout, xaxis_title="EV Market Share (%)", showlegend=False, hovermode="y unified",
-            )
+            fig4.update_layout(**_layout, xaxis_title="EV Market Share (%)", showlegend=False)
+            fig4.update_layout(hovermode="y unified")
             fig4.update_xaxes(gridcolor="#F0F0F0")
             fig4.update_yaxes(showgrid=False)
             st.plotly_chart(fig4, use_container_width=True)

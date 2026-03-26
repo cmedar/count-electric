@@ -80,7 +80,9 @@ df_eu = (
     .groupBy("year")
     .agg(
         F.round(
-            F.sum("electric_registrations") / F.sum("total_registrations") * 100, 2
+            F.when(F.sum("total_registrations") > 0,
+                   F.sum("electric_registrations") / F.sum("total_registrations") * 100),
+            2
         ).alias("eu_avg_ev_share_pct"),
         F.countDistinct("country_code").alias("eu_country_count"),
     )

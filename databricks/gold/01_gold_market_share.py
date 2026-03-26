@@ -110,11 +110,19 @@ df_share = (
     df_pivot
     .withColumn(
         "ev_market_share_pct",
-        F.round(F.col("electric_registrations") / F.col("total_registrations") * 100, 2)
+        F.round(
+            F.when(F.col("total_registrations") > 0,
+                   F.col("electric_registrations") / F.col("total_registrations") * 100),
+            2
+        )
     )
     .withColumn(
         "ice_market_share_pct",
-        F.round(F.col("ice_registrations") / F.col("total_registrations") * 100, 2)
+        F.round(
+            F.when(F.col("total_registrations") > 0,
+                   F.col("ice_registrations") / F.col("total_registrations") * 100),
+            2
+        )
     )
 )
 
@@ -152,8 +160,9 @@ df_yoy = (
     .withColumn(
         "ev_yoy_growth_pct",
         F.round(
-            (F.col("electric_registrations") - F.col("electric_prev_year"))
-            / F.col("electric_prev_year") * 100,
+            F.when(F.col("electric_prev_year") > 0,
+                   (F.col("electric_registrations") - F.col("electric_prev_year"))
+                   / F.col("electric_prev_year") * 100),
             2
         )
     )

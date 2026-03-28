@@ -1,0 +1,4 @@
+ingress:
+  - hostname: app.countelectric.com
+    service: http://app:8501
+  - service: http_status:404

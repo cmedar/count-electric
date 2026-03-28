@@ -14,6 +14,8 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN} --config /etc/cloudflared/config.yml
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
     depends_on:
       - app

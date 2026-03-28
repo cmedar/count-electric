@@ -460,28 +460,50 @@ with _tab_data:
     st.markdown("---")
 
     # ── IEA chart ──
-    st.subheader("Romania — Electric Car Sales")
-    st.caption("Source: IEA Global EV Data Explorer · Cars · BEV only")
+    st.subheader("Romania vs Neighbours — Electric Car Sales")
+    st.caption("Source: IEA Global EV Data Explorer · Cars · Electric (BEV)")
+
+    NEIGHBOURS = {
+        "Romania": "#00695C",
+        "Bulgaria": "#5C6BC0",
+        "Hungary": "#FFA726",
+        "Poland": "#EF5350",
+        "Czech Republic": "#26A69A",
+    }
 
     try:
         df_iea = read_latest_iea_csv()
         if df_iea.empty:
             st.info("No IEA data yet. Go to Ingestion and run the IEA script.")
         else:
-            df_ro = df_iea[
-                (df_iea["region"] == "Romania") &
+            df_neighbours = df_iea[
+                (df_iea["region"].isin(NEIGHBOURS.keys())) &
                 (df_iea["parameter"] == "EV sales") &
                 (df_iea["mode"] == "Cars") &
                 (df_iea["powertrain"] == "BEV")
             ].copy()
-            df_ro["powertrain"] = "Electric"
+            df_neighbours["region"] = df_neighbours["region"].replace({"Romania": "Romania ◀"})
 
             fig = px.line(
-                df_ro, x="year", y="value", color="powertrain",
+                df_neighbours, x="year", y="value", color="region",
                 markers=True,
-                labels={"value": "Vehicles sold", "year": "Year", "powertrain": ""},
-                color_discrete_map={"Electric": "#00BFA5"},
+                labels={"value": "Electric cars sold", "year": "Year", "region": ""},
+                color_discrete_map={
+                    "Romania ◀": "#00695C",
+                    "Bulgaria":  "#5C6BC0",
+                    "Hungary":   "#FFA726",
+                    "Poland":    "#EF5350",
+                    "Czech Republic": "#26A69A",
+                },
             )
+            # Make Romania line thicker so it stands out
+            for trace in fig.data:
+                if "Romania" in trace.name:
+                    trace.line.width = 3
+                    trace.marker.size = 8
+                else:
+                    trace.line.width = 1.5
+                    trace.marker.size = 5
             fig.update_layout(
                 plot_bgcolor="white", paper_bgcolor="white",
                 font_family="system-ui, -apple-system, sans-serif",

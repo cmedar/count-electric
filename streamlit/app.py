@@ -325,9 +325,9 @@ digraph pipeline {
 
     sources    [label="Data Sources\nIEA · Eurostat"]
     ingest     [label="Ingestion\nEC2 · Docker"]
-    s3         [label="AWS S3\nlanding/raw/"]
+    s3         [label="Landing\nAWS S3/landing/raw/"]
     databricks [label="Databricks\nBronze→Silver→Gold"]
-    streamlit  [label="Streamlit\napp.countelectric.com"]
+    streamlit  [label="app.countelectric.com\nStreamlit"]
 
     sources    -> ingest     [label="API/CSV"]
     ingest     -> s3         [label="raw files"]
@@ -508,8 +508,8 @@ with _tab_data:
                 plot_bgcolor="white", paper_bgcolor="white",
                 font_family="system-ui, -apple-system, sans-serif",
                 hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=0, r=0, t=32, b=0),
+                legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
+                margin=dict(l=0, r=110, t=32, b=0),
             )
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(gridcolor="#F0F0F0")
@@ -580,8 +580,8 @@ with _tab_data:
                 fig3.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     hovermode="x unified",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=0, r=0, t=48, b=0),
+                    legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
+                    margin=dict(l=0, r=90, t=48, b=0),
                 )
                 fig3.update_xaxes(showgrid=False)
                 fig3.update_yaxes(gridcolor="#F0F0F0")

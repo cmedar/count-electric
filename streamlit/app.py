@@ -162,6 +162,49 @@ hr { border-color: #E0F2F1; }
 
 /* ── Caption ── */
 .stCaption { color: #78909C; font-size: 12px; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+    /* Shrink top bar, allow nav to scroll horizontally */
+    .md3-top-bar {
+        height: auto;
+        min-height: 56px;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        gap: 0;
+    }
+    /* Hide brand text, keep icon only */
+    .md3-top-bar > a span {
+        display: none;
+    }
+    /* Nav takes full width below the icon, scrolls horizontally */
+    .top-nav {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-left: 0;
+        padding: 4px 0;
+        gap: 2px;
+        scrollbar-width: none;
+    }
+    .top-nav::-webkit-scrollbar { display: none; }
+    .top-nav a {
+        font-size: 13px;
+        padding: 6px 12px;
+        flex-shrink: 0;
+    }
+    /* Less top padding since bar is shorter */
+    .main .block-container {
+        padding-top: 96px !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    /* Phase badges stack better */
+    .phase-done, .phase-current, .phase-planned {
+        padding: 12px;
+        font-size: 13px;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -276,7 +319,7 @@ digraph pipeline {
     rankdir=LR
     bgcolor=transparent
     graph [fontname="Helvetica", splines=ortho, nodesep=0.2, ranksep=0.5, size="10,1.6"]
-    node  [fontname="Helvetica", fontsize=13, style="rounded,filled", shape=box,
+    node  [fontname="Helvetica", fontsize=15, style="rounded,filled", shape=box,
            margin="0.15,0.1", width=1.6, fillcolor="#E0F2F1", color="#00897B", fontcolor="#004D40"]
     edge  [fontname="Helvetica", fontsize=10, color="#80CBC4", arrowsize=0.55]
 

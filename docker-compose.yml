@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+      - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
+    # No ports: — intentionally not exposed to the internet.
+    # cloudflared reaches the app via the internal Docker network (http://app:8501).
+    # To re-enable direct IP access for debugging: uncomment the line below.
+    # ports: ["8501:8501"]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app

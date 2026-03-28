@@ -7,6 +7,8 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 
 > Built to demonstrate end-to-end data engineering skills: pipeline design, Delta Lake, Spark transformations, Window functions, data governance with Unity Catalog, and CI/CD automation.
 
+**Live:** [app.countelectric.com](https://app.countelectric.com)
+
 ---
 
 ## Table of Contents

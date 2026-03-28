@@ -195,7 +195,7 @@ hr { border-color: #E0F2F1; }
     }
     /* Push content below the two-row mobile bar */
     .main .block-container {
-        padding-top: 120px !important;
+        padding-top: 140px !important;
         padding-left: 12px !important;
         padding-right: 12px !important;
     }

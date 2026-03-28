@@ -460,8 +460,8 @@ with _tab_data:
     st.markdown("---")
 
     # ── IEA chart ──
-    st.subheader("Romania — EV Sales by Powertrain")
-    st.caption("Source: IEA Global EV Data Explorer · Cars only · BEV and PHEV")
+    st.subheader("Romania — Electric Car Sales")
+    st.caption("Source: IEA Global EV Data Explorer · Cars · BEV only")
 
     try:
         df_iea = read_latest_iea_csv()
@@ -472,14 +472,15 @@ with _tab_data:
                 (df_iea["region"] == "Romania") &
                 (df_iea["parameter"] == "EV sales") &
                 (df_iea["mode"] == "Cars") &
-                (df_iea["powertrain"].isin(["BEV", "PHEV"]))
+                (df_iea["powertrain"] == "BEV")
             ].copy()
+            df_ro["powertrain"] = "Electric"
 
             fig = px.line(
                 df_ro, x="year", y="value", color="powertrain",
                 markers=True,
-                labels={"value": "Vehicles sold", "year": "Year", "powertrain": "Type"},
-                color_discrete_map={"BEV": "#00BFA5", "PHEV": "#FFA726"},
+                labels={"value": "Vehicles sold", "year": "Year", "powertrain": ""},
+                color_discrete_map={"Electric": "#00BFA5"},
             )
             fig.update_layout(
                 plot_bgcolor="white", paper_bgcolor="white",

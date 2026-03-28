@@ -327,7 +327,7 @@ digraph pipeline {
     ingest     [label="Ingestion\nEC2 · Docker"]
     s3         [label="AWS S3\nlanding/raw/"]
     databricks [label="Databricks\nBronze→Silver→Gold"]
-    streamlit  [label="Streamlit\n:8501"]
+    streamlit  [label="Streamlit\napp.countelectric.com"]
 
     sources    -> ingest     [label="API/CSV"]
     ingest     -> s3         [label="raw files"]

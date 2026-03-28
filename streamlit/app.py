@@ -193,9 +193,9 @@ hr { border-color: #E0F2F1; }
         padding: 6px 12px;
         flex-shrink: 0;
     }
-    /* Less top padding since bar is shorter */
+    /* Push content below the two-row mobile bar */
     .main .block-container {
-        padding-top: 96px !important;
+        padding-top: 120px !important;
         padding-left: 12px !important;
         padding-right: 12px !important;
     }

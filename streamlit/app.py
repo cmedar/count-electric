@@ -539,6 +539,30 @@ with _tab_data:
             col1, col2 = st.columns(2)
 
             with col1:
+                # Line: ELC vs PET vs DIE trend
+                df_lines = df_ro_eur[df_ro_eur["mot_nrg"].isin(["ELC", "PET", "DIE"])].copy()
+                fig3 = px.line(
+                    df_lines, x="year", y="value", color="fuel_label",
+                    markers=True,
+                    labels={"value": "New registrations", "year": "Year", "fuel_label": ""},
+                    color_discrete_map={
+                        "Electric (BEV)":        "#2E7D32",
+                        "Petrol (Combustion)":   "#6D4C41",
+                        "Diesel (Combustion)":   "#C62828",
+                    },
+                    title="Electric vs Petrol vs Diesel",
+                )
+                fig3.update_layout(
+                    plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
+                    hovermode="x unified",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    margin=dict(l=0, r=0, t=48, b=0),
+                )
+                fig3.update_xaxes(showgrid=False)
+                fig3.update_yaxes(gridcolor="#F0F0F0")
+                st.plotly_chart(fig3, use_container_width=True)
+
+            with col2:
                 # Stacked bar: EV vs ICE by category
                 df_cat = (
                     df_ro_eur.groupby(["year", "fuel_category"])["value"]
@@ -562,30 +586,6 @@ with _tab_data:
                 fig2.update_xaxes(showgrid=False)
                 fig2.update_yaxes(gridcolor="#F0F0F0")
                 st.plotly_chart(fig2, use_container_width=True)
-
-            with col2:
-                # Line: ELC vs PET vs DIE trend
-                df_lines = df_ro_eur[df_ro_eur["mot_nrg"].isin(["ELC", "PET", "DIE"])].copy()
-                fig3 = px.line(
-                    df_lines, x="year", y="value", color="fuel_label",
-                    markers=True,
-                    labels={"value": "New registrations", "year": "Year", "fuel_label": ""},
-                    color_discrete_map={
-                        "Electric (BEV)": "#00BFA5",
-                        "Petrol (Combustion)":   "#EF5350",
-                        "Diesel (Combustion)":   "#B71C1C",
-                    },
-                    title="Electric vs Petrol vs Diesel",
-                )
-                fig3.update_layout(
-                    plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
-                    hovermode="x unified",
-                    legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
-                    margin=dict(l=0, r=90, t=48, b=0),
-                )
-                fig3.update_xaxes(showgrid=False)
-                fig3.update_yaxes(gridcolor="#F0F0F0")
-                st.plotly_chart(fig3, use_container_width=True)
 
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")

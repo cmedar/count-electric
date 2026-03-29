@@ -33,6 +33,8 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 - As EV registrations grow, are petrol and diesel (ICE) registrations actually declining — and how fast?
 - Where does Romania sit in the European EV adoption picture, and how does it compare to the EU average?
 - What is Romania's EV market share rank among EU countries, and is it improving?
+- How many cars are currently on the road in Romania — and how many of them are Electric vs Combustion?
+- What share of the total Romanian fleet is Electric, and how is that share growing over time?
 
 > **Romania focus:** All dashboards include a Romania lens. Country-level data is available from 2010 onwards via IEA and Eurostat. Bucharest city-level data is not currently published as open data by DRPCIV (Romania's vehicle registry).
 
@@ -41,17 +43,18 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────┐
-│                  DATA SOURCES                    │
-│   IEA Global EV Data    │   Eurostat ROAD_EQR    │
-└────────────┬─────────────────────┬───────────────┘
-             │                     │
-             ▼                     ▼
+┌────────────────────────────────────────────────────────────────┐
+│                        DATA SOURCES                            │
+│  IEA Global EV Data  │  Eurostat ROAD_EQR  │  Eurostat ROAD_EQS│
+└──────────┬───────────────────┬──────────────────┬─────────────┘
+             │                     │                  │
+             ▼                     ▼                  ▼
 ┌──────────────────────────────────────────────────┐
 │         INGESTION (EC2 + Docker)                 │
-│   ingest_iea.py          ingest_eurostat.py      │
+│  ingest_iea.py  ingest_eurostat.py  ingest_eurostat_stock.py │
 │   Python + requests + boto3                      │
 │   MD5 dedup — skips upload if data unchanged     │
+│   Triggerable from Streamlit via Jobs API        │
 └─────────────────────────┬────────────────────────┘
                           │
                           ▼
@@ -100,6 +103,7 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 - **Key tables:**
   - `bronze.ev_iea_raw` — IEA global EV sales & stock, 3 454 rows, 2010–2024
   - `bronze.car_registrations_eurostat_raw` — Eurostat new car registrations by fuel type, 6 257 rows
+  - `bronze.car_stock_eurostat_raw` — Eurostat total fleet on the road by fuel type (ROAD_EQS_CARPDA)
 
 ### Silver — Cleaned & Conformed
 - **Purpose:** Typed, deduplicated, standardised data ready for aggregation
@@ -113,16 +117,21 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 | `02_silver_eurostat.py` | Cast year | `time` string → `year` integer |
 | `02_silver_eurostat.py` | Fuel category | Groups `ELC/ELC_PET_PI/ELC_DIE_PI` → `Electric`, `PET/DIE` → `ICE`, etc. |
 | `02_silver_eurostat.py` | Drop aggregates | Removes EU27/EEA rows — Gold will re-aggregate as needed |
+| `03_silver_eurostat_stock.py` | Cast year | `time` string → `year` integer |
+| `03_silver_eurostat_stock.py` | Fuel category | Same category mapping as registrations — Electric / Combustion / Hybrid / Other / Total |
+| `03_silver_eurostat_stock.py` | Drop aggregates | Removes EU27/EEA rows |
 
 - **Key tables:**
   - `silver.ev_registrations_iea` — clean IEA data, columns: `country_code, country_name, year, parameter, powertrain, ev_count, unit`
   - `silver.car_registrations_eurostat` — clean Eurostat data, columns: `country_code, year, fuel_type_code, fuel_type_label, fuel_category, new_registrations`
+  - `silver.car_stock_eurostat` — clean fleet stock data, columns: `country_code, year, fuel_type_code, fuel_category, stock_count`
 
 ### Gold — Aggregated Insights
 - **Purpose:** Business-ready metrics for the dashboard
 - **Key tables:**
   - `gold.ev_market_share` — EV market share % and YoY growth per country/year (from Eurostat)
   - `gold.romania_ev_summary` — Romania deep-dive: EV share vs EU average, EU rank, IEA stock data joined
+  - `gold.car_stock_snapshot` — Total fleet on the road by fuel type, per country/year; Electric and Combustion share %
 
 **`gold.ev_market_share` schema:**
 
@@ -136,6 +145,22 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 | `ev_market_share_pct` | `electric / total * 100` |
 | `ev_yoy_growth_pct` | YoY % change in electric registrations |
 | `ev_share_yoy_change_pp` | YoY change in market share (percentage points) |
+
+**`gold.car_stock_snapshot` schema:**
+
+| Column | Description |
+|---|---|
+| `country_code` | ISO 3166-1 alpha-2 |
+| `year` | Calendar year |
+| `total_stock` | All cars on the road (Eurostat TOTAL category) |
+| `electric_stock` | Electric cars on the road |
+| `combustion_stock` | Petrol + diesel cars on the road |
+| `hybrid_stock` | Hybrid cars on the road |
+| `other_stock` | Other fuel types |
+| `electric_share_pct` | `electric_stock / total_stock * 100` |
+| `combustion_share_pct` | `combustion_stock / total_stock * 100` |
+
+> **Stock vs Flow:** `ev_market_share` counts *new cars registered* each year (flow). `car_stock_snapshot` counts *all cars on the road* (stock). The fleet transitions much more slowly — EVs may be 10% of new sales but only 1–2% of the total fleet.
 
 **`gold.romania_ev_summary` schema:**
 
@@ -400,7 +425,44 @@ Results are cached in Streamlit for 1 hour via `@st.cache_data(ttl=3600)` — so
 
 ---
 
-### 16. Control Plane vs Data Plane
+### 16. Databricks Jobs API — Trigger Notebooks Programmatically
+
+The Streamlit app can trigger the full Bronze → Silver → Gold pipeline without the user opening Databricks. This uses the **Jobs Runs Submit API** — a one-time notebook run with no pre-created job required.
+
+**Submit a notebook run:**
+```python
+response = requests.post(
+    f"{DATABRICKS_HOST}/api/2.1/jobs/runs/submit",
+    headers={"Authorization": f"Bearer {DATABRICKS_TOKEN}"},
+    json={
+        "run_name": "count-electric-pipeline",
+        "tasks": [{
+            "task_key": "task",
+            "notebook_task": {"notebook_path": notebook_path},
+            "new_cluster": {"spark_version": "..."},  # or existing_cluster_id
+        }]
+    }
+)
+run_id = response.json()["run_id"]
+```
+
+**Poll for completion:**
+```python
+status = requests.get(
+    f"{DATABRICKS_HOST}/api/2.1/jobs/runs/get?run_id={run_id}",
+    headers={"Authorization": f"Bearer {DATABRICKS_TOKEN}"},
+).json()
+life_cycle = status["state"]["life_cycle_state"]   # PENDING / RUNNING / TERMINATED
+result      = status["state"].get("result_state")  # SUCCESS / FAILED
+```
+
+The app runs all 9 notebooks sequentially, polls every 6 seconds, and shows live step progress with ⏳/✅/❌ indicators.
+
+> Used in `streamlit/app.py` — the *Ingestion* tab triggers the full pipeline and streams live status updates via `st.status`.
+
+---
+
+### 17. Control Plane vs Data Plane
 - **Control Plane** — Databricks' infrastructure (UI, job scheduler, cluster manager). Runs in Databricks' AWS account.
 - **Data Plane** — where compute actually runs and where data lives. Runs in **your** AWS account. Your S3 data never leaves your account.
 
@@ -430,6 +492,7 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 |---|---|---|---|
 | [IEA Global EV Data Explorer](https://www.iea.org/data-and-statistics/data-tools/global-ev-data-explorer) | EV sales & stock by country/year/powertrain (BEV/PHEV). Global incl. Romania. 2010–2024. | CSV API | ✅ Live |
 | [Eurostat ROAD_EQR_CARPDA](https://ec.europa.eu/eurostat/databrowser/view/ROAD_EQR_CARPDA/) | New car registrations by fuel type — petrol, diesel, BEV, PHEV, hybrid for all EU countries. Core dataset for EV vs ICE comparison. | JSON-stat2 API | ✅ Live |
+| [Eurostat ROAD_EQS_CARPDA](https://ec.europa.eu/eurostat/databrowser/view/ROAD_EQS_CARPDA/) | Total cars on the road (stock) by fuel type — all EU countries. Used for fleet composition snapshots. Distinct from registrations (flow). | JSON-stat2 API | ✅ Live |
 | [EAFO](https://alternative-fuels-observatory.ec.europa.eu/) | Romania EV fleet detail | API | Planned |
 
 > **Note on Bucharest city-level data:** DRPCIV (Romania's national vehicle registry) does not publish open data. Country-level Romania data is available from IEA and Eurostat.
@@ -456,6 +519,7 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 ### Phase 3 — Gold Layer ✅
 - [x] `01_gold_market_share.py` — EV market share % + YoY growth per country/year using pivot + Window lag
 - [x] `02_gold_romania.py` — Romania vs EU average, EU rank via Window rank, IEA stock join
+- [x] `03_gold_stock_snapshot.py` — Fleet on the road: pivot by fuel category, Electric/Combustion share %
 
 ### Phase 4 — Dashboard ✅
 - [x] Databricks SQL Warehouse connection via `databricks-sql-connector`
@@ -463,11 +527,15 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 - [x] Year-over-year EV growth % (bar chart, colour by sign)
 - [x] Romania EU rank over time (inverted y-axis — lower rank = better)
 - [x] Top 10 EU countries by EV share in latest year (horizontal bar + Romania in blue)
+- [x] Electric vs Combustion comparison charts — grouped bar, 100% stacked area, indexed growth lines, EU country ratio bars
+- [x] Fleet snapshot charts — Romania total fleet composition 2018–2024 (stacked bar) + Electric fleet share % line
 - [x] Cloudflare Tunnel — `app.countelectric.com`, HTTPS, no open ports
 - [x] Docker Compose stack (`app` + `cloudflared`)
 - [x] Mobile-responsive nav bar (CSS media queries)
 - [x] Idempotent ingestion — MD5 dedup, skip S3 upload if data unchanged
 - [x] All charts static (no hover/toolbar), legends positioned below title
+- [x] Eurostat stock pipeline — `ingest_eurostat_stock.py` → Bronze → Silver → Gold
+- [x] Pipeline triggering from Streamlit — Databricks Jobs API (`runs/submit`), live step progress, 9 notebooks end-to-end
 
 ### Phase 5 — Polish
 - [ ] README screenshots
@@ -555,15 +623,21 @@ That's it. On the next push to `main`, GitHub Actions deploys the compose stack 
 
 ### 6. Run the Pipeline
 
-In Databricks, run notebooks in order:
+**Option A — from the Streamlit app (recommended):**
+Navigate to the **Ingestion** tab and click *Run Full Databricks Pipeline*. The app triggers all 9 notebooks via the Jobs API and shows live progress.
+
+**Option B — manually in Databricks, run notebooks in order:**
 ```
 databricks/bronze/00_setup.py
 databricks/bronze/01_bronze_iea.py
 databricks/bronze/02_bronze_eurostat.py
+databricks/bronze/03_bronze_eurostat_stock.py
 databricks/silver/01_silver_iea.py
 databricks/silver/02_silver_eurostat.py
+databricks/silver/03_silver_eurostat_stock.py
 databricks/gold/01_gold_market_share.py
 databricks/gold/02_gold_romania.py
+databricks/gold/03_gold_stock_snapshot.py
 ```
 
 ---
@@ -583,20 +657,24 @@ count-electric/
 │   └── config.yml              # ingress: app.countelectric.com → http://app:8501
 │
 ├── ingestion/
-│   ├── ingest_iea.py           # IEA Global EV Data → S3
-│   └── ingest_eurostat.py      # Eurostat ROAD_EQR_CARPDA → S3
+│   ├── ingest_iea.py                # IEA Global EV Data → S3
+│   ├── ingest_eurostat.py           # Eurostat ROAD_EQR_CARPDA (new registrations) → S3
+│   └── ingest_eurostat_stock.py     # Eurostat ROAD_EQS_CARPDA (fleet stock) → S3
 │
 ├── databricks/
 │   ├── bronze/
-│   │   ├── 00_setup.py         # Create schemas, verify External Location
-│   │   ├── 01_bronze_iea.py    # S3 CSV → bronze.ev_iea_raw
-│   │   └── 02_bronze_eurostat.py  # S3 JSON → bronze.car_registrations_eurostat_raw
+│   │   ├── 00_setup.py              # Create schemas, verify External Location
+│   │   ├── 01_bronze_iea.py         # S3 CSV → bronze.ev_iea_raw
+│   │   ├── 02_bronze_eurostat.py    # S3 JSON → bronze.car_registrations_eurostat_raw
+│   │   └── 03_bronze_eurostat_stock.py  # S3 JSON → bronze.car_stock_eurostat_raw
 │   ├── silver/
-│   │   ├── 01_silver_iea.py    # Dedupe, filter Cars, ISO country codes
-│   │   └── 02_silver_eurostat.py  # Cast year, fuel categories, drop aggregates
+│   │   ├── 01_silver_iea.py         # Dedupe, filter Cars, ISO country codes
+│   │   ├── 02_silver_eurostat.py    # Cast year, fuel categories, drop aggregates
+│   │   └── 03_silver_eurostat_stock.py  # Cast year, fuel categories → silver.car_stock_eurostat
 │   ├── gold/
 │   │   ├── 01_gold_market_share.py  # pivot + Window lag → gold.ev_market_share
-│   │   └── 02_gold_romania.py       # join + Window rank → gold.romania_ev_summary
+│   │   ├── 02_gold_romania.py       # join + Window rank → gold.romania_ev_summary
+│   │   └── 03_gold_stock_snapshot.py    # pivot + share% → gold.car_stock_snapshot
 │   ├── aws_iam/
 │   │   ├── trust_policy.json   # IAM cross-account trust for Databricks
 │   │   └── s3_access_policy.json
@@ -613,4 +691,4 @@ count-electric/
 
 ---
 
-*Phase 4 complete — Dashboard live at [app.countelectric.com](https://app.countelectric.com). Phase 5: README screenshots + portfolio write-up.*
+*Phase 4 complete — Dashboard live at [app.countelectric.com](https://app.countelectric.com). Full pipeline (3 data sources, 9 notebooks) triggerable from the app. Phase 5: README screenshots + portfolio write-up.*

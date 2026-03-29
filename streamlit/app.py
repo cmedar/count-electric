@@ -1180,6 +1180,7 @@ with _tab_dash:
                 st.subheader("Romania — Fleet Composition Over Time")
                 st.caption("All cars on the road, stacked by fuel category")
                 df_stk = df_stock.dropna(subset=["total_stock"]).copy()
+                df_stk = df_stk[df_stk["year"].between(2018, 2024)]
                 df_stk["other_combined"] = (
                     df_stk["hybrid_stock"].fillna(0) + df_stk["other_stock"].fillna(0)
                 )
@@ -1201,7 +1202,7 @@ with _tab_dash:
                 ))
                 fig9.update_layout(**_layout, barmode="stack", xaxis_title="Year")
                 fig9.update_xaxes(showgrid=False)
-                fig9.update_yaxes(gridcolor="#F0F0F0")
+                fig9.update_yaxes(gridcolor="#F0F0F0", range=[5_000_000, 10_000_000])
                 _ytitle(fig9, "Cars on the Road")
                 st.plotly_chart(fig9, use_container_width=True, config={"staticPlot": True})
 
@@ -1209,6 +1210,7 @@ with _tab_dash:
                 st.subheader("Romania — Electric Share of Total Fleet")
                 st.caption("% of all cars on the road that are Electric — fleet transitions slowly")
                 df_share_stk = df_stock.dropna(subset=["electric_share_pct"]).copy()
+                df_share_stk = df_share_stk[df_share_stk["year"].between(2018, 2024)]
                 latest_stock = df_share_stk.iloc[-1]
                 fig10 = go.Figure()
                 fig10.add_trace(go.Scatter(

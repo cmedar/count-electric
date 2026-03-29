@@ -652,6 +652,32 @@ def load_top10_ev_share() -> pd.DataFrame:
             """)
             return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
 
+@st.cache_data(ttl=3600)
+def load_romania_registrations() -> pd.DataFrame:
+    with _db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT year, electric_registrations, ice_registrations, total_registrations
+                FROM gold.ev_market_share
+                WHERE country_code = 'RO'
+                ORDER BY year
+            """)
+            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+
+@st.cache_data(ttl=3600)
+def load_eu_latest_ev_combustion() -> pd.DataFrame:
+    with _db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT country_code, electric_registrations, ice_registrations,
+                       total_registrations, ev_market_share_pct
+                FROM gold.ev_market_share
+                WHERE year = (SELECT MAX(year) FROM gold.ev_market_share)
+                  AND total_registrations > 1000
+                ORDER BY country_code
+            """)
+            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+
 with _tab_dash:
     st.title("EV Dashboard")
     st.markdown("Analytics from Databricks Gold Delta tables — cleaned, aggregated, production-ready data.")
@@ -665,8 +691,10 @@ with _tab_dash:
         )
     else:
         try:
-            df_ro  = load_romania_summary()
-            df_top = load_top10_ev_share()
+            df_ro     = load_romania_summary()
+            df_top    = load_top10_ev_share()
+            df_ro_reg = load_romania_registrations()
+            df_eu_comb = load_eu_latest_ev_combustion()
         except Exception as e:
             st.error(f"Could not connect to Databricks: {e}")
             st.stop()
@@ -812,6 +840,128 @@ with _tab_dash:
             fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
             fig4.update_yaxes(showgrid=False)
             st.plotly_chart(fig4, use_container_width=True, config={"staticPlot": True})
+
+        st.markdown("---")
+        st.subheader("Electric vs Combustion")
+
+        col_e, col_f = st.columns(2)
+
+        with col_e:
+            st.subheader("Romania — Electric vs Combustion Registrations")
+            st.caption("Source: gold.ev_market_share · absolute new car registrations per year")
+            fig5 = go.Figure()
+            fig5.add_trace(go.Bar(
+                x=df_ro_reg["year"], y=df_ro_reg["electric_registrations"],
+                name="Electric", marker_color="#00BFA5",
+                hovertemplate="%{x}: %{y:,} Electric<extra></extra>",
+            ))
+            fig5.add_trace(go.Bar(
+                x=df_ro_reg["year"], y=df_ro_reg["ice_registrations"],
+                name="Combustion", marker_color="#EF5350",
+                hovertemplate="%{x}: %{y:,} Combustion<extra></extra>",
+            ))
+            fig5.update_layout(**_layout, barmode="group", xaxis_title="Year")
+            fig5.update_xaxes(showgrid=False)
+            fig5.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig5, "New Registrations")
+            st.plotly_chart(fig5, use_container_width=True, config={"staticPlot": True})
+
+        with col_f:
+            st.subheader("Romania — Fuel Mix Shift")
+            st.caption("Source: gold.ev_market_share · share of new car registrations")
+            df_mix = df_ro_reg.copy()
+            df_mix["other"] = (
+                df_mix["total_registrations"]
+                - df_mix["electric_registrations"]
+                - df_mix["ice_registrations"]
+            ).clip(lower=0)
+            fig6 = go.Figure()
+            fig6.add_trace(go.Scatter(
+                x=df_mix["year"], y=df_mix["electric_registrations"],
+                name="Electric", stackgroup="one", groupnorm="percent",
+                fillcolor="#00BFA5", line=dict(color="#00BFA5", width=0),
+                hovertemplate="%{x} Electric: %{y:.1f}%<extra></extra>",
+            ))
+            fig6.add_trace(go.Scatter(
+                x=df_mix["year"], y=df_mix["other"],
+                name="Other", stackgroup="one", groupnorm="percent",
+                fillcolor="#B0BEC5", line=dict(color="#B0BEC5", width=0),
+                hovertemplate="%{x} Other: %{y:.1f}%<extra></extra>",
+            ))
+            fig6.add_trace(go.Scatter(
+                x=df_mix["year"], y=df_mix["ice_registrations"],
+                name="Combustion", stackgroup="one", groupnorm="percent",
+                fillcolor="#EF5350", line=dict(color="#EF5350", width=0),
+                hovertemplate="%{x} Combustion: %{y:.1f}%<extra></extra>",
+            ))
+            fig6.update_layout(**_layout, xaxis_title="Year")
+            fig6.update_xaxes(showgrid=False)
+            fig6.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig6, "Share of New Cars (%)")
+            st.plotly_chart(fig6, use_container_width=True, config={"staticPlot": True})
+
+        col_g, col_h = st.columns(2)
+
+        with col_g:
+            st.subheader("Romania — Electric Rise vs Combustion Decline")
+            st.caption("Source: gold.ev_market_share · indexed to first available year = 100")
+            df_idx = df_ro_reg.dropna(subset=["electric_registrations", "ice_registrations"]).copy()
+            base_elec = df_idx["electric_registrations"].iloc[0]
+            base_ice  = df_idx["ice_registrations"].iloc[0]
+            df_idx["elec_idx"] = df_idx["electric_registrations"] / base_elec * 100
+            df_idx["ice_idx"]  = df_idx["ice_registrations"]  / base_ice  * 100
+            fig7 = go.Figure()
+            fig7.add_trace(go.Scatter(
+                x=df_idx["year"], y=df_idx["elec_idx"],
+                mode="lines+markers", name="Electric",
+                line=dict(color="#00BFA5", width=2), marker=dict(size=6),
+                hovertemplate="%{x} Electric: %{y:.0f} (base 100)<extra></extra>",
+            ))
+            fig7.add_trace(go.Scatter(
+                x=df_idx["year"], y=df_idx["ice_idx"],
+                mode="lines+markers", name="Combustion",
+                line=dict(color="#EF5350", width=2), marker=dict(size=6),
+                hovertemplate="%{x} Combustion: %{y:.0f} (base 100)<extra></extra>",
+            ))
+            fig7.add_hline(y=100, line_color="#BDBDBD", line_width=1, line_dash="dot")
+            fig7.update_layout(**_layout, xaxis_title="Year")
+            fig7.update_xaxes(showgrid=False)
+            fig7.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig7, "Index (first year = 100)")
+            st.plotly_chart(fig7, use_container_width=True, config={"staticPlot": True})
+
+        with col_h:
+            st.subheader("EU Countries — Electric Share of Electric + Combustion")
+            latest_year_eu = int(load_top10_ev_share()["year"].iloc[0]) if not df_eu_comb.empty else "N/A"
+            st.caption(f"Source: gold.ev_market_share · {latest_year_eu} · Electric / (Electric + Combustion)")
+            df_ratio = df_eu_comb.copy()
+            df_ratio["elec_comb_total"] = df_ratio["electric_registrations"] + df_ratio["ice_registrations"]
+            df_ratio = df_ratio[df_ratio["elec_comb_total"] > 0].copy()
+            df_ratio["ratio_pct"] = (
+                df_ratio["electric_registrations"] / df_ratio["elec_comb_total"] * 100
+            )
+            df_ratio = df_ratio.sort_values("ratio_pct", ascending=True)
+
+            fig8 = go.Figure(go.Bar(
+                x=df_ratio["ratio_pct"],
+                y=df_ratio["country_code"],
+                orientation="h",
+                marker_color=["#1565C0" if c == "RO" else "#00BFA5" for c in df_ratio["country_code"]],
+                hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
+                text=[f"{v:.1f}%" for v in df_ratio["ratio_pct"]],
+                textposition="outside",
+                textfont=dict(size=11),
+            ))
+            fig8.add_annotation(
+                x=0.99, y=0.01, xref="paper", yref="paper",
+                text="▮ Romania", showarrow=False,
+                font=dict(size=11, color="#1565C0"), xanchor="right",
+            )
+            fig8.update_layout(**_layout, xaxis_title="Electric / (Electric + Combustion) %", showlegend=False)
+            fig8.update_layout(hovermode="y unified")
+            fig8.update_xaxes(gridcolor="#F0F0F0", range=[0, df_ratio["ratio_pct"].max() * 1.18])
+            fig8.update_yaxes(showgrid=False)
+            st.plotly_chart(fig8, use_container_width=True, config={"staticPlot": True})
 
 # ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
 # Streamlit tab switching is purely client-side (no rerun). We find the hidden

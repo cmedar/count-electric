@@ -239,12 +239,12 @@ def s3():
     return boto3.client("s3")
 
 def _ytitle(fig, text, color="#546E7A"):
-    """Move y-axis tick labels to the right; render a bold title annotation on the left."""
-    fig.update_yaxes(side="right", title_text="")
+    """Show y-axis tick labels on both sides; render title annotation on the left."""
+    fig.update_yaxes(side="right", mirror=True, title_text="")
     fig.add_annotation(
-        text=f"<b>{text}</b>", xref="paper", yref="paper",
+        text=text, xref="paper", yref="paper",
         x=-0.1, y=0.5, textangle=-90, showarrow=False,
-        font=dict(size=20, color=color), xanchor="center", yanchor="middle",
+        font=dict(size=14, color=color), xanchor="center", yanchor="middle",
     )
 
 @st.cache_data(ttl=300)
@@ -287,9 +287,9 @@ def _parse_jsonstat2(raw: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 FUEL_LABELS = {
-    "ELC": "Electric (BEV)", "ELC_PET_PI": "Plug-in hybrid (PHEV)",
+    "ELC": "Electric", "ELC_PET_PI": "Plug-in hybrid (PHEV)",
     "ELC_DIE_PI": "Plug-in hybrid diesel", "ELC_PET_HYB": "Hybrid (non-plug-in)",
-    "ELC_DIE_HYB": "Hybrid diesel", "PET": "Petrol (Combustion)", "DIE": "Diesel (Combustion)",
+    "ELC_DIE_HYB": "Hybrid diesel", "PET": "Petrol", "DIE": "Diesel",
     "LPG": "LPG", "GAS": "Natural gas", "HYD_FCELL": "Hydrogen", "TOTAL": "Total",
 }
 FUEL_CATEGORIES = {
@@ -556,9 +556,9 @@ with _tab_data:
                     markers=True,
                     labels={"value": "New registrations", "year": "Year", "fuel_label": ""},
                     color_discrete_map={
-                        "Electric (BEV)":        "#2E7D32",
-                        "Petrol (Combustion)":   "#6D4C41",
-                        "Diesel (Combustion)":   "#C62828",
+                        "Electric": "#2E7D32",
+                        "Petrol":   "#6D4C41",
+                        "Diesel":   "#C62828",
                     },
                     title="Electric vs Petrol vs Diesel",
                 )

@@ -737,6 +737,60 @@ with _tab_data:
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")
 
+# ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
+# Placed before the dashboard so st.stop() can never prevent it from rendering.
+
+components.html("""
+<script>
+(function () {
+    var doc = window.parent.document;
+
+    function switchTab(index) {
+        var tabs = doc.querySelectorAll('[data-baseweb="tab"]');
+        if (tabs[index]) tabs[index].click();
+
+        // Update active pill in the nav
+        doc.querySelectorAll('.top-nav a').forEach(function (a, i) {
+            a.classList.toggle('active', i === index);
+        });
+    }
+
+    function attachListeners() {
+        // Nav links
+        var navLinks = doc.querySelectorAll('.top-nav a');
+        if (!navLinks.length) return false;
+
+        navLinks.forEach(function (a) {
+            if (a._ce) return;
+            a._ce = true;
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                switchTab(parseInt(a.getAttribute('data-tab'), 10));
+            });
+        });
+
+        // Logo → always About (tab 0)
+        var logo = doc.querySelector('.md3-top-bar > a');
+        if (logo && !logo._ce) {
+            logo._ce = true;
+            logo.addEventListener('click', function (e) {
+                e.preventDefault();
+                switchTab(0);
+            });
+        }
+
+        return true;
+    }
+
+    // Retry until elements exist (Streamlit renders async)
+    var attempts = 0;
+    var timer = setInterval(function () {
+        if (attachListeners() || ++attempts > 100) clearInterval(timer);
+    }, 50);
+}());
+</script>
+""", height=0)
+
 # ── PAGE: DASHBOARD ───────────────────────────────────────────────────────────
 
 DATABRICKS_HTTP_PATH = os.getenv("DATABRICKS_HTTP_PATH", "")
@@ -835,10 +889,15 @@ with _tab_dash:
             df_top     = load_top10_ev_share()
             df_ro_reg  = load_romania_registrations()
             df_eu_comb = load_eu_latest_ev_combustion()
-            df_stock   = load_stock_snapshot()
         except Exception as e:
             st.error(f"Could not connect to Databricks: {e}")
             st.stop()
+
+        # Stock snapshot is optional — table may not exist until pipeline is run
+        try:
+            df_stock = load_stock_snapshot()
+        except Exception:
+            df_stock = pd.DataFrame()
 
         _layout = dict(
             plot_bgcolor="white", paper_bgcolor="white",
@@ -1170,58 +1229,3 @@ with _tab_dash:
                 _ytitle(fig10, "Electric Fleet Share (%)")
                 st.plotly_chart(fig10, use_container_width=True, config={"staticPlot": True})
 
-# ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
-# Streamlit tab switching is purely client-side (no rerun). We find the hidden
-# [data-baseweb="tab"] buttons in the parent window and click them when a nav
-# link is clicked. Active pill state is also updated client-side.
-
-components.html("""
-<script>
-(function () {
-    var doc = window.parent.document;
-
-    function switchTab(index) {
-        var tabs = doc.querySelectorAll('[data-baseweb="tab"]');
-        if (tabs[index]) tabs[index].click();
-
-        // Update active pill in the nav
-        doc.querySelectorAll('.top-nav a').forEach(function (a, i) {
-            a.classList.toggle('active', i === index);
-        });
-    }
-
-    function attachListeners() {
-        // Nav links
-        var navLinks = doc.querySelectorAll('.top-nav a');
-        if (!navLinks.length) return false;
-
-        navLinks.forEach(function (a) {
-            if (a._ce) return;
-            a._ce = true;
-            a.addEventListener('click', function (e) {
-                e.preventDefault();
-                switchTab(parseInt(a.getAttribute('data-tab'), 10));
-            });
-        });
-
-        // Logo → always About (tab 0)
-        var logo = doc.querySelector('.md3-top-bar > a');
-        if (logo && !logo._ce) {
-            logo._ce = true;
-            logo.addEventListener('click', function (e) {
-                e.preventDefault();
-                switchTab(0);
-            });
-        }
-
-        return true;
-    }
-
-    // Retry until elements exist (Streamlit renders async)
-    var attempts = 0;
-    var timer = setInterval(function () {
-        if (attachListeners() || ++attempts > 100) clearInterval(timer);
-    }, 50);
-}());
-</script>
-""", height=0)

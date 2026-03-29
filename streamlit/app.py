@@ -450,6 +450,24 @@ Lands to <code>s3://count-electric/landing/raw/eurostat/</code></p>
                 except Exception as e:
                     st.error(f"Failed: {e}")
 
+    col3, _ = st.columns(2)
+
+    with col3:
+        st.markdown("""<div class="md-card">
+<h3 style="margin-top:0">🇪🇺 Eurostat ROAD_EQS_CARPDA</h3>
+<p style="color:#546E7A;font-size:14px">Fetches total car stock on the road (all cars, not just new) by fuel type.<br>
+Lands to <code>s3://count-electric/landing/raw/eurostat_stock/</code></p>
+</div>""", unsafe_allow_html=True)
+        if st.button("Run Eurostat Stock Ingestion", use_container_width=True):
+            with st.spinner("Fetching from Eurostat API…"):
+                try:
+                    from ingestion.ingest_eurostat_stock import main as run_eurostat_stock
+                    run_eurostat_stock()
+                    st.cache_data.clear()
+                    st.success("Eurostat stock ingestion complete.")
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+
     st.markdown("---")
     st.subheader("S3 Landing Zone")
 
@@ -665,6 +683,20 @@ def load_romania_registrations() -> pd.DataFrame:
             return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
 
 @st.cache_data(ttl=3600)
+def load_stock_snapshot() -> pd.DataFrame:
+    with _db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT country_code, year, total_stock, electric_stock,
+                       combustion_stock, hybrid_stock, other_stock,
+                       electric_share_pct, combustion_share_pct
+                FROM gold.car_stock_snapshot
+                WHERE country_code = 'RO'
+                ORDER BY year
+            """)
+            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+
+@st.cache_data(ttl=3600)
 def load_eu_latest_ev_combustion() -> pd.DataFrame:
     with _db_connection() as conn:
         with conn.cursor() as cur:
@@ -691,10 +723,11 @@ with _tab_dash:
         )
     else:
         try:
-            df_ro     = load_romania_summary()
-            df_top    = load_top10_ev_share()
-            df_ro_reg = load_romania_registrations()
+            df_ro      = load_romania_summary()
+            df_top     = load_top10_ev_share()
+            df_ro_reg  = load_romania_registrations()
             df_eu_comb = load_eu_latest_ev_combustion()
+            df_stock   = load_stock_snapshot()
         except Exception as e:
             st.error(f"Could not connect to Databricks: {e}")
             st.stop()
@@ -962,6 +995,72 @@ with _tab_dash:
             fig8.update_xaxes(gridcolor="#F0F0F0", range=[0, df_ratio["ratio_pct"].max() * 1.18])
             fig8.update_yaxes(showgrid=False)
             st.plotly_chart(fig8, use_container_width=True, config={"staticPlot": True})
+
+        if df_stock.empty:
+            st.info(
+                "**Fleet snapshot data not yet available.** "
+                "Run *Eurostat Stock Ingestion* then execute the Databricks pipeline: "
+                "`03_bronze_eurostat_stock` → `03_silver_eurostat_stock` → `03_gold_stock_snapshot`."
+            )
+        else:
+            st.markdown("---")
+            st.subheader("Total Fleet on the Road (Stock)")
+            st.caption("Source: gold.car_stock_snapshot · Eurostat ROAD_EQS_CARPDA · all cars currently registered")
+
+            col_i, col_j = st.columns(2)
+
+            with col_i:
+                st.subheader("Romania — Fleet Composition Over Time")
+                st.caption("All cars on the road, stacked by fuel category")
+                df_stk = df_stock.dropna(subset=["total_stock"]).copy()
+                df_stk["other_combined"] = (
+                    df_stk["hybrid_stock"].fillna(0) + df_stk["other_stock"].fillna(0)
+                )
+                fig9 = go.Figure()
+                fig9.add_trace(go.Bar(
+                    x=df_stk["year"], y=df_stk["combustion_stock"],
+                    name="Combustion", marker_color="#EF5350",
+                    hovertemplate="%{x} Combustion: %{y:,}<extra></extra>",
+                ))
+                fig9.add_trace(go.Bar(
+                    x=df_stk["year"], y=df_stk["other_combined"],
+                    name="Other / Hybrid", marker_color="#B0BEC5",
+                    hovertemplate="%{x} Other/Hybrid: %{y:,}<extra></extra>",
+                ))
+                fig9.add_trace(go.Bar(
+                    x=df_stk["year"], y=df_stk["electric_stock"],
+                    name="Electric", marker_color="#00BFA5",
+                    hovertemplate="%{x} Electric: %{y:,}<extra></extra>",
+                ))
+                fig9.update_layout(**_layout, barmode="stack", xaxis_title="Year")
+                fig9.update_xaxes(showgrid=False)
+                fig9.update_yaxes(gridcolor="#F0F0F0")
+                _ytitle(fig9, "Cars on the Road")
+                st.plotly_chart(fig9, use_container_width=True, config={"staticPlot": True})
+
+            with col_j:
+                st.subheader("Romania — Electric Share of Total Fleet")
+                st.caption("% of all cars on the road that are Electric — fleet transitions slowly")
+                df_share_stk = df_stock.dropna(subset=["electric_share_pct"]).copy()
+                latest_stock = df_share_stk.iloc[-1]
+                fig10 = go.Figure()
+                fig10.add_trace(go.Scatter(
+                    x=df_share_stk["year"], y=df_share_stk["electric_share_pct"],
+                    mode="lines+markers", name="Electric fleet share",
+                    line=dict(color="#00BFA5", width=2), marker=dict(size=6),
+                    hovertemplate="%{x}: %{y:.2f}% of all cars<extra></extra>",
+                ))
+                fig10.add_annotation(
+                    x=latest_stock["year"], y=latest_stock["electric_share_pct"],
+                    text=f"{latest_stock['electric_share_pct']:.2f}% of total fleet",
+                    showarrow=True, arrowhead=2, arrowcolor="#888",
+                    ax=40, ay=-30, font=dict(size=11, color="#555"),
+                )
+                fig10.update_layout(**_layout, xaxis_title="Year")
+                fig10.update_xaxes(showgrid=False)
+                fig10.update_yaxes(gridcolor="#F0F0F0")
+                _ytitle(fig10, "Electric Fleet Share (%)")
+                st.plotly_chart(fig10, use_container_width=True, config={"staticPlot": True})
 
 # ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
 # Streamlit tab switching is purely client-side (no rerun). We find the hidden

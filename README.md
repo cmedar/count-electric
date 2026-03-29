@@ -48,9 +48,10 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
              │                     │
              ▼                     ▼
 ┌──────────────────────────────────────────────────┐
-│              INGESTION (EC2 + Docker)            │
+│         INGESTION (EC2 + Docker)                 │
 │   ingest_iea.py          ingest_eurostat.py      │
 │   Python + requests + boto3                      │
+│   MD5 dedup — skips upload if data unchanged     │
 └─────────────────────────┬────────────────────────┘
                           │
                           ▼
@@ -71,16 +72,22 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 │                                                  │
 │  Unity Catalog  │  Delta Lake  │  Window fns     │
 └─────────────────────────┬────────────────────────┘
-                          │
+                          │ SQL Warehouse (HTTP)
                           ▼
 ┌──────────────────────────────────────────────────┐
-│            STREAMLIT DASHBOARD                   │
-│   Deployed on EC2 via Docker, port 8501          │
+│            STREAMLIT DASHBOARD (EC2)             │
+│   app + cloudflared — Docker Compose            │
 │   MD3 design, Bootstrap-style tab navigation     │
+└─────────────────────────┬────────────────────────┘
+                          │ Cloudflare Tunnel
+                          ▼
+┌──────────────────────────────────────────────────┐
+│         app.countelectric.com (HTTPS)            │
+│   Cloudflare edge — no open ports on EC2         │
 └──────────────────────────────────────────────────┘
 ```
 
-**Deployment:** GitHub Actions builds a Docker image and deploys it to EC2 on every push to `main`. In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date.
+**Deployment:** GitHub Actions builds Docker images and runs `docker compose up` on EC2 on every push to `main`. The compose stack has two services: `app` (Streamlit) and `cloudflared` (Cloudflare Tunnel). In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date.
 
 ---
 
@@ -407,11 +414,12 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 |---|---|
 | Ingestion | Python 3.11, `requests`, `boto3` |
 | Storage | AWS S3 |
-| Compute | AWS EC2 t2.micro + Docker |
+| Compute | AWS EC2 t2.micro + Docker Compose |
 | Processing | Databricks serverless, Apache Spark |
 | Table format | Delta Lake |
 | Governance | Unity Catalog + External Location (IAM cross-account role) |
 | Dashboard | Streamlit (MD3 theme, Bootstrap-style tab navigation) |
+| Networking | Cloudflare Tunnel (`cloudflared`) — HTTPS, no open ports on EC2 |
 | CI/CD | GitHub Actions — EC2 deploy + Databricks Git sync on push to `main` |
 
 ---
@@ -449,16 +457,20 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 - [x] `01_gold_market_share.py` — EV market share % + YoY growth per country/year using pivot + Window lag
 - [x] `02_gold_romania.py` — Romania vs EU average, EU rank via Window rank, IEA stock join
 
-### Phase 4 — Dashboard 🔵 (current)
+### Phase 4 — Dashboard ✅
 - [x] Databricks SQL Warehouse connection via `databricks-sql-connector`
 - [x] Romania EV share vs EU average (dual line chart)
 - [x] Year-over-year EV growth % (bar chart, colour by sign)
 - [x] Romania EU rank over time (inverted y-axis — lower rank = better)
-- [x] Top 10 EU countries by EV share in latest year (horizontal bar)
-- [ ] Wire up `DATABRICKS_HTTP_PATH` secret in GitHub + EC2
+- [x] Top 10 EU countries by EV share in latest year (horizontal bar + Romania in blue)
+- [x] Cloudflare Tunnel — `app.countelectric.com`, HTTPS, no open ports
+- [x] Docker Compose stack (`app` + `cloudflared`)
+- [x] Mobile-responsive nav bar (CSS media queries)
+- [x] Idempotent ingestion — MD5 dedup, skip S3 upload if data unchanged
+- [x] All charts static (no hover/toolbar), legends positioned below title
 
 ### Phase 5 — Polish
-- [ ] README final screenshots
+- [ ] README screenshots
 - [ ] Portfolio write-up
 
 ---
@@ -502,6 +514,7 @@ git clone https://github.com/YOUR_USERNAME/count-electric.git
 | `DATABRICKS_TOKEN` | Databricks personal access token |
 | `DATABRICKS_REPO_ID` | Git folder repo ID (from `/api/2.0/workspace/list`) |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path (e.g. `/sql/1.0/warehouses/abc123`) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel token (from Zero Trust → Tunnels → your tunnel → Configure) |
 
 > **Note:** `S3_BUCKET` is NOT a required secret — the app defaults to `count-electric` via `os.getenv("S3_BUCKET", "count-electric")`. Do not add it as a GitHub Secret: if the secret is missing, GitHub Actions expands it to `""` (empty string), which overrides the hardcoded default and causes boto3 to fail with an invalid bucket name error.
 
@@ -515,7 +528,31 @@ git clone https://github.com/YOUR_USERNAME/count-electric.git
 4. **Workspace → Add → Git folder** — connect GitHub repo
 5. Add `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_REPO_ID` to GitHub Secrets
 
-### 5. Run the Pipeline
+### 5. Cloudflare Tunnel
+
+Cloudflare Tunnel exposes the app at `app.countelectric.com` over HTTPS without opening any ports on EC2. The `cloudflared` container runs alongside the Streamlit app in Docker Compose — no manual setup needed on each deployment.
+
+**One-time setup (done once, not repeated per deploy):**
+
+1. **Create a free Cloudflare account** at cloudflare.com and register your domain via Cloudflare Registrar (countelectric.com was ~$10/year — no markup, domain is instantly on Cloudflare DNS)
+
+2. **Create a named tunnel** — Cloudflare dashboard → **Zero Trust** → **Networks** → **Tunnels** → **Create a tunnel** → **Cloudflared** → give it a name → note the tunnel token
+
+3. **Add a DNS record** — Cloudflare dashboard → **countelectric.com** → **DNS** → **Add record**:
+   - Type: `CNAME`
+   - Name: `app`
+   - Target: `<your-tunnel-id>.cfargotunnel.com`
+   - Proxy: orange cloud (proxied) ✅
+
+4. **Add the tunnel token** as a GitHub Secret: `CLOUDFLARE_TUNNEL_TOKEN`
+
+That's it. On the next push to `main`, GitHub Actions deploys the compose stack which starts both `app` and `cloudflared`. The `cloudflared/config.yml` in the repo maps `app.countelectric.com` → `http://app:8501` over the Docker internal network.
+
+> **Note on `--config` flag order:** In cloudflared CLI, the `--config` flag must come *before* the `tunnel` subcommand: `cloudflared --config /etc/cloudflared/config.yml tunnel run --token ...` — not after `run`. This is already correct in `docker-compose.yml`.
+
+> **Note on DNS verification:** Cloudflare proxied CNAME records do not expose the actual CNAME target in DNS lookups — they return Cloudflare IPs instead. This is expected and correct. `curl -I https://app.countelectric.com` returning HTTP/2 200 confirms it's working.
+
+### 6. Run the Pipeline
 
 In Databricks, run notebooks in order:
 ```
@@ -538,7 +575,11 @@ count-electric/
 ├── README.md
 ├── requirements.txt
 ├── Dockerfile
+├── docker-compose.yml          # app + cloudflared services
 ├── .gitignore
+│
+├── cloudflared/
+│   └── config.yml              # ingress: app.countelectric.com → http://app:8501
 │
 ├── ingestion/
 │   ├── ingest_iea.py           # IEA Global EV Data → S3
@@ -571,4 +612,4 @@ count-electric/
 
 ---
 
-*Phase 4 in progress — Dashboard tab built, wired to Databricks SQL Warehouse. Remaining: set `DATABRICKS_HTTP_PATH` GitHub Secret to go live.*
+*Phase 4 complete — Dashboard live at [app.countelectric.com](https://app.countelectric.com). Phase 5: README screenshots + portfolio write-up.*

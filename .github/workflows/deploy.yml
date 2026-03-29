@@ -33,7 +33,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
-          envs: DATABRICKS_HOST,DATABRICKS_TOKEN,DATABRICKS_HTTP_PATH,CLOUDFLARE_TUNNEL_TOKEN
+          envs: DATABRICKS_HOST,DATABRICKS_TOKEN,DATABRICKS_HTTP_PATH,DATABRICKS_REPO_PATH,CLOUDFLARE_TUNNEL_TOKEN
           script: |
             # Install Docker + Compose plugin if not present
             if ! command -v docker &> /dev/null; then

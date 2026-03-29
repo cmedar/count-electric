@@ -411,6 +411,59 @@ digraph pipeline {
 <span style="font-size:12px;opacity:0.8">{detail.replace(chr(10), ' · ')}</span>
 </div>""", unsafe_allow_html=True)
 
+# ── DATABRICKS PIPELINE HELPERS ───────────────────────────────────────────────
+
+DATABRICKS_REPO_PATH = os.getenv("DATABRICKS_REPO_PATH", "")
+
+_PIPELINE_STEPS = [
+    ("Bronze — IEA",                    "databricks/bronze/01_bronze_iea"),
+    ("Bronze — Eurostat Registrations", "databricks/bronze/02_bronze_eurostat"),
+    ("Bronze — Eurostat Stock",         "databricks/bronze/03_bronze_eurostat_stock"),
+    ("Silver — IEA",                    "databricks/silver/01_silver_iea"),
+    ("Silver — Eurostat Registrations", "databricks/silver/02_silver_eurostat"),
+    ("Silver — Eurostat Stock",         "databricks/silver/03_silver_eurostat_stock"),
+    ("Gold — EV Market Share",          "databricks/gold/01_gold_market_share"),
+    ("Gold — Romania Summary",          "databricks/gold/02_gold_romania"),
+    ("Gold — Stock Snapshot",           "databricks/gold/03_gold_stock_snapshot"),
+]
+
+
+def _db_submit_notebook(notebook_path: str) -> int:
+    host  = os.getenv("DATABRICKS_HOST", "").rstrip("/")
+    token = os.getenv("DATABRICKS_TOKEN", "")
+    resp  = requests.post(
+        f"{host}/api/2.1/jobs/runs/submit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "run_name": f"count-electric: {notebook_path.split('/')[-1]}",
+            "tasks": [{
+                "task_key": "run",
+                "notebook_task": {
+                    "notebook_path": notebook_path,
+                    "source": "WORKSPACE",
+                },
+            }],
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["run_id"]
+
+
+def _db_run_status(run_id: int) -> tuple[str, str]:
+    host  = os.getenv("DATABRICKS_HOST", "").rstrip("/")
+    token = os.getenv("DATABRICKS_TOKEN", "")
+    resp  = requests.get(
+        f"{host}/api/2.1/jobs/runs/get",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"run_id": run_id},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    state = resp.json()["state"]
+    return state["life_cycle_state"], state.get("result_state", "")
+
+
 # ── PAGE: INGESTION ───────────────────────────────────────────────────────────
 
 with _tab_ingest:
@@ -683,62 +736,6 @@ with _tab_data:
 
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")
-
-# ── DATABRICKS PIPELINE HELPERS ───────────────────────────────────────────────
-
-DATABRICKS_REPO_PATH = os.getenv("DATABRICKS_REPO_PATH", "")
-
-# Notebooks in execution order: Bronze → Silver → Gold
-_PIPELINE_STEPS = [
-    ("Bronze — IEA",                    "databricks/bronze/01_bronze_iea"),
-    ("Bronze — Eurostat Registrations", "databricks/bronze/02_bronze_eurostat"),
-    ("Bronze — Eurostat Stock",         "databricks/bronze/03_bronze_eurostat_stock"),
-    ("Silver — IEA",                    "databricks/silver/01_silver_iea"),
-    ("Silver — Eurostat Registrations", "databricks/silver/02_silver_eurostat"),
-    ("Silver — Eurostat Stock",         "databricks/silver/03_silver_eurostat_stock"),
-    ("Gold — EV Market Share",          "databricks/gold/01_gold_market_share"),
-    ("Gold — Romania Summary",          "databricks/gold/02_gold_romania"),
-    ("Gold — Stock Snapshot",           "databricks/gold/03_gold_stock_snapshot"),
-]
-
-
-def _db_submit_notebook(notebook_path: str) -> int:
-    """Submit a one-time notebook run via Databricks Jobs API. Returns run_id."""
-    host  = os.getenv("DATABRICKS_HOST", "").rstrip("/")
-    token = os.getenv("DATABRICKS_TOKEN", "")
-    resp  = requests.post(
-        f"{host}/api/2.1/jobs/runs/submit",
-        headers={"Authorization": f"Bearer {token}"},
-        json={
-            "run_name": f"count-electric: {notebook_path.split('/')[-1]}",
-            "tasks": [{
-                "task_key": "run",
-                "notebook_task": {
-                    "notebook_path": notebook_path,
-                    "source": "WORKSPACE",
-                },
-            }],
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["run_id"]
-
-
-def _db_run_status(run_id: int) -> tuple[str, str]:
-    """Poll a run for its current state. Returns (life_cycle_state, result_state)."""
-    host  = os.getenv("DATABRICKS_HOST", "").rstrip("/")
-    token = os.getenv("DATABRICKS_TOKEN", "")
-    resp  = requests.get(
-        f"{host}/api/2.1/jobs/runs/get",
-        headers={"Authorization": f"Bearer {token}"},
-        params={"run_id": run_id},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    state = resp.json()["state"]
-    return state["life_cycle_state"], state.get("result_state", "")
-
 
 # ── PAGE: DASHBOARD ───────────────────────────────────────────────────────────
 

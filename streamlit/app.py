@@ -239,12 +239,19 @@ def s3():
     return boto3.client("s3")
 
 def _ytitle(fig, text, color="#546E7A"):
-    """Show y-axis tick labels on both sides; render title annotation on the left."""
-    fig.update_yaxes(side="right", mirror=True, title_text="")
+    """Show y-axis tick labels on both left and right; title annotation on the left."""
+    fig.update_yaxes(title_text="")
+    # Overlay a second y-axis on the right that mirrors the same range/ticks
+    fig.update_layout(
+        yaxis2=dict(
+            overlaying="y", side="right", matches="y",
+            showticklabels=True, showgrid=False, title_text="",
+        )
+    )
     fig.add_annotation(
         text=text, xref="paper", yref="paper",
-        x=-0.1, y=0.5, textangle=-90, showarrow=False,
-        font=dict(size=14, color=color), xanchor="center", yanchor="middle",
+        x=-0.12, y=0.5, textangle=-90, showarrow=False,
+        font=dict(size=28, color=color), xanchor="center", yanchor="middle",
     )
 
 @st.cache_data(ttl=300)
@@ -518,7 +525,7 @@ with _tab_data:
                 font_family="system-ui, -apple-system, sans-serif",
                 hovermode="x unified",
                 legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
-                margin=dict(l=60, r=110, t=32, b=0),
+                margin=dict(l=80, r=110, t=32, b=0),
             )
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(gridcolor="#F0F0F0")
@@ -565,7 +572,7 @@ with _tab_data:
                 fig3.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
-                    margin=dict(l=60, r=0, t=72, b=0),
+                    margin=dict(l=80, r=0, t=72, b=0),
                 )
                 fig3.update_xaxes(showgrid=False)
                 fig3.update_yaxes(gridcolor="#F0F0F0")
@@ -590,7 +597,7 @@ with _tab_data:
                 fig2.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
-                    margin=dict(l=60, r=0, t=72, b=0),
+                    margin=dict(l=80, r=0, t=72, b=0),
                 )
                 fig2.update_xaxes(showgrid=False)
                 fig2.update_yaxes(gridcolor="#F0F0F0")
@@ -665,7 +672,7 @@ with _tab_dash:
             font_family="system-ui, -apple-system, sans-serif",
             hovermode="x unified",
             legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
-            margin=dict(l=60, r=0, t=48, b=0),
+            margin=dict(l=80, r=0, t=48, b=0),
         )
 
         col_a, col_b = st.columns(2)

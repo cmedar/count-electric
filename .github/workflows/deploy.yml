@@ -58,13 +58,14 @@ jobs:
 
             # Bring up both services (app + cloudflared) — secrets flow via env vars,
             # nothing is written to disk on the machine.
-            sudo --preserve-env=DATABRICKS_HOST,DATABRICKS_TOKEN,DATABRICKS_HTTP_PATH,CLOUDFLARE_TUNNEL_TOKEN \
+            sudo --preserve-env=DATABRICKS_HOST,DATABRICKS_TOKEN,DATABRICKS_HTTP_PATH,DATABRICKS_REPO_PATH,CLOUDFLARE_TUNNEL_TOKEN \
               docker compose up -d --build
             echo "Deployment complete."
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_REPO_PATH: ${{ secrets.DATABRICKS_REPO_PATH }}
           CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
 
       - name: Sync Databricks Git Folder

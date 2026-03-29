@@ -6,12 +6,14 @@ Material Design 3 light theme, Top App Bar with inline navigation.
 import json
 import os
 import sys
+import time
 from itertools import product
 
 import boto3
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -490,6 +492,59 @@ Lands to <code>s3://count-electric/landing/raw/eurostat_stock/</code></p>
     except Exception as e:
         st.error(f"Could not connect to S3: {e}")
 
+    st.markdown("---")
+    st.subheader("Databricks Pipeline")
+    st.markdown("Run notebooks to process ingested S3 data through Bronze → Silver → Gold.")
+
+    if not DATABRICKS_REPO_PATH:
+        st.info(
+            "**`DATABRICKS_REPO_PATH` not configured.** "
+            "Add it to your environment (e.g. `/Repos/you@email.com/count-electric`). "
+            "Find the path in Databricks → Workspace → your Git folder → right-click → Copy path."
+        )
+    else:
+        if st.button("Run Full Pipeline", use_container_width=False, type="primary"):
+            step_placeholders = []
+            for label, _ in _PIPELINE_STEPS:
+                step_placeholders.append(st.empty())
+
+            failed = False
+            for i, (label, rel_path) in enumerate(_PIPELINE_STEPS):
+                if failed:
+                    step_placeholders[i].markdown(f"⬜ {label}")
+                    continue
+
+                notebook_path = f"{DATABRICKS_REPO_PATH.rstrip('/')}/{rel_path}"
+                step_placeholders[i].markdown(f"⏳ **{label}** — submitting…")
+                try:
+                    run_id = _db_submit_notebook(notebook_path)
+                except Exception as e:
+                    step_placeholders[i].markdown(f"❌ **{label}** — submit failed: {e}")
+                    failed = True
+                    continue
+
+                # Poll until terminal state
+                while True:
+                    lc, result = _db_run_status(run_id)
+                    step_placeholders[i].markdown(
+                        f"⏳ **{label}** — {lc.lower().replace('_', ' ')}"
+                    )
+                    if lc in ("TERMINATED", "SKIPPED", "INTERNAL_ERROR"):
+                        break
+                    time.sleep(6)
+
+                if result == "SUCCESS":
+                    step_placeholders[i].markdown(f"✅ **{label}**")
+                else:
+                    step_placeholders[i].markdown(f"❌ **{label}** — {result or lc}")
+                    failed = True
+
+            if not failed:
+                st.success("Pipeline complete. Clearing cache…")
+                st.cache_data.clear()
+            else:
+                st.error("Pipeline stopped — fix the failing notebook and re-run.")
+
 # ── PAGE: DATA PREVIEW ────────────────────────────────────────────────────────
 
 with _tab_data:
@@ -628,6 +683,62 @@ with _tab_data:
 
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")
+
+# ── DATABRICKS PIPELINE HELPERS ───────────────────────────────────────────────
+
+DATABRICKS_REPO_PATH = os.getenv("DATABRICKS_REPO_PATH", "")
+
+# Notebooks in execution order: Bronze → Silver → Gold
+_PIPELINE_STEPS = [
+    ("Bronze — IEA",                    "databricks/bronze/01_bronze_iea"),
+    ("Bronze — Eurostat Registrations", "databricks/bronze/02_bronze_eurostat"),
+    ("Bronze — Eurostat Stock",         "databricks/bronze/03_bronze_eurostat_stock"),
+    ("Silver — IEA",                    "databricks/silver/01_silver_iea"),
+    ("Silver — Eurostat Registrations", "databricks/silver/02_silver_eurostat"),
+    ("Silver — Eurostat Stock",         "databricks/silver/03_silver_eurostat_stock"),
+    ("Gold — EV Market Share",          "databricks/gold/01_gold_market_share"),
+    ("Gold — Romania Summary",          "databricks/gold/02_gold_romania"),
+    ("Gold — Stock Snapshot",           "databricks/gold/03_gold_stock_snapshot"),
+]
+
+
+def _db_submit_notebook(notebook_path: str) -> int:
+    """Submit a one-time notebook run via Databricks Jobs API. Returns run_id."""
+    host  = os.getenv("DATABRICKS_HOST", "").rstrip("/")
+    token = os.getenv("DATABRICKS_TOKEN", "")
+    resp  = requests.post(
+        f"{host}/api/2.1/jobs/runs/submit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "run_name": f"count-electric: {notebook_path.split('/')[-1]}",
+            "tasks": [{
+                "task_key": "run",
+                "notebook_task": {
+                    "notebook_path": notebook_path,
+                    "source": "WORKSPACE",
+                },
+            }],
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["run_id"]
+
+
+def _db_run_status(run_id: int) -> tuple[str, str]:
+    """Poll a run for its current state. Returns (life_cycle_state, result_state)."""
+    host  = os.getenv("DATABRICKS_HOST", "").rstrip("/")
+    token = os.getenv("DATABRICKS_TOKEN", "")
+    resp  = requests.get(
+        f"{host}/api/2.1/jobs/runs/get",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"run_id": run_id},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    state = resp.json()["state"]
+    return state["life_cycle_state"], state.get("result_state", "")
+
 
 # ── PAGE: DASHBOARD ───────────────────────────────────────────────────────────
 

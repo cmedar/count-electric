@@ -499,8 +499,8 @@ Lands to <code>s3://count-electric/landing/raw/eurostat_stock/</code></p>
     if not DATABRICKS_REPO_PATH:
         st.info(
             "**`DATABRICKS_REPO_PATH` not configured.** "
-            "Add it to your environment (e.g. `/Repos/you@email.com/count-electric`). "
-            "Find the path in Databricks → Workspace → your Git folder → right-click → Copy path."
+            "Add it to your environment (e.g. `/Workspace/Users/you@email.com/count-electric`). "
+            "Find the path in Databricks → Workspace → right-click your folder → Copy path."
         )
     else:
         if st.button("Run Full Pipeline", use_container_width=False, type="primary"):

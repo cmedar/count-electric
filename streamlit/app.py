@@ -513,7 +513,7 @@ with _tab_data:
             )
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(gridcolor="#F0F0F0")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config={"staticPlot": True})
     except Exception as e:
         st.error(f"Could not load IEA data: {e}")
 
@@ -554,13 +554,12 @@ with _tab_data:
                 )
                 fig3.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
-                    hovermode="x unified",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=0, r=0, t=48, b=0),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
+                    margin=dict(l=0, r=0, t=72, b=0),
                 )
                 fig3.update_xaxes(showgrid=False)
                 fig3.update_yaxes(gridcolor="#F0F0F0")
-                st.plotly_chart(fig3, use_container_width=True)
+                st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
 
             with col2:
                 # Stacked bar: EV vs ICE by category
@@ -579,13 +578,12 @@ with _tab_data:
                 )
                 fig2.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
-                    hovermode="x unified",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=0, r=0, t=48, b=0),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
+                    margin=dict(l=0, r=0, t=72, b=0),
                 )
                 fig2.update_xaxes(showgrid=False)
                 fig2.update_yaxes(gridcolor="#F0F0F0")
-                st.plotly_chart(fig2, use_container_width=True)
+                st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
 
     except Exception as e:
         st.error(f"Could not load Eurostat data: {e}")
@@ -654,7 +652,7 @@ with _tab_dash:
             plot_bgcolor="white", paper_bgcolor="white",
             font_family="system-ui, -apple-system, sans-serif",
             hovermode="x unified",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
             margin=dict(l=0, r=0, t=48, b=0),
         )
 
@@ -688,7 +686,7 @@ with _tab_dash:
             fig1.update_layout(**_layout, yaxis_title="EV Market Share (%)", xaxis_title="Year")
             fig1.update_xaxes(showgrid=False)
             fig1.update_yaxes(gridcolor="#F0F0F0")
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
 
         with col_b:
             st.subheader("Romania — EV Registrations YoY Growth")
@@ -715,7 +713,7 @@ with _tab_dash:
             fig2.update_layout(**_layout, yaxis_title="YoY Growth (%)", xaxis_title="Year", showlegend=False)
             fig2.update_xaxes(showgrid=False)
             fig2.update_yaxes(gridcolor="#F0F0F0")
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
 
         col_c, col_d = st.columns(2)
 
@@ -744,7 +742,7 @@ with _tab_dash:
                 xaxis_title="Year",
             )
             fig3.update_xaxes(showgrid=False)
-            st.plotly_chart(fig3, use_container_width=True)
+            st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
 
         with col_d:
             st.subheader("Top 10 EU Countries — EV Share of New Cars")
@@ -787,7 +785,7 @@ with _tab_dash:
             fig4.update_layout(hovermode="y unified")
             fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
             fig4.update_yaxes(showgrid=False)
-            st.plotly_chart(fig4, use_container_width=True)
+            st.plotly_chart(fig4, use_container_width=True, config={"staticPlot": True})
 
 # ── JS: connect HTML nav clicks to hidden Streamlit tab buttons ───────────────
 # Streamlit tab switching is purely client-side (no rerun). We find the hidden

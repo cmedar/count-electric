@@ -238,6 +238,15 @@ st.markdown(
 def s3():
     return boto3.client("s3")
 
+def _ytitle(fig, text, color="#546E7A"):
+    """Move y-axis tick labels to the right; render a bold title annotation on the left."""
+    fig.update_yaxes(side="right", title_text="")
+    fig.add_annotation(
+        text=f"<b>{text}</b>", xref="paper", yref="paper",
+        x=-0.1, y=0.5, textangle=-90, showarrow=False,
+        font=dict(size=20, color=color), xanchor="center", yanchor="middle",
+    )
+
 @st.cache_data(ttl=300)
 def list_s3_files(prefix=""):
     r = s3().list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
@@ -509,10 +518,11 @@ with _tab_data:
                 font_family="system-ui, -apple-system, sans-serif",
                 hovermode="x unified",
                 legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
-                margin=dict(l=0, r=110, t=32, b=0),
+                margin=dict(l=60, r=110, t=32, b=0),
             )
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig, "Electric cars sold")
             st.plotly_chart(fig, use_container_width=True, config={"staticPlot": True})
     except Exception as e:
         st.error(f"Could not load IEA data: {e}")
@@ -555,10 +565,11 @@ with _tab_data:
                 fig3.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
-                    margin=dict(l=0, r=0, t=72, b=0),
+                    margin=dict(l=60, r=0, t=72, b=0),
                 )
                 fig3.update_xaxes(showgrid=False)
                 fig3.update_yaxes(gridcolor="#F0F0F0")
+                _ytitle(fig3, "New registrations")
                 st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
 
             with col2:
@@ -579,10 +590,11 @@ with _tab_data:
                 fig2.update_layout(
                     plot_bgcolor="white", paper_bgcolor="white", font_family="system-ui, -apple-system, sans-serif",
                     legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
-                    margin=dict(l=0, r=0, t=72, b=0),
+                    margin=dict(l=60, r=0, t=72, b=0),
                 )
                 fig2.update_xaxes(showgrid=False)
                 fig2.update_yaxes(gridcolor="#F0F0F0")
+                _ytitle(fig2, "New registrations")
                 st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
 
     except Exception as e:
@@ -653,7 +665,7 @@ with _tab_dash:
             font_family="system-ui, -apple-system, sans-serif",
             hovermode="x unified",
             legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0),
-            margin=dict(l=0, r=0, t=48, b=0),
+            margin=dict(l=60, r=0, t=48, b=0),
         )
 
         col_a, col_b = st.columns(2)
@@ -683,9 +695,10 @@ with _tab_dash:
                     text=gap_text, showarrow=True, arrowhead=2, arrowcolor="#888",
                     ax=40, ay=-30, font=dict(size=11, color="#555"),
                 )
-            fig1.update_layout(**_layout, yaxis_title="EV Market Share (%)", xaxis_title="Year")
+            fig1.update_layout(**_layout, xaxis_title="Year")
             fig1.update_xaxes(showgrid=False)
             fig1.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig1, "EV Market Share (%)")
             st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
 
         with col_b:
@@ -710,9 +723,10 @@ with _tab_dash:
                 text="▮ Decline", showarrow=False,
                 font=dict(size=11, color="#EF5350"), xanchor="left",
             )
-            fig2.update_layout(**_layout, yaxis_title="YoY Growth (%)", xaxis_title="Year", showlegend=False)
+            fig2.update_layout(**_layout, xaxis_title="Year", showlegend=False)
             fig2.update_xaxes(showgrid=False)
             fig2.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig2, "YoY Growth (%)")
             st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
 
         col_c, col_d = st.columns(2)
@@ -738,10 +752,11 @@ with _tab_dash:
                 )
             fig3.update_layout(
                 **_layout,
-                yaxis=dict(title="EU Rank (lower = better)", autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
+                yaxis=dict(autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
                 xaxis_title="Year",
             )
             fig3.update_xaxes(showgrid=False)
+            _ytitle(fig3, "EU Rank (lower = better)")
             st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
 
         with col_d:

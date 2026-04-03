@@ -768,8 +768,8 @@ with _tab_ingest:
     <div class="ce-source-icon">📊</div>
     <span class="ce-source-badge">Eurostat · ROAD_EQS_CARPDA</span>
     <div class="ce-source-title">Total Fleet on the Road</div>
-    <div class="ce-source-desc">All cars currently registered (stock), not just new sales (flow).
-    Shows how slowly the full fleet transitions — EVs may be 10% of new sales but 1–2% of all cars on the road.</div>
+    <div class="ce-source-desc">All cars currently registered, not just new sales.
+    Shows how slowly the full fleet transitions — electric cars may be 10% of new sales but 1–2% of all cars on the road.</div>
     <code class="ce-s3-path">s3://count-electric/landing/raw/eurostat_stock/</code>
 </div>
 """, unsafe_allow_html=True)

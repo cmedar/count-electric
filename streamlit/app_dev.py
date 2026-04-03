@@ -589,17 +589,17 @@ digraph pipeline {
         st.markdown('<span class="ce-section-label">Tech Stack</span>', unsafe_allow_html=True)
         st.markdown("""
 <div class="ce-badges">
-<span class="ce-badge">Python 3.11</span>
-<span class="ce-badge">AWS S3</span>
-<span class="ce-badge">AWS EC2</span>
-<span class="ce-badge">Docker Compose</span>
-<span class="ce-badge">Databricks Serverless</span>
-<span class="ce-badge">Apache Spark</span>
-<span class="ce-badge">Delta Lake</span>
-<span class="ce-badge">Unity Catalog</span>
-<span class="ce-badge">Streamlit</span>
-<span class="ce-badge">Cloudflare Tunnel</span>
-<span class="ce-badge">GitHub Actions</span>
+<span class="ce-badge-mono">Python 3.11</span>
+<span class="ce-badge-mono">AWS S3</span>
+<span class="ce-badge-mono">AWS EC2</span>
+<span class="ce-badge-mono">Docker Compose</span>
+<span class="ce-badge-mono">Databricks Serverless</span>
+<span class="ce-badge-mono">Apache Spark</span>
+<span class="ce-badge-mono">Delta Lake</span>
+<span class="ce-badge-mono">Unity Catalog</span>
+<span class="ce-badge-mono">Streamlit</span>
+<span class="ce-badge-mono">Cloudflare Tunnel</span>
+<span class="ce-badge-mono">GitHub Actions</span>
 </div>
 """, unsafe_allow_html=True)
 

@@ -533,7 +533,7 @@ with _tab_about:
 <div class="ce-hero">
     <p class="ce-eyebrow">Data Engineering &nbsp;·&nbsp; Portfolio Project</p>
     <h1 class="ce-hero-title">Counting electric cars<br>on the streets, so you<br>don't have to.</h1>
-    <p class="ce-hero-sub">End-to-end data pipeline tracking EV adoption across Europe — raw API data ingested to AWS S3, processed through a Databricks medallion architecture, and served as a live dashboard.</p>
+    <p class="ce-hero-sub">Data pipeline tracking electric cars numbers across Europe — raw API data ingested to AWS S3, processed through a Databricks medallion architecture, and served as a live dashboard.</p>
     <div class="ce-stats">
         <div class="ce-stat">
             <div class="ce-stat-number">3</div>

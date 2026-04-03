@@ -136,7 +136,7 @@ header[data-testid="stHeader"],
 
 /* ── Content ── */
 .main .block-container {
-    padding-top: 68px !important;
+    padding-top: 28px !important;
     padding-left: 40px !important;
     padding-right: 40px !important;
     max-width: 1280px;
@@ -703,16 +703,11 @@ def _db_run_status(run_id: int) -> tuple[str, str]:
 with _tab_ingest:
 
     st.markdown("""
-<div style="padding: 16px 0 20px">
+<div class="ce-hero">
     <p class="ce-eyebrow">Data Ingestion</p>
-    <h1 style="font-family:'DM Serif Display',serif;font-style:italic;font-size:2rem;
-               color:#111827;letter-spacing:-0.02em;margin:0 0 10px;font-weight:400">
-        Fetch, land, transform.
-    </h1>
-    <p style="font-size:1rem;color:#6B7280;line-height:1.6;max-width:520px;margin:0">
-        Pull the latest data from source APIs to S3, then run the full
-        Bronze&nbsp;→&nbsp;Silver&nbsp;→&nbsp;Gold pipeline on Databricks.
-    </p>
+    <h1 class="ce-hero-title">Fetch, land, transform.</h1>
+    <p class="ce-hero-sub">Pull the latest data from source APIs to S3, then run the full
+    Bronze&nbsp;→&nbsp;Silver&nbsp;→&nbsp;Gold pipeline on Databricks.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -952,16 +947,11 @@ def load_stock_snapshot() -> pd.DataFrame:
 with _tab_dash:
 
     st.markdown("""
-<div style="padding: 16px 0 20px">
+<div class="ce-hero">
     <p class="ce-eyebrow">Live Analytics</p>
-    <h1 style="font-family:'DM Serif Display',serif;font-style:italic;font-size:2rem;
-               color:#111827;letter-spacing:-0.02em;margin:0 0 10px;font-weight:400">
-        EV Dashboard
-    </h1>
-    <p style="font-size:1rem;color:#6B7280;line-height:1.6;max-width:520px;margin:0">
-        Gold-layer metrics served directly from S3 — no query latency, no SQL Warehouse cold start.
-        Cache refreshes only when the pipeline runs.
-    </p>
+    <h1 class="ce-hero-title">Electric cars, by the numbers.</h1>
+    <p class="ce-hero-sub">Gold-layer metrics served directly from S3 — no query latency, no cold start.
+    Cache refreshes only when the pipeline runs.</p>
 </div>
 """, unsafe_allow_html=True)
 

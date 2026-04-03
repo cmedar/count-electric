@@ -288,7 +288,7 @@ h3 { color: var(--text);      font-size: 1.05rem; }
     padding: 24px;
     box-shadow: var(--shadow-sm);
     transition: box-shadow 0.15s ease;
-    height: 100%;
+    height: 280px;
 }
 .ce-source-card:hover { box-shadow: var(--shadow-md); }
 .ce-source-icon {

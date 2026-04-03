@@ -12,6 +12,17 @@ services:
     # To re-enable direct IP access for debugging: uncomment the line below.
     # ports: ["8501:8501"]
 
+  app-dev:
+    build: .
+    restart: unless-stopped
+    command: streamlit run streamlit/app_dev.py --server.port 8502 --server.address 0.0.0.0
+    environment:
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+      - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
+      - DATABRICKS_REPO_PATH=${DATABRICKS_REPO_PATH}
+    # ports: ["8502:8502"]
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
@@ -20,3 +31,4 @@ services:
       - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
     depends_on:
       - app
+      - app-dev

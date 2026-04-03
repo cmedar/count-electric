@@ -419,9 +419,9 @@ conn = sql.connect(
 
 The `http_path` is the address of your specific SQL Warehouse. Find it in Databricks → **SQL Warehouses** → your warehouse → **Connection Details → HTTP Path**.
 
-Results are cached in Streamlit for 1 hour via `@st.cache_data(ttl=3600)` — so the warehouse only wakes up on the first visit (or after the cache expires), then auto-suspends again.
+Results were previously cached in Streamlit for 1 hour via `@st.cache_data(ttl=3600)`.
 
-> Used in `streamlit/app.py` — `load_romania_summary()` and `load_top10_ev_share()` both dial into the SQL Warehouse to query `gold.romania_ev_summary` and `gold.ev_market_share`.
+> **Note:** The dashboard no longer uses a SQL Warehouse. Gold tables are now exported as Parquet to S3 and read directly by the app — see concept #18 below.
 
 ---
 
@@ -462,7 +462,43 @@ The app runs all 9 notebooks sequentially, polls every 6 seconds, and shows live
 
 ---
 
-### 17. Control Plane vs Data Plane
+### 18. Gold-to-S3 Parquet Export — Serving Without a SQL Warehouse
+
+Each Gold notebook writes its output twice: once as a Delta table (for Databricks), and once as Parquet to the project's own S3 bucket (for the dashboard).
+
+```python
+# Delta table — stays in Databricks managed storage
+df_gold.write.format("delta").mode("overwrite").saveAsTable("gold.ev_market_share")
+
+# Parquet export — goes to your S3 bucket for direct app reads
+df_gold.coalesce(1).write.mode("overwrite").parquet("s3://count-electric/gold/ev_market_share/")
+```
+
+The Streamlit app reads directly from S3 using `pandas` + `s3fs`, with no SQL Warehouse involved:
+
+```python
+@st.cache_data(ttl=None)   # cached forever — cleared only when pipeline runs
+def load_ev_market_share() -> pd.DataFrame:
+    return pd.read_parquet("s3://count-electric/gold/ev_market_share/")
+```
+
+The EC2 instance's IAM role already has S3 read access — no credentials needed in the app code.
+
+**Why this matters:**
+
+| | SQL Warehouse (old) | S3 Parquet (current) |
+|---|---|---|
+| Cold start | 10–30 seconds | None |
+| Cost | Warehouse compute per query | S3 GET only (~$0) |
+| Availability | Warehouse must be running | Always available |
+| Refresh | Every hour (TTL) | Only when pipeline runs |
+| Data visible in S3 | No (Databricks-managed bucket) | Yes |
+
+> Gold Parquet files land at `s3://count-electric/gold/<table>/` — browseable in the AWS S3 console.
+
+---
+
+### 19. Control Plane vs Data Plane
 - **Control Plane** — Databricks' infrastructure (UI, job scheduler, cluster manager). Runs in Databricks' AWS account.
 - **Data Plane** — where compute actually runs and where data lives. Runs in **your** AWS account. Your S3 data never leaves your account.
 
@@ -480,7 +516,8 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 | Processing | Databricks serverless, Apache Spark |
 | Table format | Delta Lake |
 | Governance | Unity Catalog + External Location (IAM cross-account role) |
-| Dashboard | Streamlit (MD3 theme, Bootstrap-style tab navigation) |
+| Dashboard | Streamlit — two variants: `app.py` (production) · `app_dev.py` (redesigned) |
+| Serving layer | S3 Parquet — Gold tables exported post-pipeline, read directly by app (`s3fs` + `pyarrow`) |
 | Networking | Cloudflare Tunnel (`cloudflared`) — HTTPS, no open ports on EC2 |
 | CI/CD | GitHub Actions — EC2 deploy + Databricks Git sync on push to `main` |
 
@@ -522,7 +559,6 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 - [x] `03_gold_stock_snapshot.py` — Fleet on the road: pivot by fuel category, Electric/Combustion share %
 
 ### Phase 4 — Dashboard ✅
-- [x] Databricks SQL Warehouse connection via `databricks-sql-connector`
 - [x] Romania EV share vs EU average (dual line chart)
 - [x] Year-over-year EV growth % (bar chart, colour by sign)
 - [x] Romania EU rank over time (inverted y-axis — lower rank = better)
@@ -536,9 +572,12 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 - [x] All charts static (no hover/toolbar), legends positioned below title
 - [x] Eurostat stock pipeline — `ingest_eurostat_stock.py` → Bronze → Silver → Gold
 - [x] Pipeline triggering from Streamlit — Databricks Jobs API (`runs/submit`), live step progress, 9 notebooks end-to-end
+- [x] Gold tables exported as Parquet to S3 — dashboard reads directly, no SQL Warehouse needed (`ttl=None` cache, cleared after pipeline)
+- [x] `dev.countelectric.com` — redesigned UI variant (DM Serif Display + DM Sans + IBM Plex Mono, Apple-casual aesthetic, 3-tab layout)
 
-### Phase 5 — Polish
-- [ ] README screenshots
+### Phase 5 — Polish ✅
+- [x] README updated with full technical lineage and new concepts
+- [ ] Screenshots
 - [ ] Portfolio write-up
 
 ---
@@ -607,15 +646,18 @@ Cloudflare Tunnel exposes the app at `app.countelectric.com` over HTTPS without 
 
 2. **Create a named tunnel** — Cloudflare dashboard → **Zero Trust** → **Networks** → **Tunnels** → **Create a tunnel** → **Cloudflared** → give it a name → note the tunnel token
 
-3. **Add a DNS record** — Cloudflare dashboard → **countelectric.com** → **DNS** → **Add record**:
-   - Type: `CNAME`
-   - Name: `app`
-   - Target: `<your-tunnel-id>.cfargotunnel.com`
-   - Proxy: orange cloud (proxied) ✅
+3. **Add DNS records** — Cloudflare dashboard → **countelectric.com** → **DNS** → **Add record** (repeat for each hostname):
+
+   | Type | Name | Target | Proxy |
+   |---|---|---|---|
+   | `CNAME` | `app` | `<tunnel-id>.cfargotunnel.com` | ✅ Proxied |
+   | `CNAME` | `dev` | `<tunnel-id>.cfargotunnel.com` | ✅ Proxied |
 
 4. **Add the tunnel token** as a GitHub Secret: `CLOUDFLARE_TUNNEL_TOKEN`
 
-That's it. On the next push to `main`, GitHub Actions deploys the compose stack which starts both `app` and `cloudflared`. The `cloudflared/config.yml` in the repo maps `app.countelectric.com` → `http://app:8501` over the Docker internal network.
+That's it. On the next push to `main`, GitHub Actions deploys the compose stack which starts `app`, `app-dev`, and `cloudflared`. The `cloudflared/config.yml` in the repo routes:
+- `app.countelectric.com` → `http://app:8501` (production)
+- `dev.countelectric.com` → `http://app-dev:8502` (redesigned UI)
 
 > **Note on `--config` flag order:** In cloudflared CLI, the `--config` flag must come *before* the `tunnel` subcommand: `cloudflared --config /etc/cloudflared/config.yml tunnel run --token ...` — not after `run`. This is already correct in `docker-compose.yml`.
 
@@ -650,11 +692,11 @@ count-electric/
 ├── README.md
 ├── requirements.txt
 ├── Dockerfile
-├── docker-compose.yml          # app + cloudflared services
+├── docker-compose.yml          # app (8501) + app-dev (8502) + cloudflared
 ├── .gitignore
 │
 ├── cloudflared/
-│   └── config.yml              # ingress: app.countelectric.com → http://app:8501
+│   └── config.yml              # ingress: app → :8501, dev → :8502
 │
 ├── ingestion/
 │   ├── ingest_iea.py                # IEA Global EV Data → S3
@@ -682,7 +724,8 @@ count-electric/
 │       └── spark_utils.py
 │
 ├── streamlit/
-│   └── app.py                  # MD3 Streamlit app, Bootstrap-style tab nav
+│   ├── app.py                  # Production app — MD3 teal theme, 4 tabs
+│   └── app_dev.py              # Dev variant — Apple-casual redesign, 3 tabs, dev.countelectric.com
 │
 └── .github/
     └── workflows/
@@ -691,4 +734,4 @@ count-electric/
 
 ---
 
-*Phase 4 complete — Dashboard live at [app.countelectric.com](https://app.countelectric.com). Full pipeline (3 data sources, 9 notebooks) triggerable from the app. Phase 5: README screenshots + portfolio write-up.*
+*Phase 4 & 5 in progress — Production dashboard at [app.countelectric.com](https://app.countelectric.com) · Redesigned variant at [dev.countelectric.com](https://dev.countelectric.com). Full pipeline (3 data sources, 9 notebooks) triggerable from the app. Gold tables served directly from S3 Parquet — no SQL Warehouse needed.*

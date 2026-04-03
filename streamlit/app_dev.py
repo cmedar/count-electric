@@ -91,13 +91,14 @@ header[data-testid="stHeader"],
     z-index: 1000;
 }
 .ce-logo {
-    text-decoration: none;
+    text-decoration: none !important;
     display: flex;
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
     margin-right: auto;
 }
+.ce-logo * { text-decoration: none !important; }
 .ce-logo-mark {
     width: 32px; height: 32px;
     background: var(--teal);
@@ -107,10 +108,11 @@ header[data-testid="stHeader"],
 }
 .ce-logo-text {
     font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 1.15rem;
+    font-weight: 500;
     color: var(--teal-dark);
-    letter-spacing: -0.4px;
+    letter-spacing: -0.3px;
+    text-decoration: none;
 }
 .ce-nav {
     display: flex;
@@ -436,11 +438,10 @@ hr { border-color: var(--border); }
 st.markdown("""
 <div class="ce-top-bar">
     <a href="#" data-tab="0" class="ce-logo">
-        <div class="ce-logo-mark">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="white">
-                <path d="M13 2L3 14h7v8l11-14h-8z"/>
-            </svg>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="#00897B">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3H5.77L6.85 7zM19 17H5v-5h14v5z"/>
+            <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
+        </svg>
         <span class="ce-logo-text">Count Electric</span>
     </a>
     <nav class="ce-nav">

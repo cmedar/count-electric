@@ -136,7 +136,7 @@ header[data-testid="stHeader"],
 
 /* ── Content ── */
 .main .block-container {
-    padding-top: 84px !important;
+    padding-top: 68px !important;
     padding-left: 40px !important;
     padding-right: 40px !important;
     max-width: 1280px;

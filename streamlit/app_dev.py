@@ -135,11 +135,17 @@ header[data-testid="stHeader"],
 .ce-nav a.active { background: var(--teal-surface); color: var(--teal-dark); font-weight: 600; }
 
 /* ── Content ── */
-.main .block-container {
-    padding-top: 28px !important;
+.main .block-container,
+[data-testid="stMainBlockContainer"] {
+    padding-top: 64px !important;
     padding-left: 40px !important;
     padding-right: 40px !important;
     max-width: 1280px;
+}
+/* Kill BaseWeb tab-panel top padding (it stacks on top of block-container) */
+[data-baseweb="tab-panel"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
 }
 
 /* ── Typography ── */
@@ -153,7 +159,7 @@ h2 { color: var(--text);      font-size: 1.25rem; }
 h3 { color: var(--text);      font-size: 1.05rem; }
 
 /* ── Hero ── */
-.ce-hero { padding: 24px 0 20px; }
+.ce-hero { padding: 0 0 20px; }
 .ce-eyebrow {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11.5px;

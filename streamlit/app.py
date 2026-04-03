@@ -863,9 +863,9 @@ with _tab_dash:
     try:
         df_stock = load_stock_snapshot()
     except Exception:
-            df_stock = pd.DataFrame()
+        df_stock = pd.DataFrame()
 
-        _layout = dict(
+    _layout = dict(
             plot_bgcolor="white", paper_bgcolor="white",
             font_family="system-ui, -apple-system, sans-serif",
             hovermode="x unified",
@@ -873,327 +873,327 @@ with _tab_dash:
             margin=dict(l=80, r=50, t=48, b=0),
         )
 
-        col_a, col_b = st.columns(2)
+    col_a, col_b = st.columns(2)
 
-        with col_a:
-            st.subheader("Romania vs EU Average — EV Market Share")
-            st.caption("Source: gold.romania_ev_summary")
-            fig1 = go.Figure()
-            fig1.add_trace(go.Scatter(
-                x=df_ro["year"], y=df_ro["ev_market_share_pct"],
-                mode="lines+markers", name="Romania",
-                line=dict(color="#00BFA5", width=2), marker=dict(size=6),
-                hovertemplate="Romania %{x}: %{y:.2f}%<extra></extra>",
-            ))
-            fig1.add_trace(go.Scatter(
-                x=df_ro["year"], y=df_ro["eu_avg_ev_share_pct"],
-                mode="lines+markers", name="EU Average",
-                line=dict(color="#5C6BC0", width=2, dash="dash"), marker=dict(size=6),
-                hovertemplate="EU Avg %{x}: %{y:.2f}%<extra></extra>",
-            ))
-            # Annotate the gap in the latest year
-            latest = df_ro.dropna(subset=["vs_eu_avg_pp"]).iloc[-1]
-            gap_text = f"{latest['vs_eu_avg_pp']:+.1f} pp vs EU" if not pd.isna(latest["vs_eu_avg_pp"]) else ""
-            if gap_text:
-                fig1.add_annotation(
-                    x=latest["year"], y=latest["ev_market_share_pct"],
-                    text=gap_text, showarrow=True, arrowhead=2, arrowcolor="#888",
-                    ax=40, ay=-30, font=dict(size=11, color="#555"),
-                )
-            fig1.update_layout(**_layout, xaxis_title="Year")
-            fig1.update_xaxes(showgrid=False)
-            fig1.update_yaxes(gridcolor="#F0F0F0")
-            _ytitle(fig1, "EV Market Share (%)")
-            st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
-
-        with col_b:
-            st.subheader("Romania — EV Registrations YoY Growth")
-            st.caption("Source: gold.romania_ev_summary")
-            df_yoy = df_ro.dropna(subset=["ev_yoy_growth_pct"]).copy()
-            colors = ["#00BFA5" if v >= 0 else "#EF5350" for v in df_yoy["ev_yoy_growth_pct"]]
-            fig2 = go.Figure(go.Bar(
-                x=df_yoy["year"], y=df_yoy["ev_yoy_growth_pct"],
-                marker_color=colors,
-                hovertemplate="%{x}: %{y:.1f}%<extra></extra>",
-            ))
-            fig2.add_hline(y=0, line_color="#BDBDBD", line_width=1)
-            # Colour legend as annotations
-            fig2.add_annotation(
-                x=0.01, y=1.08, xref="paper", yref="paper",
-                text="▮ Growth", showarrow=False,
-                font=dict(size=11, color="#00BFA5"), xanchor="left",
+    with col_a:
+        st.subheader("Romania vs EU Average — EV Market Share")
+        st.caption("Source: gold.romania_ev_summary")
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(
+            x=df_ro["year"], y=df_ro["ev_market_share_pct"],
+            mode="lines+markers", name="Romania",
+            line=dict(color="#00BFA5", width=2), marker=dict(size=6),
+            hovertemplate="Romania %{x}: %{y:.2f}%<extra></extra>",
+        ))
+        fig1.add_trace(go.Scatter(
+            x=df_ro["year"], y=df_ro["eu_avg_ev_share_pct"],
+            mode="lines+markers", name="EU Average",
+            line=dict(color="#5C6BC0", width=2, dash="dash"), marker=dict(size=6),
+            hovertemplate="EU Avg %{x}: %{y:.2f}%<extra></extra>",
+        ))
+        # Annotate the gap in the latest year
+        latest = df_ro.dropna(subset=["vs_eu_avg_pp"]).iloc[-1]
+        gap_text = f"{latest['vs_eu_avg_pp']:+.1f} pp vs EU" if not pd.isna(latest["vs_eu_avg_pp"]) else ""
+        if gap_text:
+            fig1.add_annotation(
+                x=latest["year"], y=latest["ev_market_share_pct"],
+                text=gap_text, showarrow=True, arrowhead=2, arrowcolor="#888",
+                ax=40, ay=-30, font=dict(size=11, color="#555"),
             )
-            fig2.add_annotation(
-                x=0.15, y=1.08, xref="paper", yref="paper",
-                text="▮ Decline", showarrow=False,
-                font=dict(size=11, color="#EF5350"), xanchor="left",
+        fig1.update_layout(**_layout, xaxis_title="Year")
+        fig1.update_xaxes(showgrid=False)
+        fig1.update_yaxes(gridcolor="#F0F0F0")
+        _ytitle(fig1, "EV Market Share (%)")
+        st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
+
+    with col_b:
+        st.subheader("Romania — EV Registrations YoY Growth")
+        st.caption("Source: gold.romania_ev_summary")
+        df_yoy = df_ro.dropna(subset=["ev_yoy_growth_pct"]).copy()
+        colors = ["#00BFA5" if v >= 0 else "#EF5350" for v in df_yoy["ev_yoy_growth_pct"]]
+        fig2 = go.Figure(go.Bar(
+            x=df_yoy["year"], y=df_yoy["ev_yoy_growth_pct"],
+            marker_color=colors,
+            hovertemplate="%{x}: %{y:.1f}%<extra></extra>",
+        ))
+        fig2.add_hline(y=0, line_color="#BDBDBD", line_width=1)
+        # Colour legend as annotations
+        fig2.add_annotation(
+            x=0.01, y=1.08, xref="paper", yref="paper",
+            text="▮ Growth", showarrow=False,
+            font=dict(size=11, color="#00BFA5"), xanchor="left",
+        )
+        fig2.add_annotation(
+            x=0.15, y=1.08, xref="paper", yref="paper",
+            text="▮ Decline", showarrow=False,
+            font=dict(size=11, color="#EF5350"), xanchor="left",
+        )
+        fig2.update_layout(**_layout, xaxis_title="Year", showlegend=False)
+        fig2.update_xaxes(showgrid=False)
+        fig2.update_yaxes(gridcolor="#F0F0F0")
+        _ytitle(fig2, "YoY Growth (%)")
+        st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
+
+    col_c, col_d = st.columns(2)
+
+    with col_c:
+        st.subheader("Romania — EU Rank by EV Market Share")
+        st.caption("Source: gold.romania_ev_summary · Rank 1 = highest EV share in EU")
+        df_rank = df_ro.dropna(subset=["ev_share_rank"]).copy()
+        fig3 = go.Figure(go.Scatter(
+            x=df_rank["year"], y=df_rank["ev_share_rank"],
+            mode="lines+markers", name="EU Rank",
+            line=dict(color="#FFA726", width=2), marker=dict(size=8),
+            hovertemplate="Year %{x}: Rank #%{y} of %{customdata}<extra></extra>",
+            customdata=df_rank["eu_country_total"],
+        ))
+        # Label each point with its rank
+        for _, row in df_rank.iterrows():
+            fig3.add_annotation(
+                x=row["year"], y=row["ev_share_rank"],
+                text=f"#{int(row['ev_share_rank'])}",
+                showarrow=False, yshift=14,
+                font=dict(size=10, color="#FFA726"),
             )
-            fig2.update_layout(**_layout, xaxis_title="Year", showlegend=False)
-            fig2.update_xaxes(showgrid=False)
-            fig2.update_yaxes(gridcolor="#F0F0F0")
-            _ytitle(fig2, "YoY Growth (%)")
-            st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
+        fig3.update_layout(
+            **_layout,
+            yaxis=dict(autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
+            xaxis_title="Year",
+        )
+        fig3.update_xaxes(showgrid=False)
+        _ytitle(fig3, "EU Rank (lower = better)")
+        st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
 
-        col_c, col_d = st.columns(2)
+    with col_d:
+        st.subheader("Top 10 EU Countries — EV Share of New Cars")
+        latest_year = int(df_top["year"].iloc[0]) if not df_top.empty else "N/A"
+        st.caption(f"Source: gold.ev_market_share · {latest_year} · new car registrations · min 1 000 cars")
 
-        with col_c:
-            st.subheader("Romania — EU Rank by EV Market Share")
-            st.caption("Source: gold.romania_ev_summary · Rank 1 = highest EV share in EU")
-            df_rank = df_ro.dropna(subset=["ev_share_rank"]).copy()
-            fig3 = go.Figure(go.Scatter(
-                x=df_rank["year"], y=df_rank["ev_share_rank"],
-                mode="lines+markers", name="EU Rank",
-                line=dict(color="#FFA726", width=2), marker=dict(size=8),
-                hovertemplate="Year %{x}: Rank #%{y} of %{customdata}<extra></extra>",
-                customdata=df_rank["eu_country_total"],
-            ))
-            # Label each point with its rank
-            for _, row in df_rank.iterrows():
-                fig3.add_annotation(
-                    x=row["year"], y=row["ev_share_rank"],
-                    text=f"#{int(row['ev_share_rank'])}",
-                    showarrow=False, yshift=14,
-                    font=dict(size=10, color="#FFA726"),
-                )
-            fig3.update_layout(
-                **_layout,
-                yaxis=dict(autorange="reversed", tickformat="d", gridcolor="#F0F0F0"),
-                xaxis_title="Year",
-            )
-            fig3.update_xaxes(showgrid=False)
-            _ytitle(fig3, "EU Rank (lower = better)")
-            st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
+        # If Romania isn't already in top 10, append it from the Romania summary
+        df_chart = df_top.copy()
+        if "RO" not in df_chart["country_code"].values and not df_ro.empty:
+            ro_latest = df_ro.dropna(subset=["ev_market_share_pct"]).iloc[-1]
+            df_chart = pd.concat([df_chart, pd.DataFrame([{
+                "country_code": "RO",
+                "year": int(ro_latest["year"]),
+                "ev_market_share_pct": ro_latest["ev_market_share_pct"],
+            }])], ignore_index=True)
 
-        with col_d:
-            st.subheader("Top 10 EU Countries — EV Share of New Cars")
-            latest_year = int(df_top["year"].iloc[0]) if not df_top.empty else "N/A"
-            st.caption(f"Source: gold.ev_market_share · {latest_year} · new car registrations · min 1 000 cars")
+        df_top_s = df_chart.sort_values("ev_market_share_pct", ascending=True)
 
-            # If Romania isn't already in top 10, append it from the Romania summary
-            df_chart = df_top.copy()
-            if "RO" not in df_chart["country_code"].values and not df_ro.empty:
-                ro_latest = df_ro.dropna(subset=["ev_market_share_pct"]).iloc[-1]
-                df_chart = pd.concat([df_chart, pd.DataFrame([{
-                    "country_code": "RO",
-                    "year": int(ro_latest["year"]),
-                    "ev_market_share_pct": ro_latest["ev_market_share_pct"],
-                }])], ignore_index=True)
+        def bar_color(code):
+            if code == "RO":
+                return "#1565C0"   # blue — Romania
+            return "#00BFA5"       # teal — top 10
 
-            df_top_s = df_chart.sort_values("ev_market_share_pct", ascending=True)
+        fig4 = go.Figure(go.Bar(
+            x=df_top_s["ev_market_share_pct"],
+            y=df_top_s["country_code"],
+            orientation="h",
+            marker_color=[bar_color(c) for c in df_top_s["country_code"]],
+            hovertemplate="%{y}: %{x:.1f}% of new cars<extra></extra>",
+            text=[f"{v:.1f}%" for v in df_top_s["ev_market_share_pct"]],
+            textposition="outside",
+            textfont=dict(size=11),
+        ))
+        fig4.add_annotation(
+            x=0.99, y=0.01, xref="paper", yref="paper",
+            text="▮ Romania", showarrow=False,
+            font=dict(size=11, color="#1565C0"), xanchor="right",
+        )
+        fig4.update_layout(**_layout, xaxis_title="EV Share of New Cars (%)", showlegend=False)
+        fig4.update_layout(hovermode="y unified")
+        fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
+        fig4.update_yaxes(showgrid=False)
+        st.plotly_chart(fig4, use_container_width=True, config={"staticPlot": True})
 
-            def bar_color(code):
-                if code == "RO":
-                    return "#1565C0"   # blue — Romania
-                return "#00BFA5"       # teal — top 10
+    st.markdown("---")
+    st.subheader("Electric vs Combustion")
 
-            fig4 = go.Figure(go.Bar(
-                x=df_top_s["ev_market_share_pct"],
-                y=df_top_s["country_code"],
-                orientation="h",
-                marker_color=[bar_color(c) for c in df_top_s["country_code"]],
-                hovertemplate="%{y}: %{x:.1f}% of new cars<extra></extra>",
-                text=[f"{v:.1f}%" for v in df_top_s["ev_market_share_pct"]],
-                textposition="outside",
-                textfont=dict(size=11),
-            ))
-            fig4.add_annotation(
-                x=0.99, y=0.01, xref="paper", yref="paper",
-                text="▮ Romania", showarrow=False,
-                font=dict(size=11, color="#1565C0"), xanchor="right",
-            )
-            fig4.update_layout(**_layout, xaxis_title="EV Share of New Cars (%)", showlegend=False)
-            fig4.update_layout(hovermode="y unified")
-            fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
-            fig4.update_yaxes(showgrid=False)
-            st.plotly_chart(fig4, use_container_width=True, config={"staticPlot": True})
+    col_e, col_f = st.columns(2)
 
+    with col_e:
+        st.subheader("Romania — Electric vs Combustion Registrations")
+        st.caption("Source: gold.ev_market_share · absolute new car registrations per year")
+        fig5 = go.Figure()
+        fig5.add_trace(go.Bar(
+            x=df_ro_reg["year"], y=df_ro_reg["electric_registrations"],
+            name="Electric", marker_color="#00BFA5",
+            hovertemplate="%{x}: %{y:,} Electric<extra></extra>",
+        ))
+        fig5.add_trace(go.Bar(
+            x=df_ro_reg["year"], y=df_ro_reg["ice_registrations"],
+            name="Combustion", marker_color="#EF5350",
+            hovertemplate="%{x}: %{y:,} Combustion<extra></extra>",
+        ))
+        fig5.update_layout(**_layout, barmode="group", xaxis_title="Year")
+        fig5.update_xaxes(showgrid=False)
+        fig5.update_yaxes(gridcolor="#F0F0F0")
+        _ytitle(fig5, "New Registrations")
+        st.plotly_chart(fig5, use_container_width=True, config={"staticPlot": True})
+
+    with col_f:
+        st.subheader("Romania — Fuel Mix Shift")
+        st.caption("Source: gold.ev_market_share · share of new car registrations")
+        df_mix = df_ro_reg.copy()
+        df_mix["other"] = (
+            df_mix["total_registrations"]
+            - df_mix["electric_registrations"]
+            - df_mix["ice_registrations"]
+        ).clip(lower=0)
+        fig6 = go.Figure()
+        fig6.add_trace(go.Scatter(
+            x=df_mix["year"], y=df_mix["electric_registrations"],
+            name="Electric", stackgroup="one", groupnorm="percent",
+            fillcolor="#00BFA5", line=dict(color="#00BFA5", width=0),
+            hovertemplate="%{x} Electric: %{y:.1f}%<extra></extra>",
+        ))
+        fig6.add_trace(go.Scatter(
+            x=df_mix["year"], y=df_mix["other"],
+            name="Other", stackgroup="one", groupnorm="percent",
+            fillcolor="#B0BEC5", line=dict(color="#B0BEC5", width=0),
+            hovertemplate="%{x} Other: %{y:.1f}%<extra></extra>",
+        ))
+        fig6.add_trace(go.Scatter(
+            x=df_mix["year"], y=df_mix["ice_registrations"],
+            name="Combustion", stackgroup="one", groupnorm="percent",
+            fillcolor="#EF5350", line=dict(color="#EF5350", width=0),
+            hovertemplate="%{x} Combustion: %{y:.1f}%<extra></extra>",
+        ))
+        fig6.update_layout(**_layout, xaxis_title="Year")
+        fig6.update_xaxes(showgrid=False)
+        fig6.update_yaxes(gridcolor="#F0F0F0")
+        _ytitle(fig6, "Share of New Cars (%)")
+        st.plotly_chart(fig6, use_container_width=True, config={"staticPlot": True})
+
+    col_g, col_h = st.columns(2)
+
+    with col_g:
+        st.subheader("Romania — Electric Rise vs Combustion Decline")
+        st.caption("Source: gold.ev_market_share · indexed to first available year = 100")
+        df_idx = df_ro_reg.dropna(subset=["electric_registrations", "ice_registrations"]).copy()
+        base_elec = df_idx["electric_registrations"].iloc[0]
+        base_ice  = df_idx["ice_registrations"].iloc[0]
+        df_idx["elec_idx"] = df_idx["electric_registrations"] / base_elec * 100
+        df_idx["ice_idx"]  = df_idx["ice_registrations"]  / base_ice  * 100
+        fig7 = go.Figure()
+        fig7.add_trace(go.Scatter(
+            x=df_idx["year"], y=df_idx["elec_idx"],
+            mode="lines+markers", name="Electric",
+            line=dict(color="#00BFA5", width=2), marker=dict(size=6),
+            hovertemplate="%{x} Electric: %{y:.0f} (base 100)<extra></extra>",
+        ))
+        fig7.add_trace(go.Scatter(
+            x=df_idx["year"], y=df_idx["ice_idx"],
+            mode="lines+markers", name="Combustion",
+            line=dict(color="#EF5350", width=2), marker=dict(size=6),
+            hovertemplate="%{x} Combustion: %{y:.0f} (base 100)<extra></extra>",
+        ))
+        fig7.add_hline(y=100, line_color="#BDBDBD", line_width=1, line_dash="dot")
+        fig7.update_layout(**_layout, xaxis_title="Year")
+        fig7.update_xaxes(showgrid=False)
+        fig7.update_yaxes(gridcolor="#F0F0F0")
+        _ytitle(fig7, "Index (first year = 100)")
+        st.plotly_chart(fig7, use_container_width=True, config={"staticPlot": True})
+
+    with col_h:
+        st.subheader("EU Countries — Electric Share of Electric + Combustion")
+        latest_year_eu = int(load_top10_ev_share()["year"].iloc[0]) if not df_eu_comb.empty else "N/A"
+        st.caption(f"Source: gold.ev_market_share · {latest_year_eu} · Electric / (Electric + Combustion)")
+        df_ratio = df_eu_comb.copy()
+        df_ratio["elec_comb_total"] = df_ratio["electric_registrations"] + df_ratio["ice_registrations"]
+        df_ratio = df_ratio[df_ratio["elec_comb_total"] > 0].copy()
+        df_ratio["ratio_pct"] = (
+            df_ratio["electric_registrations"] / df_ratio["elec_comb_total"] * 100
+        )
+        df_ratio = df_ratio.sort_values("ratio_pct", ascending=True)
+
+        fig8 = go.Figure(go.Bar(
+            x=df_ratio["ratio_pct"],
+            y=df_ratio["country_code"],
+            orientation="h",
+            marker_color=["#1565C0" if c == "RO" else "#00BFA5" for c in df_ratio["country_code"]],
+            hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
+            text=[f"{v:.1f}%" for v in df_ratio["ratio_pct"]],
+            textposition="outside",
+            textfont=dict(size=11),
+        ))
+        fig8.add_annotation(
+            x=0.99, y=0.01, xref="paper", yref="paper",
+            text="▮ Romania", showarrow=False,
+            font=dict(size=11, color="#1565C0"), xanchor="right",
+        )
+        fig8.update_layout(**_layout, xaxis_title="Electric / (Electric + Combustion) %", showlegend=False)
+        fig8.update_layout(hovermode="y unified")
+        fig8.update_xaxes(gridcolor="#F0F0F0", range=[0, df_ratio["ratio_pct"].max() * 1.18])
+        fig8.update_yaxes(showgrid=False)
+        st.plotly_chart(fig8, use_container_width=True, config={"staticPlot": True})
+
+    if df_stock.empty:
+        st.info(
+            "**Fleet snapshot data not yet available.** "
+            "Run *Eurostat Stock Ingestion* then execute the Databricks pipeline: "
+            "`03_bronze_eurostat_stock` → `03_silver_eurostat_stock` → `03_gold_stock_snapshot`."
+        )
+    else:
         st.markdown("---")
-        st.subheader("Electric vs Combustion")
+        st.subheader("Total Fleet on the Road (Stock)")
+        st.caption("Source: gold.car_stock_snapshot · Eurostat ROAD_EQS_CARPDA · all cars currently registered")
 
-        col_e, col_f = st.columns(2)
+        col_i, col_j = st.columns(2)
 
-        with col_e:
-            st.subheader("Romania — Electric vs Combustion Registrations")
-            st.caption("Source: gold.ev_market_share · absolute new car registrations per year")
-            fig5 = go.Figure()
-            fig5.add_trace(go.Bar(
-                x=df_ro_reg["year"], y=df_ro_reg["electric_registrations"],
-                name="Electric", marker_color="#00BFA5",
-                hovertemplate="%{x}: %{y:,} Electric<extra></extra>",
-            ))
-            fig5.add_trace(go.Bar(
-                x=df_ro_reg["year"], y=df_ro_reg["ice_registrations"],
+        with col_i:
+            st.subheader("Romania — Fleet Composition Over Time")
+            st.caption("All cars on the road, stacked by fuel category")
+            df_stk = df_stock.dropna(subset=["total_stock"]).copy()
+            df_stk = df_stk[df_stk["year"].between(2018, 2024)]
+            df_stk["other_combined"] = (
+                df_stk["hybrid_stock"].fillna(0) + df_stk["other_stock"].fillna(0)
+            )
+            fig9 = go.Figure()
+            fig9.add_trace(go.Bar(
+                x=df_stk["year"], y=df_stk["combustion_stock"],
                 name="Combustion", marker_color="#EF5350",
-                hovertemplate="%{x}: %{y:,} Combustion<extra></extra>",
+                hovertemplate="%{x} Combustion: %{y:,}<extra></extra>",
             ))
-            fig5.update_layout(**_layout, barmode="group", xaxis_title="Year")
-            fig5.update_xaxes(showgrid=False)
-            fig5.update_yaxes(gridcolor="#F0F0F0")
-            _ytitle(fig5, "New Registrations")
-            st.plotly_chart(fig5, use_container_width=True, config={"staticPlot": True})
+            fig9.add_trace(go.Bar(
+                x=df_stk["year"], y=df_stk["other_combined"],
+                name="Other / Hybrid", marker_color="#B0BEC5",
+                hovertemplate="%{x} Other/Hybrid: %{y:,}<extra></extra>",
+            ))
+            fig9.add_trace(go.Bar(
+                x=df_stk["year"], y=df_stk["electric_stock"],
+                name="Electric", marker_color="#00BFA5",
+                hovertemplate="%{x} Electric: %{y:,}<extra></extra>",
+            ))
+            fig9.update_layout(**_layout, barmode="stack", xaxis_title="Year")
+            fig9.update_xaxes(showgrid=False)
+            fig9.update_yaxes(gridcolor="#F0F0F0", range=[5_000_000, 10_000_000])
+            _ytitle(fig9, "Cars on the Road")
+            st.plotly_chart(fig9, use_container_width=True, config={"staticPlot": True})
 
-        with col_f:
-            st.subheader("Romania — Fuel Mix Shift")
-            st.caption("Source: gold.ev_market_share · share of new car registrations")
-            df_mix = df_ro_reg.copy()
-            df_mix["other"] = (
-                df_mix["total_registrations"]
-                - df_mix["electric_registrations"]
-                - df_mix["ice_registrations"]
-            ).clip(lower=0)
-            fig6 = go.Figure()
-            fig6.add_trace(go.Scatter(
-                x=df_mix["year"], y=df_mix["electric_registrations"],
-                name="Electric", stackgroup="one", groupnorm="percent",
-                fillcolor="#00BFA5", line=dict(color="#00BFA5", width=0),
-                hovertemplate="%{x} Electric: %{y:.1f}%<extra></extra>",
-            ))
-            fig6.add_trace(go.Scatter(
-                x=df_mix["year"], y=df_mix["other"],
-                name="Other", stackgroup="one", groupnorm="percent",
-                fillcolor="#B0BEC5", line=dict(color="#B0BEC5", width=0),
-                hovertemplate="%{x} Other: %{y:.1f}%<extra></extra>",
-            ))
-            fig6.add_trace(go.Scatter(
-                x=df_mix["year"], y=df_mix["ice_registrations"],
-                name="Combustion", stackgroup="one", groupnorm="percent",
-                fillcolor="#EF5350", line=dict(color="#EF5350", width=0),
-                hovertemplate="%{x} Combustion: %{y:.1f}%<extra></extra>",
-            ))
-            fig6.update_layout(**_layout, xaxis_title="Year")
-            fig6.update_xaxes(showgrid=False)
-            fig6.update_yaxes(gridcolor="#F0F0F0")
-            _ytitle(fig6, "Share of New Cars (%)")
-            st.plotly_chart(fig6, use_container_width=True, config={"staticPlot": True})
-
-        col_g, col_h = st.columns(2)
-
-        with col_g:
-            st.subheader("Romania — Electric Rise vs Combustion Decline")
-            st.caption("Source: gold.ev_market_share · indexed to first available year = 100")
-            df_idx = df_ro_reg.dropna(subset=["electric_registrations", "ice_registrations"]).copy()
-            base_elec = df_idx["electric_registrations"].iloc[0]
-            base_ice  = df_idx["ice_registrations"].iloc[0]
-            df_idx["elec_idx"] = df_idx["electric_registrations"] / base_elec * 100
-            df_idx["ice_idx"]  = df_idx["ice_registrations"]  / base_ice  * 100
-            fig7 = go.Figure()
-            fig7.add_trace(go.Scatter(
-                x=df_idx["year"], y=df_idx["elec_idx"],
-                mode="lines+markers", name="Electric",
+        with col_j:
+            st.subheader("Romania — Electric Share of Total Fleet")
+            st.caption("% of all cars on the road that are Electric — fleet transitions slowly")
+            df_share_stk = df_stock.dropna(subset=["electric_share_pct"]).copy()
+            df_share_stk = df_share_stk[df_share_stk["year"].between(2018, 2024)]
+            latest_stock = df_share_stk.iloc[-1]
+            fig10 = go.Figure()
+            fig10.add_trace(go.Scatter(
+                x=df_share_stk["year"], y=df_share_stk["electric_share_pct"],
+                mode="lines+markers", name="Electric fleet share",
                 line=dict(color="#00BFA5", width=2), marker=dict(size=6),
-                hovertemplate="%{x} Electric: %{y:.0f} (base 100)<extra></extra>",
+                hovertemplate="%{x}: %{y:.2f}% of all cars<extra></extra>",
             ))
-            fig7.add_trace(go.Scatter(
-                x=df_idx["year"], y=df_idx["ice_idx"],
-                mode="lines+markers", name="Combustion",
-                line=dict(color="#EF5350", width=2), marker=dict(size=6),
-                hovertemplate="%{x} Combustion: %{y:.0f} (base 100)<extra></extra>",
-            ))
-            fig7.add_hline(y=100, line_color="#BDBDBD", line_width=1, line_dash="dot")
-            fig7.update_layout(**_layout, xaxis_title="Year")
-            fig7.update_xaxes(showgrid=False)
-            fig7.update_yaxes(gridcolor="#F0F0F0")
-            _ytitle(fig7, "Index (first year = 100)")
-            st.plotly_chart(fig7, use_container_width=True, config={"staticPlot": True})
-
-        with col_h:
-            st.subheader("EU Countries — Electric Share of Electric + Combustion")
-            latest_year_eu = int(load_top10_ev_share()["year"].iloc[0]) if not df_eu_comb.empty else "N/A"
-            st.caption(f"Source: gold.ev_market_share · {latest_year_eu} · Electric / (Electric + Combustion)")
-            df_ratio = df_eu_comb.copy()
-            df_ratio["elec_comb_total"] = df_ratio["electric_registrations"] + df_ratio["ice_registrations"]
-            df_ratio = df_ratio[df_ratio["elec_comb_total"] > 0].copy()
-            df_ratio["ratio_pct"] = (
-                df_ratio["electric_registrations"] / df_ratio["elec_comb_total"] * 100
+            fig10.add_annotation(
+                x=latest_stock["year"], y=latest_stock["electric_share_pct"],
+                text=f"{latest_stock['electric_share_pct']:.2f}% of total fleet",
+                showarrow=True, arrowhead=2, arrowcolor="#888",
+                ax=40, ay=-30, font=dict(size=11, color="#555"),
             )
-            df_ratio = df_ratio.sort_values("ratio_pct", ascending=True)
-
-            fig8 = go.Figure(go.Bar(
-                x=df_ratio["ratio_pct"],
-                y=df_ratio["country_code"],
-                orientation="h",
-                marker_color=["#1565C0" if c == "RO" else "#00BFA5" for c in df_ratio["country_code"]],
-                hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
-                text=[f"{v:.1f}%" for v in df_ratio["ratio_pct"]],
-                textposition="outside",
-                textfont=dict(size=11),
-            ))
-            fig8.add_annotation(
-                x=0.99, y=0.01, xref="paper", yref="paper",
-                text="▮ Romania", showarrow=False,
-                font=dict(size=11, color="#1565C0"), xanchor="right",
-            )
-            fig8.update_layout(**_layout, xaxis_title="Electric / (Electric + Combustion) %", showlegend=False)
-            fig8.update_layout(hovermode="y unified")
-            fig8.update_xaxes(gridcolor="#F0F0F0", range=[0, df_ratio["ratio_pct"].max() * 1.18])
-            fig8.update_yaxes(showgrid=False)
-            st.plotly_chart(fig8, use_container_width=True, config={"staticPlot": True})
-
-        if df_stock.empty:
-            st.info(
-                "**Fleet snapshot data not yet available.** "
-                "Run *Eurostat Stock Ingestion* then execute the Databricks pipeline: "
-                "`03_bronze_eurostat_stock` → `03_silver_eurostat_stock` → `03_gold_stock_snapshot`."
-            )
-        else:
-            st.markdown("---")
-            st.subheader("Total Fleet on the Road (Stock)")
-            st.caption("Source: gold.car_stock_snapshot · Eurostat ROAD_EQS_CARPDA · all cars currently registered")
-
-            col_i, col_j = st.columns(2)
-
-            with col_i:
-                st.subheader("Romania — Fleet Composition Over Time")
-                st.caption("All cars on the road, stacked by fuel category")
-                df_stk = df_stock.dropna(subset=["total_stock"]).copy()
-                df_stk = df_stk[df_stk["year"].between(2018, 2024)]
-                df_stk["other_combined"] = (
-                    df_stk["hybrid_stock"].fillna(0) + df_stk["other_stock"].fillna(0)
-                )
-                fig9 = go.Figure()
-                fig9.add_trace(go.Bar(
-                    x=df_stk["year"], y=df_stk["combustion_stock"],
-                    name="Combustion", marker_color="#EF5350",
-                    hovertemplate="%{x} Combustion: %{y:,}<extra></extra>",
-                ))
-                fig9.add_trace(go.Bar(
-                    x=df_stk["year"], y=df_stk["other_combined"],
-                    name="Other / Hybrid", marker_color="#B0BEC5",
-                    hovertemplate="%{x} Other/Hybrid: %{y:,}<extra></extra>",
-                ))
-                fig9.add_trace(go.Bar(
-                    x=df_stk["year"], y=df_stk["electric_stock"],
-                    name="Electric", marker_color="#00BFA5",
-                    hovertemplate="%{x} Electric: %{y:,}<extra></extra>",
-                ))
-                fig9.update_layout(**_layout, barmode="stack", xaxis_title="Year")
-                fig9.update_xaxes(showgrid=False)
-                fig9.update_yaxes(gridcolor="#F0F0F0", range=[5_000_000, 10_000_000])
-                _ytitle(fig9, "Cars on the Road")
-                st.plotly_chart(fig9, use_container_width=True, config={"staticPlot": True})
-
-            with col_j:
-                st.subheader("Romania — Electric Share of Total Fleet")
-                st.caption("% of all cars on the road that are Electric — fleet transitions slowly")
-                df_share_stk = df_stock.dropna(subset=["electric_share_pct"]).copy()
-                df_share_stk = df_share_stk[df_share_stk["year"].between(2018, 2024)]
-                latest_stock = df_share_stk.iloc[-1]
-                fig10 = go.Figure()
-                fig10.add_trace(go.Scatter(
-                    x=df_share_stk["year"], y=df_share_stk["electric_share_pct"],
-                    mode="lines+markers", name="Electric fleet share",
-                    line=dict(color="#00BFA5", width=2), marker=dict(size=6),
-                    hovertemplate="%{x}: %{y:.2f}% of all cars<extra></extra>",
-                ))
-                fig10.add_annotation(
-                    x=latest_stock["year"], y=latest_stock["electric_share_pct"],
-                    text=f"{latest_stock['electric_share_pct']:.2f}% of total fleet",
-                    showarrow=True, arrowhead=2, arrowcolor="#888",
-                    ax=40, ay=-30, font=dict(size=11, color="#555"),
-                )
-                fig10.update_layout(**_layout, xaxis_title="Year")
-                fig10.update_xaxes(showgrid=False)
-                fig10.update_yaxes(gridcolor="#F0F0F0")
-                _ytitle(fig10, "Electric Fleet Share (%)")
-                st.plotly_chart(fig10, use_container_width=True, config={"staticPlot": True})
+            fig10.update_layout(**_layout, xaxis_title="Year")
+            fig10.update_xaxes(showgrid=False)
+            fig10.update_yaxes(gridcolor="#F0F0F0")
+            _ytitle(fig10, "Electric Fleet Share (%)")
+            st.plotly_chart(fig10, use_container_width=True, config={"staticPlot": True})
 

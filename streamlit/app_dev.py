@@ -983,7 +983,7 @@ with _tab_dash:
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.subheader("Romania vs EU Average — EV Market Share")
+        st.subheader("Romania vs EU Average — Electric Car Market Share")
         st.caption("Source: gold.romania_ev_summary")
         fig1 = go.Figure()
         fig1.add_trace(go.Scatter(
@@ -1009,11 +1009,11 @@ with _tab_dash:
         fig1.update_layout(**_layout, xaxis_title="Year")
         fig1.update_xaxes(showgrid=False)
         fig1.update_yaxes(gridcolor="#F0F0F0")
-        _ytitle(fig1, "EV Market Share (%)")
+        _ytitle(fig1, "Electric Car Market Share (%)")
         st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
 
     with col_b:
-        st.subheader("Romania — EV Registrations YoY Growth")
+        st.subheader("Romania — Electric Car Registrations YoY Growth")
         st.caption("Source: gold.romania_ev_summary")
         df_yoy = df_ro.dropna(subset=["ev_yoy_growth_pct"]).copy()
         colors = ["#00BFA5" if v >= 0 else "#EF5350" for v in df_yoy["ev_yoy_growth_pct"]]
@@ -1036,8 +1036,8 @@ with _tab_dash:
     col_c, col_d = st.columns(2)
 
     with col_c:
-        st.subheader("Romania — EU Rank by EV Market Share")
-        st.caption("Source: gold.romania_ev_summary · Rank 1 = highest EV share in EU")
+        st.subheader("Romania — EU Rank by Electric Car Market Share")
+        st.caption("Source: gold.romania_ev_summary · Rank 1 = highest electric car share in EU")
         df_rank = df_ro.dropna(subset=["ev_share_rank"]).copy()
         fig3 = go.Figure(go.Scatter(
             x=df_rank["year"], y=df_rank["ev_share_rank"],
@@ -1062,7 +1062,7 @@ with _tab_dash:
         st.plotly_chart(fig3, use_container_width=True, config={"staticPlot": True})
 
     with col_d:
-        st.subheader("Top 10 EU Countries — EV Share of New Cars")
+        st.subheader("Top 10 EU Countries — Electric Cars Share of New Cars")
         latest_year = int(df_top["year"].iloc[0]) if not df_top.empty else "N/A"
         st.caption(f"Source: gold.ev_market_share · {latest_year} · new car registrations · min 1 000 cars")
         df_chart = df_top.copy()
@@ -1082,7 +1082,7 @@ with _tab_dash:
         ))
         fig4.add_annotation(x=0.99, y=0.01, xref="paper", yref="paper",
             text="▮ Romania", showarrow=False, font=dict(size=11, color="#1565C0"), xanchor="right")
-        fig4.update_layout(**_layout, xaxis_title="EV Share of New Cars (%)", showlegend=False)
+        fig4.update_layout(**_layout, xaxis_title="Electric Cars Share of New Cars (%)", showlegend=False)
         fig4.update_layout(hovermode="y unified")
         fig4.update_xaxes(gridcolor="#F0F0F0", range=[0, df_top_s["ev_market_share_pct"].max() * 1.18])
         fig4.update_yaxes(showgrid=False)

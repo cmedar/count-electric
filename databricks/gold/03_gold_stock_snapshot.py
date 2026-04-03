@@ -127,7 +127,18 @@ print(f"Written {df_gold.count()} rows to {GOLD_TABLE}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5 — Optimize
+# MAGIC ## 5 — Export to S3 for Streamlit (direct Parquet read, no SQL Warehouse needed)
+
+# COMMAND ----------
+
+S3_EXPORT = "s3://count-electric/gold/car_stock_snapshot/"
+df_gold.coalesce(1).write.mode("overwrite").parquet(S3_EXPORT)
+print(f"Exported Parquet to {S3_EXPORT}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 6 — Optimize
 
 # COMMAND ----------
 

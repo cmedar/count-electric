@@ -209,7 +209,18 @@ print(f"Written {df_gold.count()} rows to {GOLD_TABLE}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7 — Optimize the Delta table
+# MAGIC ## 7 — Export to S3 for Streamlit (direct Parquet read, no SQL Warehouse needed)
+
+# COMMAND ----------
+
+S3_EXPORT = "s3://count-electric/gold/ev_market_share/"
+df_gold.coalesce(1).write.mode("overwrite").parquet(S3_EXPORT)
+print(f"Exported Parquet to {S3_EXPORT}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 8 — Optimize the Delta table
 # MAGIC
 # MAGIC `OPTIMIZE` compacts many small Parquet files written during ingestion
 # MAGIC into fewer, larger files — faster reads.
@@ -227,7 +238,7 @@ print(f"Written {df_gold.count()} rows to {GOLD_TABLE}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8 — Validate
+# MAGIC ## 9 — Validate
 
 # COMMAND ----------
 

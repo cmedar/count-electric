@@ -14,6 +14,8 @@ databricks-sql-connector
 streamlit>=1.37.0
 plotly
 pandas
+pyarrow
+s3fs
 
 # Utilities
 python-dotenv

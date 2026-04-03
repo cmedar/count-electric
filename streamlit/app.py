@@ -793,110 +793,76 @@ components.html("""
 
 # ── PAGE: DASHBOARD ───────────────────────────────────────────────────────────
 
-DATABRICKS_HTTP_PATH = os.getenv("DATABRICKS_HTTP_PATH", "")
+def _s3_parquet(key: str) -> pd.DataFrame:
+    """Read a Parquet folder from S3 using the EC2 IAM role (no credentials needed)."""
+    return pd.read_parquet(f"s3://{S3_BUCKET}/gold/{key}/")
 
-def _db_connection():
-    from databricks import sql
-    return sql.connect(
-        server_hostname=os.getenv("DATABRICKS_HOST", "").replace("https://", ""),
-        http_path=DATABRICKS_HTTP_PATH,
-        access_token=os.getenv("DATABRICKS_TOKEN", ""),
+@st.cache_data(ttl=None)
+def load_ev_market_share() -> pd.DataFrame:
+    return _s3_parquet("ev_market_share")
+
+@st.cache_data(ttl=None)
+def load_romania_summary() -> pd.DataFrame:
+    return _s3_parquet("romania_ev_summary").sort_values("year")
+
+@st.cache_data(ttl=None)
+def load_top10_ev_share() -> pd.DataFrame:
+    df = load_ev_market_share()
+    latest = df["year"].max()
+    return (
+        df[(df["year"] == latest) & (df["total_registrations"] > 1000)]
+        .nlargest(10, "ev_market_share_pct")
     )
 
-@st.cache_data(ttl=3600)
-def load_romania_summary() -> pd.DataFrame:
-    with _db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT year, electric_registrations, total_registrations,
-                       ev_market_share_pct, eu_avg_ev_share_pct, vs_eu_avg_pp,
-                       ev_yoy_growth_pct, ev_sales_iea, ev_stock_iea,
-                       ev_share_rank, eu_country_total
-                FROM gold.romania_ev_summary
-                ORDER BY year
-            """)
-            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
-
-@st.cache_data(ttl=3600)
-def load_top10_ev_share() -> pd.DataFrame:
-    with _db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT country_code, year, electric_registrations,
-                       total_registrations, ev_market_share_pct
-                FROM gold.ev_market_share
-                WHERE year = (SELECT MAX(year) FROM gold.ev_market_share)
-                  AND total_registrations > 1000
-                ORDER BY ev_market_share_pct DESC
-                LIMIT 10
-            """)
-            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
-
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=None)
 def load_romania_registrations() -> pd.DataFrame:
-    with _db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT year, electric_registrations, ice_registrations, total_registrations
-                FROM gold.ev_market_share
-                WHERE country_code = 'RO'
-                ORDER BY year
-            """)
-            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+    return (
+        load_ev_market_share()
+        .pipe(lambda d: d[d["country_code"] == "RO"])
+        [["year", "electric_registrations", "ice_registrations", "total_registrations"]]
+        .sort_values("year")
+    )
 
-@st.cache_data(ttl=3600)
-def load_stock_snapshot() -> pd.DataFrame:
-    with _db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT country_code, year, total_stock, electric_stock,
-                       combustion_stock, hybrid_stock, other_stock,
-                       electric_share_pct, combustion_share_pct
-                FROM gold.car_stock_snapshot
-                WHERE country_code = 'RO'
-                ORDER BY year
-            """)
-            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
-
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=None)
 def load_eu_latest_ev_combustion() -> pd.DataFrame:
-    with _db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT country_code, electric_registrations, ice_registrations,
-                       total_registrations, ev_market_share_pct
-                FROM gold.ev_market_share
-                WHERE year = (SELECT MAX(year) FROM gold.ev_market_share)
-                  AND total_registrations > 1000
-                ORDER BY country_code
-            """)
-            return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+    df = load_ev_market_share()
+    latest = df["year"].max()
+    return (
+        df[(df["year"] == latest) & (df["total_registrations"] > 1000)]
+        [["country_code", "electric_registrations", "ice_registrations",
+          "total_registrations", "ev_market_share_pct"]]
+        .sort_values("country_code")
+    )
+
+@st.cache_data(ttl=None)
+def load_stock_snapshot() -> pd.DataFrame:
+    return (
+        _s3_parquet("car_stock_snapshot")
+        .pipe(lambda d: d[d["country_code"] == "RO"])
+        .sort_values("year")
+    )
 
 with _tab_dash:
     st.title("EV Dashboard")
-    st.markdown("Analytics from Databricks Gold Delta tables — cleaned, aggregated, production-ready data.")
+    st.markdown("Analytics from Databricks Gold tables — served directly from S3, no query latency.")
     st.markdown("---")
 
-    if not DATABRICKS_HTTP_PATH:
+    try:
+        df_ro      = load_romania_summary()
+        df_top     = load_top10_ev_share()
+        df_ro_reg  = load_romania_registrations()
+        df_eu_comb = load_eu_latest_ev_combustion()
+    except Exception:
         st.info(
-            "**Databricks SQL Warehouse not configured.** "
-            "Set the `DATABRICKS_HTTP_PATH` environment variable to enable this dashboard.  \n"
-            "Find it in Databricks → **SQL Warehouses** → your warehouse → **Connection Details → HTTP Path**."
+            "**Dashboard data not yet available.** "
+            "Go to the **Ingestion** tab and run the Databricks pipeline to generate the Gold tables."
         )
-    else:
-        try:
-            df_ro      = load_romania_summary()
-            df_top     = load_top10_ev_share()
-            df_ro_reg  = load_romania_registrations()
-            df_eu_comb = load_eu_latest_ev_combustion()
-        except Exception as e:
-            st.error(f"Could not connect to Databricks: {e}")
-            st.stop()
+        st.stop()
 
-        # Stock snapshot is optional — table may not exist until pipeline is run
-        try:
-            df_stock = load_stock_snapshot()
-        except Exception:
+    # Stock snapshot is optional — available after Eurostat stock pipeline runs
+    try:
+        df_stock = load_stock_snapshot()
+    except Exception:
             df_stock = pd.DataFrame()
 
         _layout = dict(

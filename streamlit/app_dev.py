@@ -151,7 +151,7 @@ h2 { color: var(--text);      font-size: 1.25rem; }
 h3 { color: var(--text);      font-size: 1.05rem; }
 
 /* ── Hero ── */
-.ce-hero { padding: 52px 0 44px; }
+.ce-hero { padding: 24px 0 20px; }
 .ce-eyebrow {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11.5px;
@@ -159,16 +159,16 @@ h3 { color: var(--text);      font-size: 1.05rem; }
     color: var(--teal);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin: 0 0 22px;
+    margin: 0 0 14px;
 }
 .ce-hero-title {
     font-family: 'DM Serif Display', Georgia, serif;
-    font-style: italic;
+    font-style: normal;
     font-size: clamp(2.2rem, 4.5vw, 3.2rem);
     line-height: 1.15;
     color: var(--text);
     letter-spacing: -0.02em;
-    margin: 0 0 18px;
+    margin: 0 0 16px;
     max-width: 700px;
 }
 .ce-hero-sub {
@@ -177,7 +177,7 @@ h3 { color: var(--text);      font-size: 1.05rem; }
     color: var(--text-2);
     line-height: 1.65;
     max-width: 580px;
-    margin: 0 0 44px;
+    margin: 0 0 28px;
 }
 
 /* ── Stats row ── */
@@ -702,7 +702,7 @@ def _db_run_status(run_id: int) -> tuple[str, str]:
 with _tab_ingest:
 
     st.markdown("""
-<div style="padding: 36px 0 28px">
+<div style="padding: 16px 0 20px">
     <p class="ce-eyebrow">Data Ingestion</p>
     <h1 style="font-family:'DM Serif Display',serif;font-style:italic;font-size:2rem;
                color:#111827;letter-spacing:-0.02em;margin:0 0 10px;font-weight:400">
@@ -951,7 +951,7 @@ def load_stock_snapshot() -> pd.DataFrame:
 with _tab_dash:
 
     st.markdown("""
-<div style="padding: 36px 0 28px">
+<div style="padding: 16px 0 20px">
     <p class="ce-eyebrow">Live Analytics</p>
     <h1 style="font-family:'DM Serif Display',serif;font-style:italic;font-size:2rem;
                color:#111827;letter-spacing:-0.02em;margin:0 0 10px;font-weight:400">

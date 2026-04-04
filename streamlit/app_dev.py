@@ -25,7 +25,7 @@ S3_BUCKET = os.getenv("S3_BUCKET", "count-electric")
 
 st.set_page_config(
     page_title="Count Electric",
-    page_icon="⚡",
+    page_icon="🚗",
     layout="wide",
     initial_sidebar_state="collapsed",
 )

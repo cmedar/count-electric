@@ -590,7 +590,7 @@ digraph pipeline {
     ingest     -> s3         [label="raw files"]
     s3         -> databricks [label="Delta Lake"]
     databricks -> s3gold     [label="export"]
-    s3gold     -> streamlit  [label="pd.read_parquet"]
+    s3gold     -> streamlit  [label="read"]
 }
 """, use_container_width=True)
 
@@ -640,11 +640,11 @@ digraph pipeline {
 
     cols = st.columns(5)
     phases = [
-        ("done",    "Phase 1", "Foundation",      "S3 · EC2 · Docker · GitHub Actions · Databricks setup"),
+        ("done",    "Phase 1", "Foundation",      "S3 EC2 · Docker · GitHub Actions · Databricks setup"),
         ("done",    "Phase 2", "Ingestion",        "IEA · Eurostat · Bronze tables · Silver tables"),
         ("done",    "Phase 3", "Transformation",   "Gold layer · YoY growth · Market share · Window fns"),
         ("done",    "Phase 4", "Dashboard",        "Gold charts · Romania vs EU · Fleet snapshot · Jobs API"),
-        ("planned", "Phase 5", "Polish",           "Screenshots · Portfolio write-up"),
+        ("current", "Phase 5", "Polish",           "Screenshots · Portfolio write-up"),
     ]
     for col, (status, phase, title, detail) in zip(cols, phases):
         with col:

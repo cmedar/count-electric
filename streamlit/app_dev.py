@@ -193,8 +193,8 @@ h3 { color: var(--text);      font-size: 1.05rem; }
     display: flex;
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    padding: 24px 0;
-    margin-bottom: 48px;
+    padding: 5px 0;
+    margin-bottom: 10px;
 }
 .ce-stat { flex: 1; padding-right: 32px; }
 .ce-stat + .ce-stat { padding-left: 32px; border-left: 1px solid var(--border); }
@@ -207,9 +207,9 @@ h3 { color: var(--text);      font-size: 1.05rem; }
     letter-spacing: -0.02em;
 }
 .ce-stat-label {
-    font-size: 12.5px;
-    color: var(--text-3);
-    font-weight: 400;
+    font-size: 15.5px;
+    color: var(--teal-dark);
+    font-weight: 500;
 }
 
 /* ── Section label ── */
@@ -556,7 +556,7 @@ with _tab_about:
         </div>
         <div class="ce-stat">
             <div class="ce-stat-number">15y</div>
-            <div class="ce-stat-label">Historical data (2010–2024)</div>
+            <div class="ce-stat-label">Historical data</div>
         </div>
     </div>
 </div>

@@ -215,13 +215,19 @@ h3 { color: var(--text);      font-size: 1.05rem; }
 /* ── Section label ── */
 .ce-section-label {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--text-3);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin: 0 0 18px;
+    margin: 0 0 0;
     display: block;
+}
+
+/* ── Graphviz container font override ── */
+.st-emotion-cache-1l0wbpp * {
+    font-family: "Source Sans", sans-serif;
+    font-size: calc(1rem);
 }
 
 /* ── Generic card ── */

@@ -48,28 +48,28 @@ A walkthrough of the infrastructure layer — how the project runs on AWS, how D
 ## Table of Contents
 
 **AWS**
-1. [S3 — bucket structure and design](#1-s3--bucket-structure-and-design)
-2. [EC2 — the compute layer](#2-ec2--the-compute-layer)
-3. [IAM — identity and access management](#3-iam--identity-and-access-management)
+- [1. S3 — bucket structure and design](#1-s3--bucket-structure-and-design)
+- [2. EC2 — the compute layer](#2-ec2--the-compute-layer)
+- [3. IAM — identity and access management](#3-iam--identity-and-access-management)
 
 **Docker**
-4. [Dockerfile — packaging the app](#4-dockerfile--packaging-the-app)
-5. [Docker Compose — multi-service orchestration](#5-docker-compose--multi-service-orchestration)
-6. [Why no ports are exposed](#6-why-no-ports-are-exposed)
+- [4. Dockerfile — packaging the app](#4-dockerfile--packaging-the-app)
+- [5. Docker Compose — multi-service orchestration](#5-docker-compose--multi-service-orchestration)
+- [6. Why no ports are exposed](#6-why-no-ports-are-exposed)
 
 **CI/CD**
-7. [GitHub Actions — the deploy workflow](#7-github-actions--the-deploy-workflow)
-8. [The security group dance](#8-the-security-group-dance)
-9. [Databricks Git folder sync](#9-databricks-git-folder-sync)
+- [7. GitHub Actions — the deploy workflow](#7-github-actions--the-deploy-workflow)
+- [8. The security group dance](#8-the-security-group-dance)
+- [9. Databricks Git folder sync](#9-databricks-git-folder-sync)
 
 **Networking**
-10. [Cloudflare Tunnel — HTTPS with no open ports](#10-cloudflare-tunnel--https-with-no-open-ports)
-11. [Dual hostname routing](#11-dual-hostname-routing)
+- [10. Cloudflare Tunnel — HTTPS with no open ports](#10-cloudflare-tunnel--https-with-no-open-ports)
+- [11. Dual hostname routing](#11-dual-hostname-routing)
 
 **Orchestration**
-12. [Why no Airflow](#12-why-no-airflow)
-13. [The Jobs API as a lightweight orchestrator](#13-the-jobs-api-as-a-lightweight-orchestrator)
-14. [Idempotency across the pipeline](#14-idempotency-across-the-pipeline)
+- [12. Why no Airflow](#12-why-no-airflow)
+- [13. The Jobs API as a lightweight orchestrator](#13-the-jobs-api-as-a-lightweight-orchestrator)
+- [14. Idempotency across the pipeline](#14-idempotency-across-the-pipeline)
 
 ---
 

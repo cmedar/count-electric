@@ -4,6 +4,66 @@ A complete walkthrough of every place Python is used in the project — what lib
 
 ---
 
+## Python across the project
+
+Python is the single language used at every layer of the stack. The diagram below shows where it appears and what role it plays at each stage.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  DATA SOURCES  (IEA API · Eurostat API)                     │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  INGESTION  —  ingestion/ingest_*.py                        │
+│                                                             │
+│  requests      → fetch raw data from APIs                   │
+│  hashlib       → MD5 deduplication (skip if unchanged)      │
+│  boto3         → upload raw files to S3                     │
+│  json          → serialise / parse JSON-stat2 payloads      │
+│  logging       → structured pipeline logs                   │
+│  datetime      → UTC timestamps for S3 filenames            │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ raw files land in S3
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  DATABRICKS NOTEBOOKS  —  databricks/**/*.py                │
+│                                                             │
+│  PySpark DataFrame API → groupBy, pivot, withColumn, join   │
+│  Window functions      → lag (YoY growth), rank (EU rank)   │
+│  pyspark.sql.functions → when, lit, round, create_map       │
+│  Delta Lake writes     → saveAsTable, coalesce().parquet()  │
+│                                                             │
+│  (covered in detail in databricks_and_pyspark.md)          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Gold tables exported as Parquet to S3
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  STREAMLIT DASHBOARD  —  streamlit/app_dev.py               │
+│                                                             │
+│  boto3         → list S3 files for landing zone display     │
+│  s3fs          → S3 filesystem driver for pandas            │
+│  pyarrow       → read Parquet files from S3                 │
+│  pandas        → filter, sort, transform DataFrames         │
+│  requests      → Databricks Jobs API (submit + poll)        │
+│  itertools     → JSON-stat2 dimension index reconstruction  │
+│  os            → read environment variables                 │
+│  time          → polling interval in Jobs API loop          │
+│  streamlit     → caching, UI rendering, tab navigation      │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ served via Cloudflare Tunnel
+                           ▼
+               app.countelectric.com
+```
+
+Python version: **3.11** throughout. The same language, but three very different styles of use:
+
+- **Ingestion** — small, focused scripts. Pure Python, no frameworks. Run from the command line or triggered from the app.
+- **Databricks** — PySpark. Python as a driver for distributed Spark computations. The Python syntax is familiar, but the execution model is completely different (lazy, distributed, JVM-backed).
+- **Dashboard** — Python driving a web app. Combines data loading, transformation, API calls, and UI rendering in a single script.
+
+---
+
 ## Table of Contents
 
 1. [Project-wide Python patterns](#1-project-wide-python-patterns)

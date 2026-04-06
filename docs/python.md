@@ -1,6 +1,6 @@
 # Python in Count Electric
 
-A complete walkthrough of every place Python is used in the project — what library, why, and the exact pattern used. This is the base for interview questions on Python, APIs, S3, caching, and data pipeline design.
+A complete walkthrough of every place Python is used in the project — what library, why it was chosen, and the exact pattern used. Read this to understand the thinking behind each decision, not just the code itself.
 
 ---
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     main()
 ```
 
-> **Interview angle:** "I kept functions small and single-purpose so they're independently testable. `main()` reads like a script of what happens; each function is the implementation detail."
+> **Why this matters:** Keeping functions small and single-purpose means each one is independently testable and easy to reason about. `main()` reads like a description of what the script does — the individual functions are the implementation details. This is a pattern worth applying to any pipeline script.
 
 ---
 
@@ -91,7 +91,7 @@ Key decisions:
 - `response.json()` — requests handles JSON decoding; returns a Python `dict` directly
 - Return type is `dict` not `bytes` — the upstream JSON-stat2 structure is the thing we care about
 
-> **Interview angle:** "Both scripts follow identical structure despite different source formats — the fetch function returns the raw payload, and the rest of the pipeline doesn't care where it came from."
+> **Why this matters:** Both scripts follow the same structure despite fetching different formats (CSV vs JSON). The fetch function's only job is to return the raw payload — the rest of the pipeline doesn't care about the source format. This separation makes it easy to add a new source later without touching the S3 or deduplication logic.
 
 ---
 
@@ -142,7 +142,7 @@ if existing_hash == new_hash:
 
 `json.dumps(sort_keys=True)` guarantees the same byte sequence regardless of Python dict insertion order or server-side key ordering.
 
-> **Interview angle:** "Idempotency is a first-class concern in data pipelines. Running the same job twice should produce the same result as running it once. The MD5 check makes ingestion safe to re-run at any time."
+> **Why this matters:** Idempotency is a core principle in data pipelines — running the same job twice should produce the same result as running it once. Without the MD5 check, every scheduled run would create a new duplicate file in S3 and trigger unnecessary downstream reprocessing. The dedup logic makes ingestion safe to re-run manually, on a schedule, or after a failure.
 
 ---
 
@@ -220,7 +220,7 @@ rows = [
 ]
 ```
 
-> **Interview angle:** "boto3 is the standard AWS SDK for Python. Key patterns: never put credentials in code, use `.get()` on potentially absent dict keys, and set `ContentType` on uploads."
+> **Why this matters:** boto3 is the standard AWS SDK for Python and you will use it in almost every data engineering project that touches AWS. The three patterns worth internalising: credentials come from the environment (IAM role, not hardcoded keys), S3 list responses omit the `Contents` key entirely when empty (always use `.get()`), and setting `ContentType` on uploads makes files correctly interpreted by anything that reads them later.
 
 ---
 
@@ -287,7 +287,7 @@ def _parse_jsonstat2(raw: dict) -> pd.DataFrame:
 
 The dict comprehension `{str(v): k for k, v in ...items()}` inverts `{"AT": 0}` into `{"0": "AT"}` — so given an index position we can look up the label.
 
-> **Interview angle:** "JSON-stat2 is common in European public statistics APIs. The key insight is that `enumerate(product(*[range(s) for s in sizes]))` reconstructs the same flat index the format uses, so you can map each value back to its dimension labels without a join."
+> **Why this matters:** JSON-stat2 is the standard format for European statistical agency APIs (Eurostat, national statistics offices). Understanding its structure unlocks a large family of public datasets. The key insight is that `enumerate(product(*[range(s) for s in sizes]))` reconstructs exactly the same flat index the format uses internally — so you can decode any JSON-stat2 dataset with this same parser, regardless of how many dimensions it has.
 
 ---
 
@@ -340,7 +340,7 @@ def load_romania_registrations() -> pd.DataFrame:
 
 `.pipe(lambda d: d[...])` allows filtering to be chained in a single expression rather than requiring a named intermediate variable. It's idiomatic pandas for method chaining.
 
-> **Interview angle:** "By caching the base table with `ttl=None` and deriving filtered views from it in memory, we avoid repeated S3 reads. The base table is read once per app restart; filtered views are free."
+> **Why this matters:** Reading from S3 on every chart render would make the dashboard slow and expensive. By caching the base table once and deriving all filtered views from it in memory, S3 is hit exactly once per app restart — every subsequent chart is just a pandas filter on an already-loaded DataFrame.
 
 ---
 
@@ -375,7 +375,7 @@ def list_s3_files(prefix=""):
 
 The landing zone file list is used for display only — slightly stale data is acceptable, and 5 minutes balances freshness vs unnecessary S3 LIST calls.
 
-> **Interview angle:** "Cache strategy should match data freshness requirements. Gold tables are only updated by the pipeline, so `ttl=None` + explicit invalidation is more correct than a time-based TTL that would either expire too early (wasted reads) or too late (stale data)."
+> **Why this matters:** Cache strategy should match how often the underlying data actually changes. Gold tables only update when the pipeline runs — a time-based TTL would either expire too early (unnecessary S3 reads) or too late (dashboard shows stale data after a pipeline run). Event-driven invalidation (`st.cache_data.clear()` after the pipeline completes) is the correct model here.
 
 ---
 
@@ -479,7 +479,7 @@ Key design decisions:
 - **Sequential, not parallel** — each notebook depends on the previous layer's output; parallelism would break Bronze → Silver → Gold ordering
 - **`time.sleep(6)`** — Databricks serverless notebooks typically take 30–120 seconds; polling every 6 seconds balances responsiveness vs API rate limits
 
-> **Interview angle:** "This is lightweight orchestration — no Airflow, no job definitions, no extra infrastructure. Just Python, HTTP, and a polling loop. The tradeoff is no retry logic, no scheduling, and no DAG visualisation — but for a project this size those aren't needed."
+> **Why this matters:** This is lightweight orchestration built entirely from Python and HTTP — no Airflow, no job definitions, no extra infrastructure to maintain. The tradeoff is no automatic retry logic, no scheduling, and no DAG visualisation. For a project at this scale those aren't needed, and understanding this pattern helps you appreciate what orchestration tools like Airflow actually add when the pipeline grows more complex.
 
 ---
 
@@ -503,7 +503,7 @@ DATABRICKS_REPO_PATH = os.getenv("DATABRICKS_REPO_PATH", "")       # required
 
 `S3_BUCKET` has a real default (`"count-electric"`) so the app works without that secret. This is intentional — if the GitHub secret is misconfigured as empty string, `os.getenv` would return `""` which overrides the hardcoded default and breaks boto3.
 
-> **Interview angle:** "Twelve-factor app principle: configuration comes from the environment. `python-dotenv` bridges local development (`.env` file) and production (Docker/GitHub Actions env vars) without changing any code."
+> **Why this matters:** This follows the twelve-factor app principle — configuration comes from the environment, not the code. `python-dotenv` bridges local development (`.env` file on your laptop) and production (env vars set in Docker or GitHub Actions) without changing a single line of code between environments. It's the standard pattern for any Python application that needs to be deployed.
 
 ---
 

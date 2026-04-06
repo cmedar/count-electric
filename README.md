@@ -1,7 +1,7 @@
 ### Count Electric
 # Counting electric cars on the streets, so you don't have to
 
-You've probably noticed more EVs on the street lately. But are they actually taking over, or does it just feel that way? **Count Electric** is a data engineering project that answers exactly that — tracking global EV adoption trends across countries and years, so the numbers can tell the story.
+You've probably noticed more electric cars on the street lately. But are they actually taking over, or does it just feel that way? **Count Electric** is a data engineering project that answers exactly that — tracking electric car adoption across Europe, so the numbers can tell the story.
 
 Raw data is ingested from public APIs into AWS S3, processed through a **medallion architecture on Databricks**, and surfaced via an interactive **Streamlit dashboard**.
 
@@ -29,10 +29,10 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 
 **Count Electric** answers the following analytical questions:
 
-- Which countries are leading EV adoption in Europe, and how is that changing year-on-year?
-- As EV registrations grow, are petrol and diesel (ICE) registrations actually declining — and how fast?
-- Where does Romania sit in the European EV adoption picture, and how does it compare to the EU average?
-- What is Romania's EV market share rank among EU countries, and is it improving?
+- Which countries are leading electric car adoption in Europe, and how is that changing year-on-year?
+- As electric car registrations grow, are petrol and diesel registrations actually declining — and how fast?
+- Where does Romania sit in the European electric car adoption picture, and how does it compare to the EU average?
+- What is Romania's electric car market share rank among EU countries, and is it improving?
 - How many cars are currently on the road in Romania — and how many of them are Electric vs Combustion?
 - What share of the total Romanian fleet is Electric, and how is that share growing over time?
 
@@ -75,12 +75,12 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 │                                                  │
 │  Unity Catalog  │  Delta Lake  │  Window fns     │
 └─────────────────────────┬────────────────────────┘
-                          │ SQL Warehouse (HTTP)
+                          │ Gold → S3 Parquet export
                           ▼
 ┌──────────────────────────────────────────────────┐
 │            STREAMLIT DASHBOARD (EC2)             │
-│   app + cloudflared — Docker Compose            │
-│   MD3 design, Bootstrap-style tab navigation     │
+│   app + app-dev + cloudflared — Docker Compose  │
+│   Reads Gold Parquet directly from S3 (s3fs)    │
 └─────────────────────────┬────────────────────────┘
                           │ Cloudflare Tunnel
                           ▼
@@ -90,7 +90,7 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 └──────────────────────────────────────────────────┘
 ```
 
-**Deployment:** GitHub Actions builds Docker images and runs `docker compose up` on EC2 on every push to `main`. The compose stack has two services: `app` (Streamlit) and `cloudflared` (Cloudflare Tunnel). In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date.
+**Deployment:** GitHub Actions builds Docker images and runs `docker compose up` on EC2 on every push to `main`. The compose stack has three services: `app` (production, port 8501), `app-dev` (development, port 8502), and `cloudflared` (Cloudflare Tunnel). In the same workflow, it syncs the Databricks Git folder via the Repos API so notebooks are always up to date.
 
 ---
 
@@ -160,7 +160,7 @@ Raw data is ingested from public APIs into AWS S3, processed through a **medalli
 | `electric_share_pct` | `electric_stock / total_stock * 100` |
 | `combustion_share_pct` | `combustion_stock / total_stock * 100` |
 
-> **Stock vs Flow:** `ev_market_share` counts *new cars registered* each year (flow). `car_stock_snapshot` counts *all cars on the road* (stock). The fleet transitions much more slowly — EVs may be 10% of new sales but only 1–2% of the total fleet.
+> **Registrations vs Fleet:** `ev_market_share` counts *new cars registered* each year. `car_stock_snapshot` counts *all cars on the road*. The fleet transitions much more slowly — electric cars may be 10% of new sales but only 1–2% of all cars on the road.
 
 **`gold.romania_ev_summary` schema:**
 
@@ -516,7 +516,7 @@ The cross-account IAM trust policy set up in Phase 1 is the bridge: it gives the
 | Processing | Databricks serverless, Apache Spark |
 | Table format | Delta Lake |
 | Governance | Unity Catalog + External Location (IAM cross-account role) |
-| Dashboard | Streamlit — two variants: `app.py` (production) · `app_dev.py` (redesigned) |
+| Dashboard | Streamlit — `app.py` (production · app.countelectric.com) · `app_dev.py` (dev · dev.countelectric.com) |
 | Serving layer | S3 Parquet — Gold tables exported post-pipeline, read directly by app (`s3fs` + `pyarrow`) |
 | Networking | Cloudflare Tunnel (`cloudflared`) — HTTPS, no open ports on EC2 |
 | CI/CD | GitHub Actions — EC2 deploy + Databricks Git sync on push to `main` |
@@ -620,7 +620,7 @@ git clone https://github.com/YOUR_USERNAME/count-electric.git
 | `DATABRICKS_HOST` | Workspace URL (e.g. `https://dbc-xxxxx.cloud.databricks.com`) |
 | `DATABRICKS_TOKEN` | Databricks personal access token |
 | `DATABRICKS_REPO_ID` | Git folder repo ID (from `/api/2.0/workspace/list`) |
-| `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path (e.g. `/sql/1.0/warehouses/abc123`) |
+| `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path (e.g. `/sql/1.0/warehouses/abc123`) — no longer used by the dashboard (Gold tables served from S3 Parquet), but kept for optional direct Databricks queries |
 | `DATABRICKS_REPO_PATH` | Workspace path to the notebook folder (e.g. `/Workspace/Users/you@email.com/count-electric`) — used to trigger notebooks from the app |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel token (from Zero Trust → Tunnels → your tunnel → Configure) |
 
@@ -724,8 +724,8 @@ count-electric/
 │       └── spark_utils.py
 │
 ├── streamlit/
-│   ├── app.py                  # Production app — MD3 teal theme, 4 tabs
-│   └── app_dev.py              # Dev variant — Apple-casual redesign, 3 tabs, dev.countelectric.com
+│   ├── app.py                  # Production app — app.countelectric.com
+│   └── app_dev.py              # Development variant — dev.countelectric.com (promote to app.py when ready)
 │
 └── .github/
     └── workflows/
@@ -734,4 +734,4 @@ count-electric/
 
 ---
 
-*Phase 4 & 5 in progress — Production dashboard at [app.countelectric.com](https://app.countelectric.com) · Redesigned variant at [dev.countelectric.com](https://dev.countelectric.com). Full pipeline (3 data sources, 9 notebooks) triggerable from the app. Gold tables served directly from S3 Parquet — no SQL Warehouse needed.*
+*Production dashboard at [app.countelectric.com](https://app.countelectric.com) · Development variant at [dev.countelectric.com](https://dev.countelectric.com). Full pipeline (3 data sources, 9 notebooks) triggerable from the app. Gold tables served directly from S3 Parquet — no SQL Warehouse needed.*

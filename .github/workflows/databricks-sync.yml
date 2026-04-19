@@ -1,0 +1,24 @@
+name: Databricks Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data_engineering/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync Databricks Git Folder
+        run: |
+          DATABRICKS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
+          echo "Syncing to: ${DATABRICKS_URL//${{ secrets.DATABRICKS_HOST }}/DATABRICKS_HOST}"
+          curl --fail -s -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"branch": "main"}' \
+            "$DATABRICKS_URL"
+          echo "Databricks sync triggered."

@@ -15,8 +15,8 @@ jobs:
       - name: Sync Databricks Git Folder
         run: |
           DATABRICKS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
-          echo "Syncing to: ${DATABRICKS_URL//${{ secrets.DATABRICKS_HOST }}/DATABRICKS_HOST}"
-          curl --fail -s -X PATCH \
+          echo "Syncing Databricks repo..."
+          curl --fail -X PATCH \
             -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"branch": "main"}' \

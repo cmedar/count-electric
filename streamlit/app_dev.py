@@ -640,7 +640,7 @@ digraph pipeline {
 
     cols = st.columns(5)
     phases = [
-        ("done",    "Phase 1", "Foundation",      "S3 EC2 · Docker · GitHub Actions · Databricks setup"),
+        ("done",    "Phase 1", "Foundation",      "AWS EC2 S3· Docker · GitHub Actions · Databricks setup"),
         ("done",    "Phase 2", "Ingestion",        "IEA · Eurostat · Bronze tables · Silver tables"),
         ("done",    "Phase 3", "Transformation",   "Gold layer · YoY growth · Market share · Window fns"),
         ("done",    "Phase 4", "Dashboard",        "Gold charts · Romania vs EU · Fleet snapshot · Jobs API"),
@@ -739,15 +739,7 @@ with _tab_ingest:
     <code class="ce-s3-path">s3://count-electric/landing/raw/iea/</code>
 </div>
 """, unsafe_allow_html=True)
-        if st.button("Run IEA Ingestion", use_container_width=True, key="btn_iea"):
-            with st.spinner("Fetching from IEA API…"):
-                try:
-                    from ingestion.ingest_iea import main as run_iea
-                    run_iea()
-                    st.cache_data.clear()
-                    st.success("IEA ingestion complete.")
-                except Exception as e:
-                    st.error(f"Failed: {e}")
+        st.button("Run IEA Ingestion", use_container_width=True, key="btn_iea", disabled=True)
 
     with col2:
         st.markdown("""
@@ -760,15 +752,7 @@ with _tab_ingest:
     <code class="ce-s3-path">s3://count-electric/landing/raw/eurostat/</code>
 </div>
 """, unsafe_allow_html=True)
-        if st.button("Run Eurostat Ingestion", use_container_width=True, key="btn_eurostat"):
-            with st.spinner("Fetching from Eurostat API…"):
-                try:
-                    from ingestion.ingest_eurostat import main as run_eurostat
-                    run_eurostat()
-                    st.cache_data.clear()
-                    st.success("Eurostat ingestion complete.")
-                except Exception as e:
-                    st.error(f"Failed: {e}")
+        st.button("Run Eurostat Ingestion", use_container_width=True, key="btn_eurostat", disabled=True)
 
     with col3:
         st.markdown("""
@@ -781,15 +765,9 @@ with _tab_ingest:
     <code class="ce-s3-path">s3://count-electric/landing/raw/eurostat_stock/</code>
 </div>
 """, unsafe_allow_html=True)
-        if st.button("Run Eurostat Stock Ingestion", use_container_width=True, key="btn_stock"):
-            with st.spinner("Fetching from Eurostat API…"):
-                try:
-                    from ingestion.ingest_eurostat_stock import main as run_eurostat_stock
-                    run_eurostat_stock()
-                    st.cache_data.clear()
-                    st.success("Eurostat stock ingestion complete.")
-                except Exception as e:
-                    st.error(f"Failed: {e}")
+        st.button("Run Eurostat Stock Ingestion", use_container_width=True, key="btn_stock", disabled=True)
+
+    st.caption("Pipeline triggers are disabled on the public app.")
 
     # ── S3 landing zone (compact) ─────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
@@ -832,7 +810,8 @@ The dashboard cache is cleared automatically on success.
             "Find it in Databricks → Workspace → right-click your folder → Copy path."
         )
     else:
-        if st.button("▶ Run Full Pipeline", use_container_width=False, type="primary"):
+        st.button("▶ Run Full Pipeline", use_container_width=False, type="primary", disabled=True)
+        if False:
             step_placeholders = [st.empty() for _ in _PIPELINE_STEPS]
             failed = False
             for i, (label, rel_path) in enumerate(_PIPELINE_STEPS):

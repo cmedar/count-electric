@@ -1,6 +1,6 @@
 # Ingestion
 requests
-boto3==1.35.99
+boto3==1.35.36
 
 # Orchestration
 # Airflow must be installed separately with constraints:

@@ -1,6 +1,6 @@
 # Ingestion
 requests
-boto3
+boto3==1.35.99
 
 # Orchestration
 # Airflow must be installed separately with constraints:
@@ -15,7 +15,10 @@ streamlit>=1.37.0
 plotly
 pandas
 pyarrow
-s3fs
+# s3fs/aiobotocore/botocore must be pinned together — unpinned causes pip to
+# backtrack through 50+ versions downloading source tarballs, exhausting disk
+aiobotocore==2.15.2
+s3fs==2024.10.0
 
 # Utilities
 python-dotenv

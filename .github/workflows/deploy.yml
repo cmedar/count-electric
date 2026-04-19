@@ -56,6 +56,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            # Prune unused images/build cache before building to avoid disk-full on t2.micro
+            sudo docker system prune -af
+
             # Bring up both services (app + cloudflared) — secrets flow via env vars,
             # nothing is written to disk on the machine.
             sudo --preserve-env=DATABRICKS_HOST,DATABRICKS_TOKEN,DATABRICKS_HTTP_PATH,DATABRICKS_REPO_PATH,CLOUDFLARE_TUNNEL_TOKEN \

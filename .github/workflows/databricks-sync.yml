@@ -16,7 +16,7 @@ jobs:
         run: |
           DATABRICKS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
           echo "Syncing Databricks repo..."
-          curl --fail -X PATCH \
+          curl --fail-with-body -X PATCH \
             -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"branch": "main"}' \

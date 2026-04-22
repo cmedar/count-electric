@@ -96,10 +96,63 @@ jobs:
     steps:
       - name: Sync Databricks Git Folder
         run: |
-          DATABRICKS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
-          curl --fail-with-body -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"branch": "main"}' \
-            "$DATABRICKS_URL"
-          echo "Databricks sync triggered."
+          REPOS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
+          DELETE_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/workspace/delete"
+          AUTH="Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}"
+          REPO_PATH="${{ secrets.DATABRICKS_REPO_PATH }}"
+
+          do_sync() {
+            curl -s -w "\n%{http_code}" -X PATCH \
+              -H "$AUTH" \
+              -H "Content-Type: application/json" \
+              -d '{"branch": "main"}' \
+              "$REPOS_URL"
+          }
+
+          RESPONSE=$(do_sync)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP $HTTP_CODE: $BODY"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Databricks sync complete."
+            exit 0
+          fi
+
+          if echo "$BODY" | grep -q "GIT_CONFLICT"; then
+            echo "Conflict detected — discarding conflicting files automatically..."
+
+            CONFLICTING=$(echo "$BODY" | python3 -c "
+          import sys, json, re
+          data = json.load(sys.stdin)
+          match = re.search(r'Conflicting files: ([^.\\n]+)', data.get('message',''))
+          if match:
+              for f in match.group(1).split(','):
+                  print(f.strip())
+          ")
+
+            for FILE in $CONFLICTING; do
+              FULL_PATH="${REPO_PATH}/${FILE}"
+              echo "Discarding: $FULL_PATH"
+              curl -s -X POST \
+                -H "$AUTH" \
+                -H "Content-Type: application/json" \
+                -d "{\"path\": \"$FULL_PATH\", \"recursive\": false}" \
+                "$DELETE_URL"
+            done
+
+            echo "Retrying sync..."
+            RESPONSE=$(do_sync)
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            echo "HTTP $HTTP_CODE: $BODY"
+
+            if [ "$HTTP_CODE" != "200" ]; then
+              exit 1
+            fi
+            echo "Databricks sync complete after conflict resolution."
+            exit 0
+          fi
+
+          exit 1

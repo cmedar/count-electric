@@ -1,134 +1,89 @@
-# 🧭 30-Day Spark Roadmap (Databricks-focused)
+# Apache Spark Certification Roadmap (Databricks-focused)
 
-👉 **Environment:** Databricks Community Edition  
-👉 **Storage layer later:** Delta Lake
-
----
-
-## 🟢 WEEK 1 — Foundations (Days 1–7)
-
-👉 **Goal:** Understand Spark + DataFrames (core mental model)
-
-**Day 1–2 — Introduction to Apache Spark**
-- What Spark is (distributed compute)
-- Driver vs Executors
-- Lazy evaluation
-
-**Day 3 — Spark Runtime Architecture**
-- Jobs, stages, tasks
-- Basic execution flow
-
-**Day 4 — Spark in Databricks**
-- Notebooks
-- Clusters (conceptually)
-- Running your first job
-
-**Day 5–6 — DataFrames & SQL**
-- From curriculum: Introduction to Spark DataFrames and SQL
-- Hands-on:
-  - Load CSV
-  - `select`, `filter`, `withColumn`
-  - Basic SQL queries
-
-**Day 7 — Reading & Writing Data**
-- CSV / JSON / Parquet
-- Write outputs
-
-💡 **Mini-task:** Read raw data → write cleaned version
+**Target:** Databricks Certified Associate Developer for Apache Spark  
+**Environment:** Databricks Community Edition  
+**Language:** Python (PySpark)
 
 ---
 
-## 🟡 WEEK 2 — Core Transformations (Days 8–14)
+## Exam at a Glance
 
-👉 **Goal:** Translate ETL logic into Spark
-
-**Day 8 — Distributed Programming Fundamentals**
-- Transformations vs actions
-- Immutability
-
-**Day 9–10 — Basic ETL with DataFrame API**
-- From curriculum: Basic ETL with the DataFrame API — Flight Data ETL
-- Hands-on:
-  - Clean messy dataset
-  - Cast types
-  - Handle nulls
-
-**Day 11–12 — Grouping & Aggregations**
-- From curriculum: Grouping and Aggregating Data
-- Hands-on:
-  - `groupBy`, `agg`
-  - Multiple aggregations
-  - Sorting results
-
-💡 **Lab idea:** Revenue by country / Avg transactions per user
-
-**Day 13 — Relational Operations**
-- Joins (inner, left, right)
-- Hands-on: Join customers + transactions
-
-**Day 14 — Complex Data Types**
-- Arrays, structs
-- Hands-on: Explode arrays, work with nested JSON
+| Domain | Weight |
+|---|---|
+| DataFrame / Dataset API | 30% |
+| Apache Spark Architecture | 20% |
+| Spark SQL | 20% |
+| Troubleshooting & Tuning | 10% |
+| Structured Streaming | 10% |
+| Spark Connect | 5% |
+| Pandas API on Spark | 5% |
 
 ---
 
-## 🔵 WEEK 3 — Real Data + Streaming (Days 15–21)
+## WEEK 1 — Foundations (Days 1–7)
 
-👉 **Goal:** Work like a real data engineer
+**Goal:** Build the core mental model — architecture, lazy evaluation, DataFrame API basics, Spark SQL, reading/writing data.  
+**Notebooks:** `Week1/`
 
-**Day 15–16 — Analyze Transaction Data**
-- From curriculum: Analyzing Transaction Data with DataFrames
-- Build: KPIs (total revenue, top users, trends)
-
-**Day 17 — Mini Project (Batch Pipeline)**
-- End-to-end: Read raw → Clean → Join → Aggregate → Write output
-
-**Day 18 — Intro to Streaming**
-- From curriculum: Introduction to Stream Processing
-- Concepts: Batch vs streaming
-
-**Day 19–20 — Structured Streaming**
-- From curriculum: Spark Structured Streaming
-- Hands-on:
-  - Read streaming data (rate source or files)
-  - Simple aggregation
-
-**Day 21 — Window Aggregations (Streaming)**
-- Sliding windows
-- Time-based aggregations
-
-💡 **Example:** Events per minute
+| Day | Title | Key topics |
+|---|---|---|
+| 1 | What is Apache Spark? | Spark vs Hadoop, SparkSession, createDataFrame, show/printSchema/count, select/filter, RDD→DataFrame→Dataset |
+| 2 | Runtime Architecture | Driver/Executors/Cluster Manager, Jobs→Stages→Tasks, narrow vs wide transformations, deployment modes, fault tolerance |
+| 3 | Lazy Evaluation & Catalyst | Transformations vs Actions, DAG, Catalyst optimizer phases, Tungsten, explain() modes, AQE intro |
+| 4 | Column Operations | col(), lit(), expr(), withColumn, withColumnRenamed, cast, when/otherwise, isNull/isNotNull, alias |
+| 5 | Filtering, Sorting & Null Handling | filter/where (AND/OR/NOT), sample(), collect/take/show, distinct, dropDuplicates, orderBy, limit, dropna/fillna |
+| 6 | Spark SQL | createOrReplaceTempView, global temp views, spark.sql(), mixing SQL + DataFrame API, spark.catalog |
+| 7 | Reading & Writing Data | CSV/JSON/Parquet options, StructType schema, write modes, coalesce vs repartition, partitionBy, mini project |
 
 ---
 
-## 🔴 WEEK 4 — Optimization + Delta (Days 22–30)
+## WEEK 2 — Core Transformations (Days 8–14)
 
-👉 **Goal:** Move from "it works" → "it's production-ready"
+**Goal:** Translate real ETL logic into Spark — the bulk of the exam (DataFrame API is 30%+ of questions).  
+**Notebooks:** `Week2/`
 
-**Day 22 — Spark + Databricks Deep Dive**
-- Execution plan (`explain()`)
-- DAG understanding
+| Day | Title | Key topics |
+|---|---|---|
+| 8 | Aggregations & GroupBy | groupBy, agg, count/sum/avg/min/max/countDistinct, multiple aggs, filter after groupBy, pivot |
+| 9 | Joins | inner/left/right/full/cross/semi/anti joins, join on multiple keys, broadcast joins, join pitfalls |
+| 10 | String & Date Functions | substring, upper/lower, split, regexp_replace, to_date, date_diff, date_add, date_format |
+| 11 | Math & Collection Functions | round, abs, array/map/struct types, explode, collect_list, size, array_contains |
+| 12 | UDFs (User Defined Functions) | udf() decorator, return types, performance cost, pandas UDFs (vectorised) |
+| 13 | Window Functions | rank, dense_rank, row_number, lag, lead, partitionBy + orderBy in windows, running totals |
+| 14 | Caching & Persistence | cache(), persist(), storage levels, unpersist(), when to cache, coalesce vs repartition deep dive |
 
-**Day 23–24 — Delta Lake**
-- From curriculum: Using Apache Spark with Delta Lake
-- Hands-on:
-  - Save as Delta
-  - Update / merge
-  - Time travel (optional)
+---
 
-**Day 25 — Optimization Basics**
-- From curriculum: Optimizing Apache Spark
-- Learn: Partitioning, Caching, Shuffle basics
+## WEEK 3 — Real Data + Streaming (Days 15–21)
 
-**Day 26 — Optimization Lab**
-- Compare: With vs without cache, different join strategies
+**Goal:** Work like a real data engineer — build pipelines, understand Spark UI, add streaming.  
+**Notebooks:** `Week3/`
 
-**Day 27–28 — Final Project**
-- Combine everything: Batch + streaming (optional), Delta output, Aggregations, Clean pipeline
-- Example: E-commerce pipeline — ingest → clean → join → KPIs
+| Day | Title | Key topics |
+|---|---|---|
+| 15 | Batch Pipeline Project | End-to-end: read raw → clean → join → aggregate → write Delta/Parquet |
+| 16 | Spark UI & Troubleshooting | Jobs/Stages/Tasks tabs, DAG visualiser, identify skew, spill, shuffle size |
+| 17 | Memory Management & Accumulators | Driver/Executor memory, off-heap, accumulators, broadcast variables |
+| 18 | Pandas API on Spark | ps.DataFrame, pandas ↔ Spark conversion, when to use, limitations |
+| 19 | Intro to Structured Streaming | Batch vs streaming, readStream, writeStream, output modes, checkpointing |
+| 20 | Streaming Aggregations | Windowing (tumbling/sliding), watermarks, stateful processing |
+| 21 | Streaming Lab | End-to-end streaming pipeline with rate source or file source |
 
-**Day 29 — Review Weak Areas**
-- Joins, Aggregations, Execution
+---
 
-**Day 30 — Certification-style Practice**
-- Focus on: DataFrame API, Transformations, Spark behavior
+## WEEK 4 — Optimization + Delta + Exam Prep (Days 22–30)
+
+**Goal:** Move from "it works" to "production-ready" — tune, certify.  
+**Notebooks:** `Week4/`
+
+| Day | Title | Key topics |
+|---|---|---|
+| 22 | Optimization Deep Dive | Partitioning strategy, skew handling, predicate pushdown, projection pushdown |
+| 23 | AQE & Dynamic Partition Pruning | Adaptive Query Execution internals, DPP, coalesce shuffle partitions |
+| 24 | Delta Lake | Save/read Delta, ACID transactions, schema enforcement, upsert (MERGE), time travel |
+| 25 | Delta Lake Advanced | OPTIMIZE, ZORDER, VACUUM, Change Data Feed, Medallion architecture |
+| 26 | Spark Connect | Spark Connect architecture, thin client model, deployment use cases |
+| 27 | Unity Catalog & Governance | Data lineage, access control, three-level namespace |
+| 28 | Final Project | E-commerce pipeline: ingest → clean → join → KPIs → Delta output |
+| 29 | Weak Areas Review | Joins, aggregations, explain plans, common exam traps |
+| 30 | Certification Practice | Full mock exam conditions — all 7 domains, time-boxed |

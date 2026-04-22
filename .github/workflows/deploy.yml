@@ -73,17 +73,6 @@ jobs:
           DATABRICKS_REPO_PATH: ${{ secrets.DATABRICKS_REPO_PATH }}
           CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
 
-      - name: Sync Databricks Git Folder
-        run: |
-          DATABRICKS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
-          echo "Syncing to: ${DATABRICKS_URL//${{ secrets.DATABRICKS_HOST }}/DATABRICKS_HOST}"
-          curl --fail-with-body -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"branch": "main"}' \
-            "$DATABRICKS_URL"
-          echo "Databricks sync triggered."
-
       - name: Remove runner IP from security group
         if: always()
         run: |

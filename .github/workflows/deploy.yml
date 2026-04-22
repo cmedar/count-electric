@@ -85,3 +85,21 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
+  databricks-sync:
+    runs-on: ubuntu-latest
+    needs: deploy
+    concurrency:
+      group: databricks-sync
+      cancel-in-progress: false
+
+    steps:
+      - name: Sync Databricks Git Folder
+        run: |
+          DATABRICKS_URL="${{ secrets.DATABRICKS_HOST }}/api/2.0/repos/${{ secrets.DATABRICKS_REPO_ID }}"
+          curl --fail-with-body -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.DATABRICKS_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"branch": "main"}' \
+            "$DATABRICKS_URL"
+          echo "Databricks sync triggered."

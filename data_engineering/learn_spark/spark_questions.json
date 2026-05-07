@@ -1,0 +1,1017 @@
+{
+  "162_LmUH-nxxPwA": {
+    "question_number": 7,
+    "question": "A data engineer is inspecting an ETL pipeline based on a Spark cluster. The ETL consistently encounters performance bottlenecks. Based on developer feedback, the data engineer observes that the job is low on compute resources. To pinpoint the issue, the data engineer observes the Spark UI and notes that most of the time is spent on task time. Which course of action should the data engineer take?",
+    "options": {
+      "A": "High CPU time vs Task time mean an under-utilized cluster. The data engineer may need to repartition data and spread the jobs more throughout the cluster.",
+      "B": "High CPU time vs Task time means efficient use of cluster and no change needed",
+      "C": "High CPU time vs Task time means over-utilised memory and the need to increase parallelism",
+      "D": "High CPU time vs Task time means a CPU over-utilized job. The data engineer may need to consider executor and core tuning or resizing the cluster"
+    },
+    "correct_answer": [
+      "D"
+    ],
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "The question conflates 'task time' with 'CPU time' in a somewhat ambiguous way, but option D's interpretation aligns best with the scenario described \u2014 high CPU utilization indicating compute resource bottleneck requiring executor/core tuning.",
+      "correct_explanation": "When most of the time in the Spark UI is spent on task time (CPU computation), it indicates that the CPU is over-utilized and the cluster is compute-bound. This aligns with the developer feedback about being low on compute resources. The appropriate remediation is to tune executor and core configurations or resize/scale up the cluster to provide more CPU capacity for parallel task execution.",
+      "wrong_explanations": {
+        "A": "High CPU/task time does not indicate an under-utilized cluster; it is the opposite \u2014 the cluster is being heavily utilized (over-utilized on CPU), so repartitioning to spread work further would not resolve a compute bottleneck and could make things worse.",
+        "B": "High CPU time relative to task time being 'efficient and requiring no change' contradicts the problem statement that the job consistently encounters performance bottlenecks and is low on compute resources.",
+        "C": "High CPU/task time is indicative of CPU over-utilization, not memory over-utilization. Memory issues would typically manifest as spill to disk, garbage collection overhead, or OOM errors rather than high task computation time."
+      }
+    },
+    "topic": "Apache Spark & PySpark"
+  },
+  "159_3OoW0YZoRpI": {
+    "question_number": 10,
+    "question": "A data engineer is developing an ETL process based on Spark SQL. The execution fails, and a data engineer checks the Spark UI and can see the ERRORS as follows:\n'java.lang.OutofMemoryError: Java heap space'\nWhich two recovery actions should the data engineer perform to resolve this issue? Choose 2.",
+    "options": {
+      "A": "Narrow the filters in order to collect less data in the query",
+      "B": "Upsize the worker nodes and activate autoshuffle partitions",
+      "C": "Upsize the driver node and deactivate autoshuffle partitions",
+      "D": "Cache the dataset in order to boost the query performance",
+      "E": "Fix the shuffle partitions to 50 to ensure the allocation"
+    },
+    "correct_answer": [
+      "A",
+      "B"
+    ],
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "Without seeing the actual Spark UI error screenshot, I'm inferring this is an OOM (Out of Memory) or shuffle-related error based on the answer choices, which makes A and B plausible but requires assumption about the error type.",
+      "correct_explanation": "If the error shown is related to memory/shuffle issues (e.g., OOM during shuffle or too much data being processed), narrowing filters (A) reduces the amount of data collected and processed, alleviating memory pressure. Upsizing worker nodes (B) provides more memory and CPU for shuffle operations, and enabling adaptive shuffle partitions (autoshuffle/AQE) allows Spark to dynamically optimize partition sizes to avoid skew and OOM errors during shuffles.",
+      "wrong_explanations": {
+        "C": "Upsizing the driver node helps with driver-side OOM issues (e.g., collect() operations), but deactivating autoshuffle partitions would worsen shuffle-related memory problems by preventing Spark from dynamically optimizing partition sizes.",
+        "D": "Caching the dataset can improve performance for repeated reads but does not resolve memory/shuffle OOM errors \u2014 in fact, caching could consume additional memory and worsen the situation.",
+        "E": "Fixing shuffle partitions to a static value of 50 is overly simplistic and could result in very large partitions if the data volume is high, potentially causing or worsening OOM errors rather than resolving them."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "151_CI8RSZdsq_A": {
+    "question_number": 18,
+    "question": "A data engineer is debugging a Python notebook in Databricks that processes a dataset using PySpark. The notebook fails with an error during a DataFrame transformation. The engineer wants to track down where the error is occurring. Which tool should the data engineer use to debug the notebook and inspect the values of variables like DataFrames?",
+    "options": {
+      "A": "Use the Databricks CLI to download and analyze driver logs for detailed error messages",
+      "B": "Use the Python notebook interactive Debugger to set breakpoints and inspect variable values in real-time",
+      "C": "Use the Ganglia UI to monitor cluster resource usage and identify hardware issues",
+      "D": "Use the Spark UI to analyze the execution plan and identify stages where the job failed"
+    },
+    "correct_answer": [
+      "B"
+    ],
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "The marked answer C (Ganglia UI) is clearly incorrect; Ganglia monitors cluster hardware/resource metrics and cannot debug code or inspect variable values, making the marked answer wrong.",
+      "correct_explanation": "The correct answer should be B. Databricks notebooks support an interactive Python Debugger (based on ipdb/pdb) that allows data engineers to set breakpoints, step through code line by line, and inspect variable values including DataFrames in real-time. This is the most direct tool for debugging a failing notebook transformation and tracking down where an error occurs.",
+      "wrong_explanations": {
+        "A": "The Databricks CLI is used for workspace management, job submission, and file operations \u2014 not for interactive debugging of notebook code or inspecting variable values at runtime.",
+        "C": "The Ganglia UI monitors cluster-level hardware metrics such as CPU, memory, and network usage. It does not provide any code debugging capabilities or allow inspection of Python variables or DataFrames.",
+        "D": "The Spark UI is useful for analyzing execution plans, DAGs, and identifying failed stages at the Spark job level, but it does not allow setting breakpoints or inspecting Python variable values in a notebook context."
+      }
+    },
+    "topic": "Apache Spark & PySpark"
+  },
+  "150_2vSNxcf1QPM": {
+    "question_number": 19,
+    "question": "A data engineer has been provided a PySpark DataFrame with an events table columns product and revenue. The data engineer needs to compute complex aggregations to determine each prod uct's total revenue, average revenue, and transaction count. Which code snippet should the data engineer use?",
+    "options": {
+      "A": "from pyspark.sql import functions as F\naggregated_df = df.select(\"product\", \"revenue\").groupby(\"product\").agg(F.sum(\"revenue\"), F.alias(\"total_revenue\"), F.mean(\"revenue\").alias(\"transaction_count\"))",
+      "B": "aggregated_df = df.groupby(\"product\").agg(sum(\"revenue\"), avg(\"revenue\"), count(\"revenue\"))",
+      "C": "from pyspark.sql import functions as F\naggregated_df = df = df.select(\"product\", \"revenue\").groupby(\"product\").agg(F.sum(\"revenue\"), F.mean(\"revenue\"), F.count(\"revenue\"))",
+      "D": "aggregated_df = df.groupby(\"product\").agg(F.sum(\"revenue\"), F.mean(\"revenue\"), F.count(\"count\"))"
+    },
+    "correct_answer": [
+      "A"
+    ],
+    "reasoning": {
+      "confidence": "LOW",
+      "confidence_reason": "Option A has a clear syntax error \u2014 F.alias('total_revenue') is called directly on the F module rather than on a column expression, making it invalid PySpark code, so marking it as correct is questionable.",
+      "correct_explanation": "Option C is the most syntactically correct answer: it imports functions as F, selects the relevant columns, groups by 'product', and applies F.sum, F.mean, and F.count correctly on 'revenue'. While it lacks alias names (which are optional), it is the only snippet that is actually executable without errors.",
+      "wrong_explanations": {
+        "A": "Option A is syntactically invalid because F.alias('total_revenue') is chained directly on the F module rather than on a column expression (e.g., F.sum('revenue').alias('total_revenue')), and the agg call mixes column expressions incorrectly.",
+        "B": "Option B calls sum(), avg(), and count() without importing them from pyspark.sql.functions, so it would raise a NameError unless those functions were explicitly imported; it also doesn't use the F namespace.",
+        "C": "Option C is actually the best answer among the choices \u2014 it correctly imports F, groups by 'product', and applies F.sum, F.mean, and F.count on 'revenue', though the double assignment 'df = df.select(...)' inside the expression is a minor oddity but not a runtime error.",
+        "D": "Option D uses F.count('count') instead of F.count('revenue'), which would fail at runtime because 'count' is not a column in the DataFrame; it also doesn't import F, which would cause a NameError."
+      }
+    },
+    "topic": "Apache Spark & PySpark"
+  },
+  "149_NSPTY8tdtzg": {
+    "question_number": 20,
+    "question": "An organization is looking for an optimized storage layer that supports ACID transactions and schema enforcement which technology should the organization use?",
+    "options": {
+      "A": "Unity Catalog",
+      "B": "Data lake",
+      "C": "Delta Lake",
+      "D": "Cloud File Storage"
+    },
+    "correct_answer": "C",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Delta Lake is definitively the storage layer technology in the Databricks ecosystem that provides ACID transactions and schema enforcement, as documented extensively in Databricks and Delta Lake official documentation.",
+      "correct_explanation": "Delta Lake is an open-source storage layer that brings ACID transactions, scalable metadata handling, and schema enforcement/evolution to data lakes. It sits on top of cloud object storage and provides reliability and performance optimizations, making it the correct choice for an organization needing ACID compliance and schema enforcement.",
+      "wrong_explanations": {
+        "A": "Unity Catalog is a unified governance solution for data and AI assets in Databricks, providing fine-grained access control, auditing, and data lineage \u2014 it is not a storage layer and does not itself provide ACID transactions or schema enforcement.",
+        "B": "A traditional data lake (e.g., raw cloud object storage organized as a lake) does not natively support ACID transactions or schema enforcement; these are limitations that Delta Lake was specifically designed to address.",
+        "D": "Cloud File Storage (e.g., raw S3, ADLS, or GCS) is object/file storage infrastructure and does not provide ACID transactions or schema enforcement capabilities on its own."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "145_AMO5CQvB_vI": {
+    "question_number": 24,
+    "question": "Which SQL code snippet will correctly demonstrate a Data Definition Language (DDL) operation used to create a table?",
+    "options": {
+      "A": "CREATE TABLE employees ( id INT, name STRING);",
+      "B": "INSERT INTO employees (id, name) VALUES (1, 'Alice');",
+      "C": "ALTER TABLE employees ADD COLUMN salary DECIMAL(10,2);",
+      "D": "DROP TABLE employees;"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "CREATE TABLE is a classic and unambiguous DDL operation, and this is well-established SQL/Databricks knowledge.",
+      "correct_explanation": "DDL (Data Definition Language) operations define or modify database schema structures. CREATE TABLE is a foundational DDL statement that defines a new table and its schema, including column names and data types. Option A correctly demonstrates creating a table named 'employees' with an 'id' INT column and a 'name' STRING column.",
+      "wrong_explanations": {
+        "B": "INSERT INTO is a DML (Data Manipulation Language) operation, not DDL. It adds rows of data into an existing table rather than defining schema structure.",
+        "C": "While ALTER TABLE is technically a DDL operation (it modifies an existing table's structure), the question asks specifically about creating a table, making this a distractor. Additionally, the question asks which snippet demonstrates DDL used to CREATE a table.",
+        "D": "DROP TABLE is also a DDL operation, but it removes/deletes an existing table rather than creating one. The question specifically asks about creating a table."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "140_4AOKQ0dokew": {
+    "question_number": 29,
+    "question": "A company sells products across multiple categories (e.g., Electronics, Clothing) and regions. The sales team has provided you with a PySpark dataframe named sales_df with columns: product_category, region, and sales_amount. You need to analyze the sales data to help make strategic decisions.\n\nCalculate the total sales amount for each region and store the results in a new dataframe called region_sales. Given the total sales amount for each region and store the output in the expected way.\n\nExpected result: [Region 1 + sales_amount...]",
+    "options": {
+      "A": "region_sales = sales_df.groupby(\"region\").agg(sum(\"sales_amount\")).alias(\"total_sales_amount\")",
+      "B": "region_sales = sales_df.groupby(\"region\").agg(sum(\"sales_df.sales_amount\")).alias(\"total_sales_amount\")",
+      "C": "region_sales = sales_df.groupby(\"region\").agg(sum(\"sales_amount\")).groupby(\"region\").alias(\"total_sales_amount\")",
+      "D": "region_sales = sales_df.groupby(\"region\").agg(sum(\"sales_amount\")).alias(\"total_sales_amount\")"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "LOW",
+      "confidence_reason": "Options A and D appear to be identical, making this question ambiguous and likely containing a formatting/copy error; additionally, the correct PySpark syntax for aliasing an aggregated column should use .alias() inside the agg() call on the column expression, not chained on the entire dataframe.",
+      "correct_explanation": "Option A (identical to D) uses groupby('region').agg(sum('sales_amount')) which groups by region and sums sales_amount. The .alias('total_sales_amount') chained on the DataFrame result is syntactically valid in PySpark (it aliases the DataFrame, though typically alias on a column inside agg is more conventional). Among the given options, A/D is the closest to correct syntax for aggregating total sales per region.",
+      "wrong_explanations": {
+        "B": "Using 'sales_df.sales_amount' as a string inside sum() is incorrect PySpark syntax; column references in string form should just be the column name 'sales_amount', not prefixed with the dataframe name.",
+        "C": "Chaining a second .groupby('region') after .agg() followed by .alias() is invalid syntax; you cannot call groupby and then alias on a GroupedData object like that, and it would not produce a valid dataframe.",
+        "D": "Option D appears to be identical to Option A based on the question text, suggesting a formatting error in the exam question; if they are truly identical, both would be equally correct or incorrect."
+      }
+    },
+    "topic": "Apache Spark & PySpark"
+  },
+  "126_BM86AeGG-gE": {
+    "question_number": 44,
+    "question": "Which query is performing a streaming hop from raw data to a bronze table?",
+    "options": {
+      "A": "spark.table(\"sales\")\n.withColumn(\"avgPrice\", col(\"sales\") / col(\"units\"))\n.writeStream\n.option(\"checkpointLocation\", checkpointPath)\n.outputMode(\"append\")\n.table(\"newSales\")",
+      "B": "spark.readStream.load(rawsalesLocation)\n.writeStream\n.option(\"checkpointLocation\", checkpointPath)\n.outputMode(\"append\")\n.table(\"newSales\")",
+      "C": "spark.read.load(rawsalesLocation).write\n.mode(\"append\")\n.table(\"newSales\")",
+      "D": "spark.table(\"sales\")\n.groupBy(\"store\")\n.agg(sum(\"sales\"))\n.writeStream\n.option(\"checkpointLocation\", checkpointPath)\n.outputMode(\"complete\")\n.table(\"newSales\")"
+    },
+    "correct_answer": "B",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Option B clearly demonstrates a streaming read from a raw data location written to a table, which is the definition of a bronze hop in the medallion architecture.",
+      "correct_explanation": "Option B uses `spark.readStream.load(rawsalesLocation)` to read raw data as a stream and `.writeStream` to write it to a table, which is exactly the pattern for a streaming hop from raw (landing zone) data to a bronze table. In the medallion architecture, bronze tables ingest raw data with minimal or no transformation, and using streaming ensures incremental processing with a checkpoint.",
+      "wrong_explanations": {
+        "A": "This reads from an existing Delta table ('sales') rather than raw data, and applies a transformation (avgPrice calculation), making it more characteristic of a silver-layer hop, not a raw-to-bronze hop.",
+        "C": "This uses `spark.read` (batch, not streaming) and `.write` (batch write), so it is a batch hop, not a streaming hop, even though it reads from a raw location.",
+        "D": "This reads from an existing Delta table ('sales') and performs an aggregation with groupBy/sum, which is characteristic of a gold-layer transformation, not a raw-to-bronze streaming hop."
+      }
+    },
+    "topic": "Auto Loader & Streaming"
+  },
+  "120_sk_aQEWDQv0": {
+    "question_number": 51,
+    "question": "Identify a scenario to use an external table. A Data Engineer needs to create a project home directory structure and maintain a specific path in an external location. Which table can be created in this scenario?",
+    "options": {
+      "A": "An external table where the location is pointing to specific path in external location.",
+      "B": "An external table where the schema has managed location pointing to specific path in external location.",
+      "C": "A managed table where the catalog has managed location pointing to specific path in external location.",
+      "D": "A managed table where the location is pointing to specific path in external location."
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "This is a straightforward concept in Databricks/Delta Lake: external tables are explicitly defined with a LOCATION clause pointing to a specific path, which is the exact requirement described in the scenario.",
+      "correct_explanation": "An external table is created with a LOCATION clause that points to a specific path in an external location (e.g., cloud storage like S3, ADLS, or GCS). This allows the Data Engineer to maintain control over the directory structure and the specific path where data resides. When the table is dropped, the data remains at that path, making it ideal for scenarios where path management is important.",
+      "wrong_explanations": {
+        "B": "External tables do not use a 'schema managed location' to define their storage path; instead, they use an explicit LOCATION clause in the CREATE TABLE statement. Managed locations at the schema level apply to managed tables, not external tables.",
+        "C": "A managed table with catalog-level managed location does not allow the engineer to specify a particular path \u2014 the platform manages the storage path automatically. This does not satisfy the requirement to maintain a specific path.",
+        "D": "Managed tables do not support a custom LOCATION clause in the same way; their storage is managed by the platform (Unity Catalog or Hive metastore). Specifying a location for a managed table would not give the same control as an external table, and in Unity Catalog, managed tables cannot have a user-defined LOCATION."
+      }
+    },
+    "topic": "Unity Catalog & Data Governance"
+  },
+  "004_SY7JFc4BBgY": {
+    "question_number": 64,
+    "question": "A data architect has determined that a table of the following structure is necessary:\n\n| Column | Data Type | Constraint |\n|--------|-----------|------------|\n| z1 | 1990-01-05 | |\n| z4 | 1974-11-21 | 7.1 |\n\nWhich code block is used by SQL DDL command to create an empty table in the database regardless of whether a table already exists with this name?",
+    "options": {
+      "A": "CREATE OR REPLACE TABLE table_name (employeeid STRING, startDate DATE, avgRating FLOAT) USING DELTA",
+      "B": "CREATE OR REPLACE TABLE table_name WITH COLUMNS (employeeid STRING, startDate DATE, avgRating FLOAT) USING DELTA",
+      "C": "CREATE TABLE IF NOT EXISTS table_name (employeeid STRING, startDate DATE, avgRating FLOAT)",
+      "D": "CREATE TABLE table_name AS SELECT employeeid STRING, startDate DATE, avgRating FLOAT"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "CREATE OR REPLACE TABLE is the standard DDL syntax in Databricks/Delta Lake to create or overwrite an existing table definition, which matches 'regardless of whether a table already exists'.",
+      "correct_explanation": "CREATE OR REPLACE TABLE drops and recreates the table if it already exists, or creates it fresh if it doesn't exist yet. This satisfies the requirement of creating an empty table 'regardless of whether a table already exists with this name'. The syntax with column definitions in parentheses and USING DELTA is the correct DDL form for defining an empty Delta table.",
+      "wrong_explanations": {
+        "B": "The syntax 'WITH COLUMNS' is not valid SQL DDL in Databricks; column definitions follow the table name directly in parentheses without a 'WITH COLUMNS' clause.",
+        "C": "CREATE TABLE IF NOT EXISTS creates a table only if it does NOT already exist \u2014 it does nothing if the table already exists, so it does not fulfill the requirement of creating a table 'regardless of whether a table already exists'.",
+        "D": "CREATE TABLE ... AS SELECT is a CTAS (Create Table As Select) statement used to create a table from query results, not for defining an empty table with explicit column types; the syntax shown is also invalid SQL."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "108_K6wivRIIrVw": {
+    "question_number": 65,
+    "question": "Which of the following SQL keywords can be used to append new rows to an existing Delta table?",
+    "options": {
+      "A": "UPDATE",
+      "B": "COPY",
+      "C": "INSERT INTO",
+      "D": "DELETE",
+      "E": "UNION"
+    },
+    "correct_answer": "C",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "INSERT INTO is the standard SQL command for appending rows to an existing table, and this is well-documented in both standard SQL and Databricks/Delta Lake documentation.",
+      "correct_explanation": "INSERT INTO is the correct SQL keyword to append new rows to an existing Delta table. It adds records to the table without removing existing data, effectively performing an append operation. In Databricks, you can use INSERT INTO tablename SELECT ... or INSERT INTO tablename VALUES ... to add new rows.",
+      "wrong_explanations": {
+        "A": "UPDATE modifies existing rows in a table based on a condition but does not append new rows.",
+        "B": "COPY is not a standard SQL keyword for appending rows; in Databricks, COPY INTO is used to load data from files into a Delta table, but it is not simply 'COPY' and is a distinct command.",
+        "D": "DELETE removes existing rows from a table and does not append new rows.",
+        "E": "UNION is a set operation used to combine result sets from two or more SELECT statements in a query; it is not a DML command that writes data to a table on its own."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "107_NW0Y8bjL5tk": {
+    "question_number": 66,
+    "question": "A data engineering team needs to query a Delta table to extract data at most the same conditions as when it was created, but the query is running slowly. The team has already tuned the size of the data files. Upon investigating, the team has concluded that the rows meeting the condition are sparsely located throughout each of the data files. Based on the scenario, which of the following optimization techniques could speed up the query?",
+    "options": {
+      "A": "Data skipping",
+      "B": "Z-Ordering",
+      "C": "Bin-packing",
+      "D": "Write as a Parquet file",
+      "E": "Tuning the file size"
+    },
+    "correct_answer": "B",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Z-Ordering is the correct Delta Lake optimization technique for co-locating related data within the same set of files, which directly addresses the problem of rows meeting a condition being sparsely located throughout data files.",
+      "correct_explanation": "Z-Ordering is a multi-dimensional clustering technique that co-locates related information in the same set of files. When rows meeting a filter condition are sparsely distributed across many files, Z-Ordering on the relevant column(s) reorganizes the data so that matching rows are physically co-located together, reducing the number of files that need to be read and enabling more effective data skipping. This directly solves the described problem of sparse row distribution across data files.",
+      "wrong_explanations": {
+        "A": "Data skipping is a passive, automatic feature in Delta Lake that reads statistics stored in the transaction log to skip files that don't contain relevant data \u2014 it is a result/benefit of Z-Ordering, not a technique the team actively applies to reorganize sparse data.",
+        "C": "Bin-packing (via OPTIMIZE without Z-Order) consolidates many small files into fewer, larger files to address the small files problem, but the question states file size tuning has already been done and the issue is sparse row distribution, not file count.",
+        "D": "Writing as a Parquet file would lose Delta Lake features entirely and would not address the sparse distribution of rows meeting the query condition.",
+        "E": "The question explicitly states the team has already tuned the size of data files, making this option already exhausted and not applicable."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "106_G_I5UnH47-Q": {
+    "question_number": 67,
+    "question": "A data engineer needs to create a database called customer360 at the location /customer/customer360/. The engineer is unsure if one of their colleagues has already created the database. Which of the following commands should the data engineer run to complete this task?",
+    "options": {
+      "A": "CREATE DATABASE customer360 LOCATION '/customer/customer360';",
+      "B": "CREATE DATABASE IF NOT EXISTS customer360 LOCATION '/customer/customer360';",
+      "C": "CREATE DATABASE IF NOT EXISTS customer360 LOCATION '/customer/customer360';",
+      "D": "CREATE DATABASE IF NOT EXISTS customer360 DELTA LOCATION '/customer/customer360';",
+      "E": "CREATE DATABASE customer360 DELTA LOCATION '/customer/customer360';"
+    },
+    "correct_answer": [
+      "C"
+    ],
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "Options B and C appear identical in the question as written, so C is correct by content but the question likely has a typo where B and C are duplicates, making this ambiguous from a test-design perspective.",
+      "correct_explanation": "The correct syntax uses 'CREATE DATABASE IF NOT EXISTS' to avoid an error if the database already exists, combined with 'LOCATION' to specify the storage path. The IF NOT EXISTS clause ensures idempotency \u2014 if the database already exists, the command simply does nothing instead of throwing an error.",
+      "wrong_explanations": {
+        "A": "While the LOCATION syntax is correct, omitting IF NOT EXISTS means the command will throw an error if the database already exists, which fails the requirement of handling an uncertain state.",
+        "B": "This option appears identical to C as written in the question; if there is a difference (e.g., a subtle character difference), B may have a formatting issue. The correct answer is C per the marking.",
+        "D": "'DELTA LOCATION' is not valid SQL syntax for the CREATE DATABASE statement in Databricks; LOCATION is the correct keyword without 'DELTA' preceding it.",
+        "E": "Both the missing IF NOT EXISTS clause and the invalid 'DELTA LOCATION' syntax make this option incorrect; it would fail if the database exists and is syntactically invalid."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "105_VJ7sFXYbsx0": {
+    "question_number": 68,
+    "question": "A junior data engineer needs to create a Spark SQL table on Databricks where it's Spark managed both the data and metadata. Additionally, the data should also be stored in the Databricks Filesystem (DBFS). Which of the following commands should a senior data engineer share with the junior data engineer to complete this task?",
+    "options": {
+      "A": "CREATE TABLE my_table (id STRING, value STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse/my_table' OPTIONS (PATH 'storage-path')",
+      "B": "CREATE TABLE my_table (id STRING, value STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse' OPTIONS (PATH 'storage-path')",
+      "C": "CREATE MANAGED TABLE my_table (id STRING, value STRING);",
+      "D": "CREATE EXTERNAL my_table (id STRING, value STRING) USING DBFS;",
+      "E": "CREATE TABLE my_table (id STRING, value STRING);"
+    },
+    "correct_answer": [
+      "E"
+    ],
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "A managed table in Spark SQL is created simply with CREATE TABLE without specifying a LOCATION clause, and Databricks stores managed table data in DBFS under the default Hive warehouse directory (dbfs:/user/hive/warehouse).",
+      "correct_explanation": "Option E creates a managed table where Spark/Databricks controls both the metadata (in the Hive metastore) and the data lifecycle. By omitting the LOCATION clause, Databricks automatically stores the data in DBFS at the default warehouse path (dbfs:/user/hive/warehouse/<table_name>). When a managed table is dropped, both the metadata and the underlying data are deleted.",
+      "wrong_explanations": {
+        "A": "Specifying a LOCATION clause makes the table an external (unmanaged) table, meaning Spark only manages the metadata but not the data. Even though the location points to DBFS, this is not a managed table.",
+        "B": "Same issue as A \u2014 providing a LOCATION clause turns the table into an external table. Additionally, pointing to the warehouse root directory rather than a specific table subdirectory would be incorrect practice.",
+        "C": "'CREATE MANAGED TABLE' is not valid Spark SQL syntax; there is no MANAGED keyword in the CREATE TABLE DDL.",
+        "D": "'CREATE EXTERNAL' is not standard Spark SQL syntax (the correct keyword is EXTERNAL in 'CREATE EXTERNAL TABLE'), and 'USING DBFS' is not a valid data source/format specifier."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "104_vCmmaNlX5ww": {
+    "question_number": 69,
+    "question": "A data engineer wants to create a relational object by pulling data from tables. The relational object will be used by multiple engineers in other sessions. In order to save on storage costs, the data engineer wants to avoid copying and storing physical data. Which of the following relational objects should the data engineer create?",
+    "options": {
+      "A": "View",
+      "B": "Temporary view",
+      "C": "Delta Table",
+      "D": "Database",
+      "E": "Spark SQL Table"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "A View in Databricks/Spark SQL is a named relational object that stores a query definition without copying physical data, and it persists across sessions and is accessible by multiple users, making it the clear correct answer.",
+      "correct_explanation": "A View is a virtual relational object that stores only the query definition (not the physical data), so it avoids duplicating or storing data \u2014 saving storage costs. Unlike a temporary view, a regular view is persisted in the metastore and is accessible across multiple sessions and by multiple engineers.",
+      "wrong_explanations": {
+        "B": "A Temporary view is session-scoped and is dropped when the session ends, so it cannot be used by multiple engineers in other sessions.",
+        "C": "A Delta Table physically stores data on disk, which would incur additional storage costs \u2014 the opposite of what is required.",
+        "D": "A Database (schema) is a namespace/container for organizing tables and views, not a relational object that pulls and presents data from other tables.",
+        "E": "A Spark SQL Table (managed or external) stores or references physical data and does not inherently avoid copying data the way a view does."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "103_zS_wZvv4YYo": {
+    "question_number": 70,
+    "question": "A data engineer wants to create a data entity from a couple of tables. The data entity must be able to display data from multiple sources. The data must also be saved to a physical location. Which of the following data entities should the data engineer create?",
+    "options": {
+      "A": "View",
+      "B": "Function",
+      "D": "Database",
+      "E": "Table"
+    },
+    "correct_answer": "E",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "A table is the standard Databricks/Delta Lake data entity that stores data physically and can be created from multiple source tables, making it clearly the correct answer.",
+      "correct_explanation": "A table in Databricks (especially a managed or external Delta table) stores data at a physical location on storage. It can be created by joining or combining data from multiple source tables using CREATE TABLE AS SELECT (CTAS) or similar commands, satisfying both requirements: combining multiple sources and persisting data physically.",
+      "wrong_explanations": {
+        "A": "A view is a virtual data entity that does not save data to a physical location \u2014 it is simply a saved query that retrieves data dynamically at query time from underlying tables.",
+        "B": "A function is a reusable piece of logic (UDF or built-in function) used to transform or compute values; it is not a data entity that stores or displays data from multiple sources.",
+        "D": "A database (or schema) is a logical container/namespace that organizes tables, views, and functions, but it is not itself a data entity that holds or displays data from multiple sources."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "102_UMjPm9q_2hU": {
+    "question_number": 71,
+    "question": "A table customization exists with the following schema: id STRING, data STRING, city STRING, country STRING. A senior data engineer wants to create a new table from this table using the following command: CREATE TABLE customersPerCountry AS SELECT country, COUNT(*) as customer_count FROM customercustomization- GROUP BY country; A junior data engineer asks why the schema is not being declared for the new table. Which of the following responses would be correct when addressing the schema?",
+    "options": {
+      "A": "CREATE TABLE AS SELECT statements adopt schema details from the source table and query output",
+      "B": "CREATE TABLE AS SELECT statements infer the schema by parsing the data",
+      "C": "CREATE TABLE AS SELECT statements result in tables where schemas are optional",
+      "D": "CREATE TABLE AS SELECT statements assign all columns from the STRING",
+      "E": "CREATE TABLE AS SELECT statements result in tables that do not support schemas"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "CTAS (CREATE TABLE AS SELECT) statements in Databricks/Spark SQL derive the schema from the query output, which is well-documented behavior.",
+      "correct_explanation": "CREATE TABLE AS SELECT (CTAS) statements automatically derive the schema from the result of the SELECT query. In this case, the new table's schema will have two columns: 'country' (STRING, inherited from the source) and 'customer_count' (BIGINT, from the COUNT(*) aggregate). No explicit schema declaration is needed because it is adopted from the query output.",
+      "wrong_explanations": {
+        "B": "Schema inference typically refers to reading raw data files (like CSV or JSON) and guessing data types, not what happens with CTAS statements, which directly use the output schema of the SELECT query.",
+        "C": "Schemas are not 'optional' for CTAS tables \u2014 the schema is always defined, it is just automatically determined by the SELECT query output rather than being manually specified.",
+        "D": "CTAS does not assign all columns as STRING; each column retains the data type determined by the SELECT expression (e.g., COUNT(*) returns BIGINT, not STRING).",
+        "E": "CTAS tables fully support schemas; in fact, they always have a schema \u2014 it is simply derived automatically from the query result rather than declared explicitly."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "101_OIe8UVKwQMk": {
+    "question_number": 72,
+    "question": "A data engineer is overwriting data in a table by deleting the table and recreating the table. A colleague suggests that the table should simply be overwritten instead. Which of the following reasons to overwrite the table instead of deleting and recreating it is correct?",
+    "options": {
+      "A": "Overwriting a table is efficient because no files need to be deleted.",
+      "B": "Overwriting a table result in a clean table history and audit purposes.",
+      "C": "Overwriting a table maintains the old version of the table for Time Travel.",
+      "D": "Overwriting a table is an atomic operation and will not leave the table in an unfinished state.",
+      "E": "Overwriting a table allows for concurrent queries to be completed while in progress."
+    },
+    "correct_answer": [
+      "B"
+    ],
+    "reasoning": {
+      "confidence": "LOW",
+      "confidence_reason": "The marked answer B is incorrect; overwriting a table does NOT result in a clean table history \u2014 it preserves history, which is actually the opposite of B's claim, and the well-established correct answer for this type of question is D (atomicity) or C (Time Travel).",
+      "correct_explanation": "The most defensible correct answer is D: overwriting a table in Delta Lake is an atomic operation, meaning the table is never left in a partially written or inconsistent state. If the overwrite fails midway, the old data remains intact. Additionally, C is also a strong candidate because Delta Lake's overwrite (using INSERT OVERWRITE or df.write.mode('overwrite')) retains the previous version of the table, enabling Time Travel \u2014 something that dropping and recreating the table destroys entirely.",
+      "wrong_explanations": {
+        "A": "Overwriting a table in Delta Lake does still involve deleting old data files (they are marked for deletion and later removed by VACUUM), so this claim that 'no files need to be deleted' is inaccurate.",
+        "B": "Overwriting a table does NOT result in a clean history; it actually preserves the full history of all previous versions. A clean history is what you get when you drop and recreate a table, not when you overwrite it \u2014 making this statement factually backwards.",
+        "C": "While C is partially correct (overwriting preserves old versions for Time Travel, unlike drop-and-recreate), it is a secondary benefit compared to the atomicity guarantee in D, and the marked answer B is wrong regardless.",
+        "E": "Delta Lake overwrites do use transaction locking and may block or be blocked by concurrent writers; the statement that concurrent queries can freely complete 'while in progress' overstates Delta Lake's concurrency guarantees for write operations."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "100_Cj2iEoxcDCA": {
+    "question_number": 73,
+    "question": "A data analyst has completed a data engineering team with the following Spark SQL query:\nSELECT district, count(1) FROM store_sales_20220101 GROUP BY district;\nThe data analyst would like the data engineering team to run this exact same query on the table named (20220101) should automatically be generated and the query is run. Which of the following approaches could be used by the data engineering team to efficiently automate this process?",
+    "options": {
+      "A": "They could update the query using PySpark and use Python's string variable system to automatically update the table name.",
+      "B": "They could manually replace the date within the table name with the current date.",
+      "C": "They could request that the data analyst rewrites the query to be run less frequently.",
+      "D": "They could replace the string-formatted date in the table with a timestamp-formatted date."
+    },
+    "correct_answer": [
+      "A"
+    ],
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "Option A is the most logical automation approach among the choices, though the question wording is somewhat garbled and the options are not all strong candidates.",
+      "correct_explanation": "Option A is correct because using PySpark with Python's string formatting (f-strings, .format(), or similar) allows the data engineering team to dynamically generate the table name (e.g., data_20220101) based on the current date at runtime. This enables full automation \u2014 the query can be scheduled and the table name will automatically update each time the job runs, without manual intervention.",
+      "wrong_explanations": {
+        "B": "Manually replacing the date in the table name defeats the purpose of automation, as it requires human intervention each time the query needs to run with a new date.",
+        "C": "Requesting the analyst to rewrite the query to run less frequently does not automate the process or address the need to dynamically update the table name \u2014 it simply reduces the frequency of a still-manual operation.",
+        "D": "Replacing the string-formatted date with a timestamp-formatted date in the table name is not a standard practice, does not solve the automation problem, and would likely break the naming convention or cause compatibility issues."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "098_YUtCRG623Y8": {
+    "question_number": 75,
+    "question": "A data engineer is designing a data pipeline. The source system generates files in a shared directory. As a result, the files should be kept as is and will accumulate in the directory. The data engineer needs to identify which files are new since the previous run in the pipeline, and set up the pipeline to only ingest those new files with each run. Which of the following tools can the data engineer use to solve this problem?",
+    "options": {
+      "A": "DataBricks SQL",
+      "B": "Delta Lake",
+      "C": "Oily Catalog",
+      "D": "Data Explorer",
+      "E": "Auto Loader"
+    },
+    "correct_answer": "E",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Auto Loader is specifically designed to incrementally and efficiently process new files arriving in cloud storage directories, making it the definitive answer for this use case.",
+      "correct_explanation": "Auto Loader (structured streaming with cloudFiles source) automatically tracks which files have been ingested using checkpointing and file notification/directory listing mechanisms. It only processes new files that have arrived since the last run, exactly solving the problem of identifying and ingesting new files in an accumulating directory without reprocessing existing ones.",
+      "wrong_explanations": {
+        "A": "Databricks SQL is a query and analytics service for running SQL workloads on the Lakehouse; it does not provide incremental file ingestion tracking capabilities.",
+        "B": "Delta Lake is a storage layer that provides ACID transactions and versioning for data tables, but it does not handle the detection and ingestion of new source files from a directory.",
+        "C": "Unity Catalog (likely a typo as 'Oily Catalog') is a unified governance and metadata management solution; it does not perform incremental file ingestion.",
+        "D": "Data Explorer is a UI tool for browsing data assets in Databricks; it has no pipeline ingestion or file-tracking functionality."
+      }
+    },
+    "topic": "Auto Loader & Streaming"
+  },
+  "083_Tu4WEUWShGc": {
+    "question_number": 91,
+    "question": "A data analyst has created a Delta table called sales that is used by the entire data analysis team. They want help from the data engineering team to implement a series of tests to ensure the data is clean. However, the data engineering team wants to use Python for its tests rather than SQL. Which of the following commands can the data engineering team use to access sales in PySpark?",
+    "options": {
+      "A": "SELECT * FROM sales",
+      "B": "There is no way to share data between PySpark and SQL",
+      "C": "spark.sql(\"sales\")",
+      "D": "spark.data.table(\"sales\")",
+      "E": "spark.table(\"sales\")"
+    },
+    "correct_answer": "E",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "spark.table('table_name') is the standard PySpark API to load a registered table or view into a DataFrame, and this is well-documented in Databricks and Apache Spark documentation.",
+      "correct_explanation": "spark.table('sales') reads a table registered in the metastore (Hive or Unity Catalog) and returns it as a PySpark DataFrame. This allows the data engineering team to work with the same Delta table in Python/PySpark that the SQL team created and uses. It is the canonical way to access a named table from PySpark.",
+      "wrong_explanations": {
+        "A": "SELECT * FROM sales is valid SQL syntax but cannot be used as a standalone PySpark command; it would need to be wrapped in spark.sql('SELECT * FROM sales') to work in Python.",
+        "B": "This is incorrect \u2014 Databricks and Spark are designed for seamless interoperability between SQL and PySpark, sharing the same metastore and table definitions.",
+        "C": "spark.sql('sales') is not valid; spark.sql() expects a full SQL query string (e.g., 'SELECT * FROM sales'), not just a table name.",
+        "D": "spark.data.table('sales') is not a valid PySpark API; there is no 'data' attribute on the SparkSession object with a 'table' method."
+      }
+    },
+    "topic": "Delta Live Tables"
+  },
+  "082_WR7FSWyDjdM": {
+    "question_number": 92,
+    "question": "Which commands can be used to write data into a Delta table while avoiding the writing of duplicate records?",
+    "options": {
+      "A": "DROP",
+      "B": "IGNORE",
+      "C": "MERGE",
+      "D": "APPEND",
+      "E": "INSERT"
+    },
+    "correct_answer": "C",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "MERGE is the standard SQL command in Delta Lake for upsert operations that can conditionally insert, update, or delete records, making it the canonical way to avoid duplicates.",
+      "correct_explanation": "The MERGE command (also known as MERGE INTO or upsert) allows you to match source data against a target Delta table based on a condition, and only insert records that do not already exist. This prevents duplicate records from being written. It is a core feature of Delta Lake designed precisely for this use case.",
+      "wrong_explanations": {
+        "A": "DROP is a DDL command used to delete an entire table or database object, not to write data into a table.",
+        "B": "IGNORE is not a standard standalone Delta Lake or Spark SQL command for writing data; while INSERT OR IGNORE exists in some SQL dialects, it is not the primary Delta Lake mechanism for deduplication.",
+        "D": "APPEND mode simply adds all new records to the table without any duplicate checking, so it cannot prevent duplicate records from being written.",
+        "E": "A plain INSERT statement adds rows to a table but does not have built-in logic to check for and avoid duplicates; it would require additional constructs like INSERT OR IGNORE or a subquery filter, making it less reliable than MERGE for this purpose."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "080_-EBGZp-H3ug": {
+    "question_number": 94,
+    "question": "A data engineer is attempting to drop a Spark SQL table my_table. The data engineer wants to delete all table metadata and data. They run the following command:\n\nDROP TABLE IF EXISTS my_table;\n\nWhile the object no longer appears when they run SHOW TABLES, the data files still exist and the metadata files were deleted?\n\nWhich of the following describes why the data was not deleted?",
+    "options": {
+      "A": "The table's data was larger than 10 GB",
+      "B": "The table's data was smaller than 10 GB",
+      "C": "The table was external",
+      "D": "The table did not have a location",
+      "E": "The table was managed"
+    },
+    "correct_answer": "C",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "This is a well-documented Databricks/Spark SQL behavior: dropping an external table only removes the metadata, while the underlying data files remain intact at their external location.",
+      "correct_explanation": "External tables in Spark SQL/Delta Lake store data at a user-specified location outside the default warehouse directory. When you DROP an external table, only the metadata (table definition in the metastore) is deleted, but the data files at the external location are preserved. This is by design, as the data is considered to be managed externally and not owned by the metastore.",
+      "wrong_explanations": {
+        "A": "The size of the table's data (larger than 10 GB) has no bearing on whether DROP TABLE removes data files; this is not a real Spark SQL behavior.",
+        "B": "The size of the table's data (smaller than 10 GB) also has no bearing on DROP TABLE behavior; data size thresholds do not control file deletion in this context.",
+        "D": "All tables have a location (either explicitly specified or defaulted); lacking a location is not a valid scenario that would explain why data files persist after a DROP TABLE.",
+        "E": "Managed tables behave in the opposite way \u2014 when you DROP a managed table, both the metadata AND the underlying data files are deleted, so this scenario describes external tables, not managed ones."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "078_QskeqxscWrg": {
+    "question_number": 96,
+    "question": "In order for Structured Streaming to reliably track the exact progress of the processing so that it can handle any kind of failure by restarting and/or reprocessing, which of the following two approaches is used by Spark to record the offset range of the data being processed in each trigger?",
+    "options": {
+      "A": "Checkpointing and Write-ahead Logs",
+      "B": "Checkpointing and Idempotent Sinks",
+      "C": "Structured Streaming cannot record the offset range of the data being processed in each trigger.",
+      "D": "Replayable Sources and Idempotent Sinks",
+      "E": "Write-ahead Logs and Idempotent Sinks"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Databricks and Apache Spark documentation explicitly states that Structured Streaming uses checkpointing and write-ahead logs (WALs) to record the offset range of data processed in each trigger, enabling fault tolerance and recovery.",
+      "correct_explanation": "Structured Streaming achieves fault tolerance through two mechanisms: checkpointing, which saves the progress metadata (including offsets) to a reliable storage location, and write-ahead logs (WALs), which record the offset ranges of data being processed in each trigger before the data is actually processed. Together, these allow Spark to restart from exactly where it left off after a failure, ensuring exactly-once processing semantics.",
+      "wrong_explanations": {
+        "B": "While checkpointing is correct, idempotent sinks are an end-to-end fault tolerance concept (ensuring output is written exactly once), not a mechanism for recording offset ranges during trigger processing.",
+        "C": "This is incorrect \u2014 Structured Streaming absolutely can and does record offset ranges; this is a core feature of its fault-tolerance design.",
+        "D": "Replayable sources and idempotent sinks together ensure end-to-end exactly-once semantics, but they are not the specific mechanisms Spark uses internally to track and record offset ranges in each trigger.",
+        "E": "Idempotent sinks are not used by Spark to record offset ranges; they are a property of the output sink to ensure no duplicate writes, not a mechanism for tracking processing progress."
+      }
+    },
+    "topic": "Auto Loader & Streaming"
+  },
+  "073_iDNsAm1NGk0": {
+    "question_number": 100,
+    "question": "A data engineer has configured a Structured Streaming job to read from a table, manipulate the data, and then write to a staging table into a new table. The code block used by the data engineer is below:\n\n(spark.table(\"sales\").withColumn(\"avg_price\", col(\"sales\") / col(\"quantity\")).write.mode(\"complete\").option(\"checkpointLocation\", \"/path/to/checkpoint\").toTable(\"new_sales\"))\n\nIf the data engineer only wants the query to execute a micro-batch to process data every 5 seconds, which of the following lines of code should the data engineer use to fill in the blank?",
+    "options": {
+      "A": "trigger(\"5 seconds\")",
+      "B": "trigger()",
+      "C": "trigger(once = \"5 seconds\")",
+      "D": "trigger(processingTime = \"5 seconds\")",
+      "E": "trigger(continuous = \"5 seconds\")"
+    },
+    "correct_answer": "D",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "The Spark Structured Streaming API clearly uses trigger(processingTime='5 seconds') to set a fixed interval micro-batch processing time, which is well-documented in both Apache Spark and Databricks documentation.",
+      "correct_explanation": "In Structured Streaming, trigger(processingTime='5 seconds') sets a fixed interval trigger that causes the streaming query to execute a micro-batch every 5 seconds. The processingTime parameter accepts a string interval like '5 seconds' and is the correct way to configure time-based micro-batch intervals.",
+      "wrong_explanations": {
+        "A": "trigger() does not accept a plain string argument directly; the correct parameter name must be specified, so trigger('5 seconds') would raise a TypeError.",
+        "B": "trigger() with no arguments uses the default trigger behavior (as fast as possible), not a 5-second interval.",
+        "C": "The once parameter for trigger() accepts a boolean (True/False) to run a single micro-batch and stop, not a time interval string.",
+        "E": "trigger(continuous='5 seconds') enables the experimental Continuous Processing mode, which is fundamentally different from micro-batch processing and uses a different execution engine."
+      }
+    },
+    "topic": "Auto Loader & Streaming"
+  },
+  "003_B6EXchrruzs": {
+    "question_number": 101,
+    "question": "A data engineer is attempting to drop a Spark SQL table my_table and runs the following command:\nDROP TABLE IF EXISTS my_table\nAfter running this command, the engineer notices that the data files and metadata files have been deleted from the file system. What is the reason behind the deletion of all these files?",
+    "options": {
+      "A": "The table was managed",
+      "B": "The table's data was smaller than 10 GB",
+      "C": "The table did not have a location",
+      "D": "The table was external",
+      "E": "The table's data was larger than 10 GB"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "This is a well-documented behavior in Spark SQL and Delta Lake: dropping a managed table removes both data files and metadata, while dropping an external table only removes the metadata.",
+      "correct_explanation": "A managed table (also called an internal table) is fully controlled by Spark/Databricks, meaning both the metadata and the underlying data files are stored and managed by the metastore. When you DROP a managed table, Spark deletes both the metadata from the metastore AND the actual data files from the storage location. This is the defining behavioral difference between managed and external tables.",
+      "wrong_explanations": {
+        "B": "The size of the table's data has no bearing on whether files are deleted when a DROP TABLE command is executed; this is entirely determined by the table type (managed vs. external).",
+        "C": "A table without an explicit LOCATION clause is actually a managed table, so this is partially related but not the direct reason \u2014 the reason is that it is managed, not simply the absence of a location property.",
+        "D": "External tables are the opposite case: when you DROP an external table, only the metadata is removed from the metastore, and the underlying data files are preserved on the file system.",
+        "E": "The size of the table's data (larger than 10 GB) has no bearing on file deletion behavior during a DROP TABLE command; table type (managed vs. external) is the determining factor."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "071_cYn7eXbQ7xA": {
+    "question_number": 102,
+    "question": "Which of the following describes a benefit of creating an external table from Parquet rather than CSV when using external table statements?",
+    "options": {
+      "A": "Parquet files can be partitioned",
+      "B": "CREATE TABLE AS SELECT statements cannot be used on files",
+      "C": "Parquet files have a well-defined schema",
+      "D": "Parquet files have the ability to be optimized",
+      "E": "Parquet files will become Delta tables"
+    },
+    "correct_answer": "C",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Parquet's well-defined schema is a well-documented advantage over CSV when creating external tables, as it allows schema inference without manual specification.",
+      "correct_explanation": "Parquet is a columnar storage format that stores schema information (column names, data types, nullability) within the file metadata itself. When creating an external table from Parquet, Databricks can automatically infer the schema from the files, whereas CSV files have no embedded schema and require the user to manually define column names and data types. This makes Parquet significantly more reliable and easier to work with for external table creation.",
+      "wrong_explanations": {
+        "A": "CSV files can also be partitioned using directory-based (Hive-style) partitioning, so this is not a unique benefit of Parquet over CSV.",
+        "B": "CREATE TABLE AS SELECT (CTAS) statements can actually be used on files in Databricks; this statement is incorrect and not a distinguishing benefit of Parquet.",
+        "D": "While Parquet is more efficient than CSV, 'ability to be optimized' is vague and not the primary or most accurate benefit when comparing Parquet to CSV for external table creation specifically.",
+        "E": "Creating an external table from Parquet files does not convert them into Delta tables; they remain Parquet files, and the table is an external (non-Delta) table unless explicitly created as Delta format."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "064_GIgMEEyiJGA": {
+    "question_number": 109,
+    "question": "Which file format is used for storing Delta Lake Table?",
+    "options": {
+      "A": "CSV",
+      "B": "Parquet",
+      "C": "JSON",
+      "D": "Delta"
+    },
+    "correct_answer": [
+      "B"
+    ],
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Delta Lake tables store data in Parquet format with additional transaction log metadata, which is well-documented in Delta Lake and Databricks official documentation.",
+      "correct_explanation": "Delta Lake uses Parquet as the underlying file format for storing table data. On top of Parquet files, Delta Lake adds a transaction log (_delta_log directory) containing JSON and checkpoint files that enable ACID transactions, versioning, and other Delta Lake features. The data itself physically resides as Parquet files in the storage location.",
+      "wrong_explanations": {
+        "A": "CSV is a plain-text, row-based format and is not used by Delta Lake for storing table data; it lacks the columnar efficiency and schema enforcement needed for Delta Lake.",
+        "C": "JSON is used for the Delta Lake transaction log entries (_delta_log), not for storing the actual table data.",
+        "D": "While 'Delta' describes the table format and protocol, it is not a standalone file format for the underlying data storage; the physical data files are Parquet."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "064_GIgMEEyiJGA_2": {
+    "question_number": 110,
+    "question": "In which of the following file formats is data from Delta Lake tables primarily stored?",
+    "options": {
+      "A": "Delta",
+      "B": "CSV",
+      "C": "Parquet",
+      "D": "JSON",
+      "E": "A proprietary, optimized format specific to Databricks"
+    },
+    "correct_answer": [
+      "C"
+    ],
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "It is well-documented in Delta Lake's official documentation that Delta Lake stores data files in Parquet format, with an additional transaction log (_delta_log) that tracks metadata and changes.",
+      "correct_explanation": "Delta Lake tables store their actual data in Parquet files on the underlying storage system (e.g., cloud object storage). The Delta format is essentially Parquet files plus a transaction log directory (_delta_log) containing JSON and checkpoint files that enable ACID transactions, schema enforcement, and time travel. The Parquet files hold the columnar data itself.",
+      "wrong_explanations": {
+        "A": "'Delta' is the table format/protocol layer built on top of Parquet, not a standalone file format for the raw data files; the underlying data files are Parquet, not a separate 'Delta' file type.",
+        "B": "CSV is a plain-text, row-based format that Delta Lake does not use for storing its data; it lacks the columnar efficiency and compression that Parquet provides.",
+        "D": "JSON is used only for the Delta transaction log entries (_delta_log/*.json), not for storing the actual table data.",
+        "E": "Delta Lake is an open-source format and does not use a proprietary or Databricks-specific file format; the data files are standard Parquet, readable by any Parquet-compatible tool."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "062_5PqJLKQvIFc": {
+    "question_number": 112,
+    "question": "A data engineer has been given a new record of data:\nid STRING = 'a1'\nrank INTEGER = 6\nrating FLOAT = 9.4\n\nWhich SQL commands can be used to append the new record to an existing Delta table my_table?",
+    "options": {
+      "A": "INSERT INTO my_table VALUES ('a1', 6, 9.4)",
+      "B": "INSERT VALUES ('a1', 6, 9.4) INTO my_table",
+      "C": "UPDATE my_table VALUES ('a1', 6, 9.4)",
+      "D": "UPDATE VALUES ('a1', 6, 9.4) my_table"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "INSERT INTO ... VALUES is standard SQL syntax supported by Databricks SQL and Delta Lake for appending new records to a table.",
+      "correct_explanation": "The correct syntax to append (insert) a new record into a Delta table is `INSERT INTO my_table VALUES ('a1', 6, 9.4)`. This is standard SQL DML syntax that Databricks fully supports for Delta tables, and it adds a new row without modifying existing rows.",
+      "wrong_explanations": {
+        "B": "`INSERT VALUES ... INTO my_table` is not valid SQL syntax; the correct order requires the table name to appear immediately after INSERT INTO, not after VALUES.",
+        "C": "`UPDATE my_table VALUES (...)` is not valid SQL syntax; UPDATE requires a SET clause to modify existing rows and does not use a VALUES clause in this way.",
+        "D": "`UPDATE VALUES (...) my_table` is entirely invalid SQL syntax; UPDATE requires the form `UPDATE table SET col = val WHERE condition`."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "061_4geeLhMmEOY": {
+    "question_number": 113,
+    "question": "A data engineer needs to create a table in Databricks using data from a CSV file in location /path/to/csv. They run the following command:\n\nCREATE TABLE new_table\nOPTIONS (header = \"true\", delimiter = \"|\")\nLOCATION \"/path/to/csv\"\n\nWhich of the following lines of code fills in the above blank to successfully complete the task?",
+    "options": {
+      "A": "FROM \"/path/to/csv\"",
+      "B": "USING CSV",
+      "C": "FROM CSV",
+      "D": "USING DELTA"
+    },
+    "correct_answer": "B",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "The USING clause is the standard Spark SQL syntax for specifying the data source format when creating a table, and 'USING CSV' is the correct way to indicate a CSV data source.",
+      "correct_explanation": "In Spark SQL, the USING clause specifies the file format/data source for creating a table. 'USING CSV' tells Databricks to use the CSV data source reader, which then respects the OPTIONS provided (header=true, delimiter='|') and reads from the specified LOCATION. This creates an external table pointing to the CSV files at the given path.",
+      "wrong_explanations": {
+        "A": "'FROM' is not a valid clause in a CREATE TABLE statement in Spark SQL; FROM is used in SELECT queries to specify the source table or view.",
+        "C": "'FROM CSV' is not valid SQL syntax for a CREATE TABLE statement; the correct keyword is USING, not FROM.",
+        "D": "'USING DELTA' would create a Delta table, but Delta format does not use OPTIONS like header and delimiter, and cannot directly read a raw CSV file at a location as a Delta table without prior conversion."
+      }
+    },
+    "topic": "Lakehouse Architecture"
+  },
+  "060_Ygb6IKEkgis_2": {
+    "question_number": 115,
+    "question": "Which of the following SQL keywords can be used to convert a table from a long format to a wide format?",
+    "options": {
+      "A": "PIVOT",
+      "B": "CONVERT",
+      "C": "WHERE",
+      "D": "TRANSFORM",
+      "E": "SUM"
+    },
+    "correct_answer": [
+      "A"
+    ],
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "PIVOT is a well-documented SQL and Spark SQL keyword specifically designed to rotate rows into columns, converting long format data to wide format.",
+      "correct_explanation": "The PIVOT clause in SQL (and Spark SQL) is used to rotate rows into columns, effectively converting a table from long format (many rows, fewer columns) to wide format (fewer rows, more columns). It aggregates values and spreads distinct values of one column across multiple new columns, which is the classic definition of a long-to-wide transformation.",
+      "wrong_explanations": {
+        "B": "CONVERT is used for data type conversion in SQL, not for reshaping table structure from long to wide format.",
+        "C": "WHERE is a filtering clause used to restrict rows returned by a query; it has no role in pivoting or reshaping data.",
+        "D": "TRANSFORM in Spark SQL is used to apply a function to each element of an array, not to reshape tabular data from long to wide format.",
+        "E": "SUM is an aggregate function used to add numeric values; while it can be used inside a PIVOT expression, it alone does not perform the long-to-wide conversion."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "059_ytE9VUTt7to": {
+    "question_number": 116,
+    "question": "A data engineer is working with two tables. Each of these tables is displayed below in its entirety.\n\nWhich of the following query to join these tables together:\nSELECT sale_id, customer_id, favorite_stores.stores_id\nFROM sales\nLEFT JOIN favorite_stores\nON sales.customer_id = favorite_stores.customer_id;",
+    "options": {
+      "A": "sale_id\n24 44\n25 23\n26 42",
+      "B": "customer_id\nstores_id\n24 s1\n28 s4\n6.99 s2",
+      "C": "sale_id customer_id stores_id\n24 44 s1\n25 23\n26 42 s2",
+      "D": "sale_id customer_id stores_id\n24 44 s1\n25 44 s1\n26 44 s1\n24 24\n25 25\n26 26"
+    },
+    "correct_answer": "C",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "A LEFT JOIN returns all rows from the left table (sales) with matching rows from the right table (favorite_stores), and NULL for non-matching rows, which is exactly what option C shows.",
+      "correct_explanation": "A LEFT JOIN keeps all rows from the left table (sales) regardless of whether there is a match in the right table (favorite_stores). For customer_id 44, there is a match in favorite_stores giving stores_id s1. For customer_id 23, there is no match so stores_id is NULL (shown as empty). For customer_id 42, there is a match giving stores_id s2. This perfectly matches option C.",
+      "wrong_explanations": {
+        "A": "This option only shows sale_id and customer_id columns, omitting stores_id entirely, and does not represent the result of the specified SELECT query which explicitly selects three columns.",
+        "B": "This option shows customer_id and stores_id but omits sale_id, and the values shown (6.99) don't correspond to customer_id values, making this clearly incorrect.",
+        "D": "This option incorrectly shows all rows from sales being joined with every row from favorite_stores for a single customer (customer_id 44), which would be the result of a CROSS JOIN or incorrect join logic, not a LEFT JOIN on customer_id."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "057_52Ex5jSEXGM": {
+    "question_number": 118,
+    "question": "A data engineer has a Python variable table_name that they would like to use in a SQL query. They want to construct a Python code block that will run the query using table_name. They have the following incomplete code block:\n\n(# SELECT customer_id, spend FROM [table_name] )\n\nWhat can be used to fill in the blank to successfully complete the task?",
+    "options": {
+      "A": "spark.delta.sql",
+      "B": "spark.sql",
+      "C": "spark.table",
+      "D": "dbutils.sql"
+    },
+    "correct_answer": "B",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "spark.sql() is the standard PySpark method for executing SQL queries as strings, and supports Python f-string or format interpolation to inject variables like table_name into the query.",
+      "correct_explanation": "spark.sql() accepts a SQL query string and executes it against the Spark session. By using an f-string (e.g., spark.sql(f\"SELECT customer_id, spend FROM {table_name}\")), the Python variable table_name can be interpolated directly into the SQL query string, making this the correct approach for running parameterized SQL from Python.",
+      "wrong_explanations": {
+        "A": "spark.delta.sql does not exist as a valid Databricks/PySpark API method; this is a fabricated option.",
+        "C": "spark.table() is used to return a DataFrame representing a table by name, but it does not accept a full SQL query string \u2014 it only takes a table name, so it cannot run a SELECT query with column selection.",
+        "D": "dbutils.sql does not exist as a valid dbutils method; dbutils provides utilities like dbutils.fs, dbutils.secrets, and dbutils.widgets, but not SQL execution."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "045_1vPR37KQsBE": {
+    "question_number": 130,
+    "question": "A data engineer has a job with multiple tasks that runs nightly. One of the tasks unexpectedly fails during 10 percent of the time. Which of the following actions can the data engineer perform to ensure the job completes each night while minimizing compute costs?",
+    "options": {
+      "A": "They can institute a retry policy for the entire job",
+      "B": "They can observe the task as it runs to try and determine why it is failing",
+      "C": "They can set up the job to run multiple times ensuring that at least one will complete",
+      "D": "They can institute a retry policy for the task that periodically fails",
+      "E": "They can utilise a jobs cluster for each of the tasks in the job"
+    },
+    "correct_answer": "D",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "Databricks Jobs supports task-level retry policies, which is exactly the right granular solution for a single failing task, and this is well-documented in Databricks exam preparation materials.",
+      "correct_explanation": "Databricks allows retry policies to be configured at the individual task level within a multi-task job. By setting a retry policy only on the failing task, the job will automatically retry just that task when it fails, allowing the overall job to complete without manual intervention. This minimizes compute costs because only the failed task is retried rather than re-running the entire job or provisioning extra resources.",
+      "wrong_explanations": {
+        "A": "Instituting a retry policy for the entire job would cause all tasks to re-run on failure, not just the problematic one, resulting in unnecessary compute usage and higher costs.",
+        "B": "Observing the task as it runs is a diagnostic approach, not a solution that ensures the job completes each night automatically; it also requires manual effort.",
+        "C": "Running the job multiple times to ensure at least one completes is extremely wasteful in terms of compute costs, as it duplicates all task executions regardless of whether they are needed.",
+        "E": "Using a jobs cluster for each task is already a common practice and does not address the retry/failure problem; it does not help ensure the job completes when a task fails intermittently."
+      }
+    },
+    "topic": "Workflows & Orchestration"
+  },
+  "039_eLFr_WL3rhA": {
+    "question_number": 136,
+    "question": "In which of the following scenarios should a data engineer use the INSERT OVERWRITE command instead of the INSERT INTO command?",
+    "options": {
+      "A": "When the location of the data needs to be changed",
+      "B": "When the target table is an external table",
+      "C": "When the source table can be deleted",
+      "D": "When the target table cannot contain duplicate records",
+      "E": "When the source is not a Delta table"
+    },
+    "correct_answer": "D",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "INSERT OVERWRITE replaces existing data in the target table, making it the correct choice when duplicate records must be avoided, whereas INSERT INTO appends data and can introduce duplicates.",
+      "correct_explanation": "INSERT OVERWRITE completely replaces the contents of the target table with the new data, ensuring no duplicate records exist after the operation. INSERT INTO, by contrast, appends rows to the existing table, which can result in duplicate records if the same data is loaded more than once. Therefore, when the target table cannot contain duplicates, INSERT OVERWRITE is the appropriate command to use.",
+      "wrong_explanations": {
+        "A": "INSERT OVERWRITE does not change the physical location of the data; it replaces the data in the existing table location. Changing data location requires other operations like CLONE or recreating the table.",
+        "B": "The choice between INSERT OVERWRITE and INSERT INTO is not specifically determined by whether the target table is external or managed; both commands can be used with either table type.",
+        "C": "Whether the source table can be deleted is irrelevant to choosing between INSERT OVERWRITE and INSERT INTO; neither command deletes the source table.",
+        "E": "The source data format (Delta or non-Delta) does not determine which insert command to use; both INSERT INTO and INSERT OVERWRITE can work with various source formats."
+      }
+    },
+    "topic": "Spark SQL"
+  },
+  "038_yyJJfjlL0rg": {
+    "question_number": 137,
+    "question": "Which of the following code blocks returns a new DataFrame with a new column sqft100 that is 1/100th of column sqft in DataFrame storesDF? Note that column sqft100 is not in the original DataFrame storesDF.",
+    "options": {
+      "A": "storesDF.withColumn(\"sqft100\", col(\"sqft\") * 100)",
+      "B": "storesDF.withColumn(\"sqft100\", sqft / 100)",
+      "C": "storesDF.withColumn(col(\"sqft100\"), col(\"sqft\") / 100)",
+      "D": "storesDF.withColumn(\"sqft100\", col(\"sqft\") / 100)",
+      "E": "storesDF.newColumn(\"sqft100\", sqft / 100)"
+    },
+    "correct_answer": "D",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "The withColumn method signature is withColumn(colName: String, col: Column) and dividing by 100 gives 1/100th, making D the unambiguous correct answer.",
+      "correct_explanation": "The withColumn method takes a string column name as the first argument and a Column expression as the second argument. Using col('sqft') / 100 correctly creates a Column expression that computes 1/100th of the sqft column, and the result is a new DataFrame with the added sqft100 column without modifying the original storesDF.",
+      "wrong_explanations": {
+        "A": "This multiplies sqft by 100 rather than dividing by 100, so sqft100 would be 100 times sqft, not 1/100th of it.",
+        "B": "sqft is not a valid Python/Scala variable here; you must reference the DataFrame column using col('sqft') or storesDF['sqft'], not a bare identifier sqft.",
+        "C": "The first argument to withColumn must be a plain string (the new column name), not a Column object like col('sqft100'); passing a Column expression there will cause an error.",
+        "E": "newColumn is not a valid DataFrame method in the Spark API; the correct method is withColumn."
+      }
+    },
+    "topic": "Apache Spark & PySpark"
+  },
+  "037_vyr0Xj9XX00": {
+    "question_number": 138,
+    "question": "A data engineer is processing ingested streaming tables and needs to filter out NULL values in the order_datetime column from the raw staging table orders_raw and store the results in a new table orders_valid using ___. Which code snippet should the data engineer use?",
+    "options": {
+      "A": "CREATE OR REFRESH STREAMING TABLE orders_valid CONSTRAINT valid_data EXPECT (order_datetime IS NOT NULL) ON VIOLATION DROP ROW AS SELECT * FROM orders_raw;",
+      "B": "CREATE OR REFRESH STREAMING TABLE orders_valid CONSTRAINT valid_data EXPECT (order_datetime IS NOT NULL) ON VIOLATION DROP ROW AS SELECT * FROM orders_raw WHERE order_datetime IS NOT NULL;",
+      "C": "CREATE OR REFRESH STREAMING TABLE orders_valid AS SELECT * FROM orders_raw WHERE order_datetime IS NOT NULL;",
+      "D": "CREATE OR REPLACE STREAMING TABLE orders_valid FILTER (order_datetime IS NOT NULL) AS SELECT * FROM orders_raw;"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "Option A uses the correct DLT constraint syntax with ON VIOLATION DROP ROW which filters out NULL rows, but Option C is also valid SQL that would achieve the same result more simply, making this a judgment call about which approach is preferred in DLT context.",
+      "correct_explanation": "In Delta Live Tables (DLT), the CONSTRAINT clause with EXPECT and ON VIOLATION DROP ROW is the idiomatic way to enforce data quality rules while filtering out violating rows. Option A uses 'CREATE OR REFRESH STREAMING TABLE' (the correct DLT syntax) with a named constraint 'valid_data' that drops rows where order_datetime IS NULL, which both filters the data and documents the quality expectation.",
+      "wrong_explanations": {
+        "B": "While B has correct DLT syntax and constraint definition, it redundantly adds a WHERE clause that duplicates what ON VIOLATION DROP ROW already does; the WHERE clause is unnecessary and not the recommended DLT pattern when using constraints.",
+        "C": "Option C uses plain SQL filtering without DLT quality constraints, which would work functionally but does not leverage DLT's built-in data quality framework (CONSTRAINT/EXPECT) that provides monitoring, logging, and documentation of quality rules.",
+        "D": "Option D uses incorrect DLT syntax \u2014 'CREATE OR REPLACE' is not the correct DLT keyword (should be 'CREATE OR REFRESH'), and 'FILTER (...)' is not valid DLT or Spark SQL syntax for streaming table definitions."
+      }
+    },
+    "topic": "Delta Live Tables"
+  },
+  "002_7pB0p-JpeTg": {
+    "question_number": 139,
+    "question": "A global retail company sells products across multiple categories (e.g., Electronics, Clothing) and regions (e.g., North, South, East, West). The sales team has provided a data engineer with a PySpark dataframe named sales_df as below and the team wants the data engineer to analyze the sales amount for each category and region combination. Calculate the total sales amount for each region and store the results in a new dataframe called region_sales. Given that the data engineer needs to group by region and aggregate the sum of sales_amount, which of the following code will work?",
+    "options": {
+      "A": "category_sales = sales_df.groupby(\"category\").agg(sum(\"sales_amount\")).alias(\"total_sales_amount\")",
+      "B": "category_sales = sales_df.sum(\"sales_amount\"), groupby(\"category\")",
+      "C": "category_sales = sales_df.groupby(\"sales_amount\"), groupby(\"category\").alias(\"total_sales_amount\")",
+      "D": "region_sales = sales_df.groupby(\"region\").agg(sum(\"sales_amount\")).alias(\"total_sales_amount\")"
+    },
+    "correct_answer": "D",
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "Option D uses the correct groupby and agg syntax, but technically .alias() is applied to the DataFrame rather than to the column, which is not valid PySpark syntax \u2014 however, it is still the best answer among the given options and closest to correct.",
+      "correct_explanation": "Option D correctly groups by 'region' and aggregates the sum of 'sales_amount', storing the result in 'region_sales' as required by the question. The groupby().agg() pattern is the proper PySpark approach for this operation. While .alias() should ideally be applied to the column expression inside agg (e.g., sum('sales_amount').alias('total_sales_amount')), D is still the only option that satisfies the core requirements: correct variable name, correct groupby column, and correct aggregation structure.",
+      "wrong_explanations": {
+        "A": "This option groups by 'category' instead of 'region' and stores the result in 'category_sales' instead of 'region_sales', which does not satisfy the question's requirement to calculate total sales per region.",
+        "B": "This is not valid PySpark syntax; .sum() is not a DataFrame method called this way, and the comma-separated expression with groupby chained after does not form a valid statement.",
+        "C": "This is syntactically invalid PySpark code; you cannot chain two .groupby() calls with a comma, and the overall expression does not produce a meaningful aggregation result."
+      }
+    },
+    "topic": "Apache Spark & PySpark"
+  },
+  "034_Uvkc_yNwL4s": {
+    "question_number": 142,
+    "question": "A data engineer streams customer orders into a Kafka topic (orders_topic) and is currently writing the ingestion script of a DB2 table. The code engineer needs to ingest the data from Kafka brokers to DB using Databricks. What is the correct code for ingesting the data:",
+    "options": {
+      "A": "df.orders_json().load(\"kafka://orders_topic\")",
+      "B": "spark.readStream.format(\"kafka\").option(\"kafka.bootstrap.servers\",\"kafka_broker\").option(\"subscribe\",\"orders_topic\").load()",
+      "C": "df.read.kafka(\"orders_topic\")",
+      "D": "spark.readStream.format(\"file\").load(\"/kafka/orders_topic\")",
+      "E": "df.kafka().option(\"topic\",\"orders_topic\").load(\"kafka_broker\")"
+    },
+    "correct_answer": [
+      "A"
+    ],
+    "reasoning": {
+      "confidence": "LOW",
+      "confidence_reason": "The marked answer A is clearly incorrect; it uses a non-existent API syntax, while option B is the correct and well-documented Databricks/Spark Structured Streaming syntax for reading from Kafka.",
+      "correct_explanation": "Option B is the correct answer. In Databricks Structured Streaming, reading from Kafka requires spark.readStream.format('kafka'), specifying the bootstrap servers via .option('kafka.bootstrap.servers', 'kafka_broker'), and the topic to subscribe to via .option('subscribe', 'orders_topic'), followed by .load(). This is the standard and documented API for Kafka ingestion in Spark Structured Streaming.",
+      "wrong_explanations": {
+        "A": "df.orders_json().load('kafka://orders_topic') is completely fabricated syntax; there is no such method as orders_json() on a DataFrame, and Kafka sources are not loaded via a URL scheme like this.",
+        "C": "df.read.kafka('orders_topic') is not a valid Spark API; there is no .kafka() method on DataFrameReader, and this also incorrectly uses batch read instead of streaming.",
+        "D": "spark.readStream.format('file') is not valid for Kafka ingestion; Kafka is not a file-based source, and there is no /kafka/orders_topic file path for a Kafka topic.",
+        "E": "df.kafka().option('topic','orders_topic').load('kafka_broker') is fabricated syntax; DataFrames do not have a .kafka() method, and this is not how Spark reads from Kafka."
+      }
+    },
+    "topic": "Auto Loader & Streaming"
+  },
+  "029_Exlk2-pOV0Y": {
+    "question_number": 147,
+    "question": "A data engineer is writing a script that is meant to ingest new data from cloud storage in the event of the Schema change. If the ingestion should fail, It should fail until the changes downstream source can be found and verified as intended changes. Which command will meet the requirements?",
+    "options": {
+      "A": "failOnNewColumns",
+      "B": "none",
+      "C": "rescue",
+      "D": "addNewColumns"
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "The 'failOnNewColumns' schema evolution mode in Auto Loader is well-documented in Databricks as the option that causes ingestion to fail when new columns are detected, which matches the requirement of failing until downstream changes can be verified.",
+      "correct_explanation": "The 'failOnNewColumns' option in Auto Loader (cloudFiles) causes the stream to fail when new columns are detected in the incoming data. This is the appropriate behavior when you want to halt ingestion on schema changes until a data engineer can review and verify the changes are intentional before allowing the pipeline to continue.",
+      "wrong_explanations": {
+        "B": "The 'none' schema evolution mode ignores new columns entirely, which would not cause the ingestion to fail on schema changes \u2014 it would silently drop or ignore new fields.",
+        "C": "The 'rescue' mode (rescuedDataColumn) captures data that doesn't match the schema into a separate rescue column rather than failing, so it would not halt ingestion on new columns.",
+        "D": "'addNewColumns' is a schema evolution mode that automatically adds new columns to the schema without failing, which is the opposite of the desired behavior described in the question."
+      }
+    },
+    "topic": "Auto Loader & Streaming"
+  },
+  "018_sLHvp-UVC2A": {
+    "question_number": 158,
+    "question": "A data engineer needs to optimize the data layout and query performance for an e-commerce transactions table. The table is currently partitioned by purchase_date (a DATE column), which helps with time-based queries but does not optimize searches on customer_id, a high-cardinality column. Most queries filter by customer_id, and recently observed that queries are becoming slower. The data engineer suspects that as data is scattered, queries scan full partitions, resulting in long latencies and increased costs. How should the engineer optimize the Data Layout for efficient reads?",
+    "options": {
+      "A": "Alter the table to implement Z-order clustering on customer_id, which keeps the ordering parameters.",
+      "B": "Alter the table to repartition by customer_id instead of purchase_date.",
+      "C": "Enable Delta caching on the cluster so that frequent reads are cached for performance.",
+      "D": "Alter the table to implement Z-order clustering on both customer_id and purchase_date."
+    },
+    "correct_answer": "A",
+    "reasoning": {
+      "confidence": "MEDIUM",
+      "confidence_reason": "Option A is a reasonable answer but Option D (Z-ordering on both customer_id AND purchase_date) is arguably more complete since the table already benefits from purchase_date partitioning and adding customer_id to Z-order would handle both dimensions; however, since the table is already partitioned by purchase_date, Z-ordering on customer_id alone is the most targeted fix for the stated problem.",
+      "correct_explanation": "Z-order clustering on customer_id co-locates related data within each partition's files, allowing Delta Lake's data skipping to efficiently skip files that don't contain the queried customer_id values. Since the table is already partitioned by purchase_date, adding ZORDER BY customer_id optimizes within-partition file layout for the high-cardinality column causing slow queries. This reduces the amount of data scanned per query without changing the existing partition scheme. The command would be: OPTIMIZE table_name ZORDER BY (customer_id).",
+      "wrong_explanations": {
+        "B": "Repartitioning by customer_id would eliminate the existing purchase_date partitioning, which is useful for time-based queries, and repartitioning by a high-cardinality column like customer_id would create an extremely large number of partitions (one per customer), leading to the 'small files problem' and degraded performance.",
+        "C": "Delta caching stores decoded columnar data on local SSD of the cluster nodes to speed up repeated reads of the same data, but it does not change the data layout or improve data skipping. It would not address the root cause of full partition scans caused by scattered customer_id data.",
+        "D": "Z-ordering on both customer_id and purchase_date is less optimal here because purchase_date is already handled by table partitioning, making it redundant in the Z-order key. Z-order effectiveness diminishes with more columns, so focusing solely on customer_id (the problematic column) yields better skipping efficiency, though D is not entirely wrong."
+      }
+    },
+    "topic": "Delta Lake"
+  },
+  "013_nudN-vJxCq0": {
+    "question_number": 163,
+    "question": "A data engineer deploys a multi-task Databricks job that orchestrates three notebooks. One of the notebooks fails intermittently on every run. The engineer needs to collect detailed logs for the failing attempts to debug the issue and share relevant information with the platform team. Which steps should the data engineer follow during both job runs to troubleshoot?",
+    "options": {
+      "A": "Export the notebook run results to HTML, which includes console output and errors, and share it with the platform team.",
+      "B": "Use the notebook interactive debugger to re-run the entire multi-task job and capture detailed logs for the failing task.",
+      "C": "Download the worker logs directly from the Spark UI and inspect driver and executor logs to identify the issue.",
+      "D": "From the job run details page, export the job's logs or configure log delivery, then retrieve cluster logs from the compute details page to correlate with the issue."
+    },
+    "correct_answer": "D",
+    "reasoning": {
+      "confidence": "HIGH",
+      "confidence_reason": "This aligns well with Databricks documentation on job troubleshooting, which recommends using the job run details page for logs and configuring cluster log delivery to a cloud storage location for persistent access.",
+      "correct_explanation": "From the job run details page, engineers can view per-task run history, error messages, and export logs. Configuring log delivery (via the cluster's 'Logging' tab pointing to DBFS or cloud storage) ensures cluster-level driver and executor logs are persisted and accessible. Together, these provide the full picture needed to debug intermittent failures and share information with the platform team.",
+      "wrong_explanations": {
+        "A": "Exporting notebook results to HTML captures cell outputs but does not include full driver/executor logs, cluster-level error traces, or Spark event logs needed for deep debugging of intermittent failures.",
+        "B": "The interactive notebook debugger is for single-notebook development sessions, not for re-running multi-task jobs; it cannot capture logs across an orchestrated job run and does not apply to scheduled job contexts.",
+        "C": "While the Spark UI does expose worker logs, it is ephemeral and disappears after the cluster terminates; for intermittent failures across multiple runs, logs must be persisted via log delivery configuration, making option D the more complete and reliable approach."
+      }
+    },
+    "topic": "Workflows & Orchestration"
+  }
+}

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 1 Quiz — Spark Foundations</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f9fb;color:#1a1a1a;min-height:100vh}
+  .header{background:#fff;border-bottom:1px solid #e8e8e4;padding:1.25rem 1.5rem}
+  .header h1{font-size:18px;font-weight:600;color:#1a1a1a}
+  .header p{font-size:13px;color:#666;margin-top:3px}
+  .container{max-width:780px;margin:0 auto;padding:1.5rem}
+  .topic-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5rem}
+  .topic-btn{padding:7px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#555;cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+  .topic-btn:hover{border-color:#93b4f8;color:#1a56db}
+  .topic-btn.active{background:#1a56db;color:#fff;border-color:#1a56db}
+  .topic-btn .badge{display:inline-block;background:rgba(255,255,255,.25);border-radius:10px;padding:1px 6px;font-size:11px;margin-left:5px}
+  .topic-btn:not(.active) .badge{background:#f0f0ec;color:#888}
+  .card{background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+  .q-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+  .q-meta .topic-tag{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;background:#f5f4f0;padding:3px 8px;border-radius:4px}
+  .q-meta .q-num{font-size:13px;color:#aaa}
+  .question{font-size:15px;font-weight:500;line-height:1.6;margin-bottom:1.25rem}
+  .opt-btn{width:100%;text-align:left;padding:10px 14px;margin:5px 0;border:1px solid #e0e0dc;border-radius:8px;background:#fafaf8;color:#1a1a1a;cursor:pointer;font-size:13px;font-family:inherit;line-height:1.5;transition:all .12s}
+  .opt-btn:hover:not(.locked){background:#f0f0ec;border-color:#ccc}
+  .opt-btn.correct{background:#ecfdf5!important;border-color:#6ee7b7!important;color:#065f46!important}
+  .opt-btn.wrong{background:#fef2f2!important;border-color:#fca5a5!important;color:#991b1b!important}
+  .opt-btn.locked{pointer-events:none}
+  .opt-btn code{font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12px;background:rgba(0,0,0,.04);padding:1px 4px;border-radius:3px}
+  .explanation{margin-top:1rem;padding:12px 16px;border-left:3px solid #93b4f8;background:#f8faff;border-radius:0 8px 8px 0;font-size:13px;color:#444;line-height:1.7}
+  .explanation strong{color:#1a56db}
+  .nav{display:flex;gap:10px;margin-top:1.25rem;align-items:center}
+  .nav-btn{padding:8px 18px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;font-size:13px;font-family:inherit;transition:all .12s}
+  .nav-btn:hover{background:#f5f4f0}
+  .nav-btn.primary{background:#1a56db;color:#fff;border-color:#1a56db}
+  .nav-btn.primary:hover{background:#1649c0}
+  .score-pill{margin-left:auto;font-size:13px;color:#555}
+  .score-pill strong{color:#1a1a1a}
+  .placeholder{color:#999;font-size:15px;padding:2rem 0;text-align:center}
+  .progress-bar{height:3px;background:#e8e8e4;border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
+  .progress-fill{height:100%;background:#1a56db;border-radius:2px;transition:width .3s}
+  .all-done{text-align:center;padding:2rem}
+  .all-done h2{font-size:20px;font-weight:600;margin-bottom:.5rem}
+  .all-done p{color:#666;font-size:14px;margin-bottom:1.25rem}
+  .score-big{font-size:48px;font-weight:700;color:#1a56db;line-height:1}
+  .score-label{font-size:14px;color:#888;margin-top:.25rem}
+  .result-row{background:#f8f9fb;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+  .result-row .r-label{font-size:12px;color:#888;margin-bottom:.5rem}
+  .result-row .r-nums{font-size:28px;font-weight:600;color:#1a1a1a}
+  .result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:1rem 0}
+  .pass{color:#065f46} .fail{color:#991b1b}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Week 1 Quiz — Spark Foundations</h1>
+  <p>16 questions &nbsp;·&nbsp; Target: 13 / 16 (80%) before moving to Week 2</p>
+</div>
+
+<div class="container">
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+  <div class="topic-bar" id="topic-bar"></div>
+  <div id="quiz-area"><p class="placeholder">Select a topic above to begin.</p></div>
+</div>
+
+<script>
+const topics = [
+  {
+    id:"arch", label:"Architecture",
+    questions:[
+      { q:"Which Spark deployment mode requires ALL executors to run on a single worker node?",
+        opts:["Cluster mode","Local mode","Client mode","Standard mode"],
+        ans:1,
+        exp:"<strong>Local mode</strong> (local[*]) runs the Driver and all Executors inside a single JVM on one machine — no cluster required. Perfect for development and testing. <em>Client mode</em> keeps the Driver on the submitting machine while Executors run on cluster workers. <em>Cluster mode</em> moves the Driver inside the cluster — used for production batch jobs." }
+    ]
+  },
+  {
+    id:"df", label:"DataFrame API",
+    questions:[
+      { q:"Which approach correctly replaces the 'division' column with a new 'state' column AND renames 'mName' to 'managerName'?",
+        opts:[
+          "withColumn(\"state\", col(\"division\")).drop(\"division\").withColumnRenamed(\"mName\", \"managerName\")",
+          "withColumnRenamed(\"state\", \"division\").withColumnRenamed(\"mName\", \"managerName\")",
+          "withColumn(col(\"division\"), state).withColumnRenamed(\"managerName\", \"mName\")",
+          "drop(\"division\").withColumnRenamed(\"state\", lit(\"default_state\"))"
+        ],
+        code:true, ans:0,
+        exp:"<strong>A is correct.</strong> Three steps: (1) withColumn(\"state\", col(\"division\")) creates a new 'state' column from 'division'. (2) drop(\"division\") removes the old column. (3) withColumnRenamed(\"mName\", \"managerName\") renames. Option B renames in the wrong direction. Option C passes a Column object as the first arg to withColumn — must be a plain string. Option D is invalid." },
+      { q:"Which snippet correctly sorts a DataFrame by salary and age descending, prints the schema, and converts results to a list of row dicts?",
+        opts:[
+          "orderBy(desc(), desc()) · printSchema() · toPandas().values.tolist()",
+          "sort(ascending=[False,False]) · schema() · toList()",
+          "orderBy(col(\"salary\").desc(), col(\"age\").desc()).collect() · printSchema() · [row.asDict() for row in result]",
+          "sort([\"salary\",\"age\"], descending=True).show() · describe() · list(result)"
+        ],
+        ans:2,
+        exp:"<strong>C is correct.</strong> orderBy(col().desc()) is the correct multi-column descending sort. collect() materialises the rows. printSchema() prints the schema. asDict() converts each Row to a dict. Option A: toPandas().values.tolist() gives lists, not dicts. Option B: schema() is not a method; toList() doesn't exist. Option D: sort() has no 'descending' kwarg; show() returns None." },
+      { q:"Which fragment drops ALL rows that have at least one null value in ANY column?",
+        opts:["storesDF.na.drop(\"all\")","storesDF.na.drop(subset=\"sqft\")","storesDF.na.drop()","storesDF.dropna(\"all\")"],
+        ans:2,
+        exp:"<strong>C: na.drop()</strong> with no arguments uses the default how='any', dropping rows where ANY column is null. Option A (how='all') only drops rows where ALL columns are null — too permissive. Option B only checks the 'sqft' column. Option D: dropna(\"all\") is equivalent to A." },
+      { q:"Which code returns a new DataFrame with a column sqft100 that is 1/100th of column sqft?",
+        opts:[
+          "storesDF.withColumn(\"sqft100\", col(\"sqft\") * 100)",
+          "storesDF.withColumn(\"sqft100\", sqft / 100)",
+          "storesDF.withColumn(col(\"sqft100\"), col(\"sqft\") / 100)",
+          "storesDF.withColumn(\"sqft100\", col(\"sqft\") / 100)",
+          "storesDF.newColumn(\"sqft100\", sqft / 100)"
+        ],
+        ans:3,
+        exp:"<strong>D is correct.</strong> withColumn(name_string, column_expr) — first arg is a plain string, second is a Column expression. Option A multiplies by 100 (100× not ÷100). Option B uses bare 'sqft' — must use col(\"sqft\"). Option C passes a Column object as the first arg (must be a string). Option E: newColumn() does not exist." }
+    ]
+  },
+  {
+    id:"sql", label:"Spark SQL",
+    questions:[
+      { q:"Which SQL snippet correctly demonstrates a DDL operation to CREATE a table?",
+        opts:[
+          "CREATE TABLE employees (id INT, name STRING);",
+          "INSERT INTO employees (id, name) VALUES (1, 'Alice');",
+          "ALTER TABLE employees ADD COLUMN salary DECIMAL(10,2);",
+          "DROP TABLE employees;"
+        ],
+        code:true, ans:0,
+        exp:"<strong>A.</strong> CREATE TABLE is the canonical DDL (Data Definition Language) operation for creating schema structure. INSERT INTO (B) is DML — it adds data, not schema. ALTER TABLE (C) is also DDL but modifies an existing table rather than creating one. DROP TABLE (D) is DDL but removes the table." },
+      { q:"A junior engineer needs a Spark-managed table where Spark controls both data AND metadata, stored in DBFS. Which command is correct?",
+        opts:[
+          "CREATE TABLE t (id STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse/t'",
+          "CREATE TABLE t (id STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse'",
+          "CREATE MANAGED TABLE t (id STRING);",
+          "CREATE EXTERNAL t (id STRING) USING DBFS;",
+          "CREATE TABLE t (id STRING);"
+        ],
+        code:true, ans:4,
+        exp:"<strong>E.</strong> A managed table is created by omitting the LOCATION clause — Spark automatically stores data in the default DBFS warehouse path. Any table with LOCATION becomes an external table (A, B). 'CREATE MANAGED TABLE' (C) and 'CREATE EXTERNAL ... USING DBFS' (D) are not valid Spark SQL syntax." },
+      { q:"A data engineer needs a persistent, cross-session relational object that pulls from multiple tables WITHOUT copying or storing physical data. Which object should be created?",
+        opts:["View","Temporary view","Delta Table","Database","Spark SQL Table"],
+        ans:0,
+        exp:"<strong>A: View.</strong> A regular view is persisted in the metastore and accessible across sessions, but stores only the query definition — no physical data is copied. A Temporary view (B) is session-scoped and disappears when the session ends. A Delta Table (C) and Spark SQL Table (E) both store physical data. A Database (D) is a namespace/container." },
+      { q:"A data entity must display data from multiple tables AND save to a physical location. Which object should be created?",
+        opts:["View","Function","Database","Table"],
+        ans:3,
+        exp:"<strong>D: Table.</strong> A table (Delta or Parquet) stores data physically and can be created from multiple sources using CTAS (CREATE TABLE AS SELECT). A View (A) is virtual — no physical copy. A Function (B) is reusable logic, not a data entity. A Database (C) is a namespace/container." },
+      { q:"How do you read a Spark SQL table named 'sales' as a PySpark DataFrame?",
+        opts:[
+          "SELECT * FROM sales",
+          "There is no way to share data between PySpark and SQL",
+          "spark.sql(\"sales\")",
+          "spark.data.table(\"sales\")",
+          "spark.table(\"sales\")"
+        ],
+        code:true, ans:4,
+        exp:"<strong>E: spark.table(\"sales\")</strong> loads a registered table from the metastore and returns it as a DataFrame. A is SQL syntax only — must be wrapped in spark.sql(). B is false — PySpark and SQL share the same metastore. C: spark.sql() requires a full SQL query string. D: spark.data.table() does not exist in the API." }
+    ]
+  },
+  {
+    id:"io", label:"Reading & Writing",
+    questions:[
+      { q:"Which code correctly writes df to Parquet, partitioned by country, overwriting any existing data?",
+        opts:[
+          "df.write.mode(\"append\").partitionBy(\"country\").parquet(\"/data/out\")",
+          "df.write.partitionBy(\"country\").parquet(\"/data/out\")",
+          "df.write.mode(\"overwrite\").parquet(\"/data/out\")",
+          "df.write.mode(\"overwrite\").partitionBy(\"country\").parquet(\"/data/out\")"
+        ],
+        code:true, ans:3,
+        exp:"<strong>D.</strong> All three are required: mode(\"overwrite\"), partitionBy(\"country\"), and parquet(path). Option A uses append — doesn't overwrite. Option B has no mode — default is error if path exists. Option C has no partitionBy — data won't be partitioned." },
+      { q:"A CREATE TABLE statement reads from a CSV file. Which line correctly specifies the file format?\n\nCREATE TABLE new_table\n____\nOPTIONS (header='true', delimiter='|')\nLOCATION '/path/to/csv'",
+        opts:["FROM \"/path/to/csv\"","USING CSV","FROM CSV","USING DELTA"],
+        code:true, ans:1,
+        exp:"<strong>B: USING CSV.</strong> The USING clause specifies the data source format in a CREATE TABLE statement. USING CSV tells Spark to use the CSV reader with the OPTIONS provided. FROM (A, C) belongs in SELECT queries, not CREATE TABLE. USING DELTA (D) creates a Delta table — it doesn't support CSV OPTIONS." },
+      { q:"Why is creating an external table from Parquet preferred over CSV?",
+        opts:[
+          "Parquet files can be partitioned (CSV cannot)",
+          "CTAS statements cannot be used on CSV files",
+          "Parquet stores column names and types in the file metadata — schema inference works automatically",
+          "Parquet files automatically become Delta tables",
+          "Parquet files are always smaller than CSV files"
+        ],
+        ans:2,
+        exp:"<strong>C.</strong> Parquet embeds schema metadata (column names, data types, nullability) in every file. When creating an external table, Databricks infers the schema automatically. CSV has no embedded schema — you must manually define every column. Options A, B, D, E are all false." }
+    ]
+  },
+  {
+    id:"dml", label:"DML & Python+SQL",
+    questions:[
+      { q:"Which SQL keyword appends new rows to an existing Delta table?",
+        opts:["UPDATE","COPY","INSERT INTO","DELETE","UNION"],
+        ans:2,
+        exp:"<strong>C: INSERT INTO</strong> adds rows without removing existing data — it appends. UPDATE (A) modifies existing rows. COPY INTO is a separate Databricks command for loading files; bare COPY (B) is not valid SQL. DELETE (D) removes rows. UNION (E) combines SELECT results in a query — it does not write data." },
+      { q:"A data engineer has a new record: id='a1', rank=6, rating=9.4. Which SQL command appends it to my_table?",
+        opts:[
+          "INSERT INTO my_table VALUES ('a1', 6, 9.4)",
+          "INSERT VALUES ('a1', 6, 9.4) INTO my_table",
+          "UPDATE my_table VALUES ('a1', 6, 9.4)",
+          "UPDATE VALUES ('a1', 6, 9.4) my_table"
+        ],
+        code:true, ans:0,
+        exp:"<strong>A.</strong> Standard SQL syntax: INSERT INTO table VALUES (val1, val2, ...). Option B has wrong word order — the table name must follow INSERT INTO immediately. Option C: UPDATE does not use VALUES like this — it requires SET col = val. Option D is completely invalid SQL." },
+      { q:"A data engineer has a Python variable table_name. Which approach correctly runs a SQL query using it in PySpark?",
+        opts:[
+          "spark.delta.sql(f\"SELECT customer_id, spend FROM {table_name}\")",
+          "spark.sql(f\"SELECT customer_id, spend FROM {table_name}\")",
+          "spark.table(f\"SELECT customer_id, spend FROM {table_name}\")",
+          "dbutils.sql(f\"SELECT customer_id, spend FROM {table_name}\")"
+        ],
+        code:true, ans:1,
+        exp:"<strong>B: spark.sql()</strong> executes any SQL string. Using an f-string injects the Python variable directly into the query. spark.delta.sql (A) does not exist. spark.table() (C) takes a table name only — not a full query. dbutils has no .sql() method (D)." }
+    ]
+  }
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+const totals = {};
+topics.forEach(t => totals[t.id] = {correct:0, seen:0, total:t.questions.length});
+let activeTopic = null;
+let activeQ = 0;
+let answered = false;
+
+// ── Overall progress ────────────────────────────────────────────────────────
+function totalAnswered() {
+  return Object.values(totals).reduce((s,t) => s + t.seen, 0);
+}
+function totalQuestions() {
+  return topics.reduce((s,t) => s + t.questions.length, 0);
+}
+function updateProgress() {
+  const pct = (totalAnswered() / totalQuestions()) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+// ── Topic bar ───────────────────────────────────────────────────────────────
+function renderTopicBar() {
+  const bar = document.getElementById('topic-bar');
+  bar.innerHTML = '';
+  topics.forEach(t => {
+    const st = totals[t.id];
+    const btn = document.createElement('button');
+    btn.className = 'topic-btn' + (activeTopic === t.id ? ' active' : '');
+    const score = st.seen > 0 ? `<span class="badge">${st.correct}/${st.total}</span>` : '';
+    btn.innerHTML = t.label + score;
+    btn.addEventListener('click', () => {
+      activeTopic = t.id; activeQ = 0; answered = false; renderAll();
+    });
+    bar.appendChild(btn);
+  });
+}
+
+// ── Question ────────────────────────────────────────────────────────────────
+function renderQuestion() {
+  const area = document.getElementById('quiz-area');
+  if (!activeTopic) {
+    area.innerHTML = '<p class="placeholder">Select a topic above to begin.</p>';
+    return;
+  }
+  const topic = topics.find(t => t.id === activeTopic);
+  const q = topic.questions[activeQ];
+  const pct = Math.round(((activeQ) / topic.questions.length) * 100);
+
+  area.innerHTML = `
+    <div class="card">
+      <div class="q-meta">
+        <span class="topic-tag">${topic.label}</span>
+        <span class="q-num">${activeQ + 1} / ${topic.questions.length}</span>
+      </div>
+      <p class="question">${q.q.replace(/\n/g,'<br>')}</p>
+      <div id="opts-wrap"></div>
+      <div id="exp-wrap"></div>
+      <div id="nav-wrap" class="nav"></div>
+    </div>`;
+
+  const wrap = document.getElementById('opts-wrap');
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    const label = String.fromCharCode(65 + i);
+    const text = q.code ? `<code>${opt}</code>` : opt;
+    btn.innerHTML = `<strong>${label}.</strong>&nbsp; ${text}`;
+    btn.addEventListener('click', () => handleAnswer(i));
+    wrap.appendChild(btn);
+  });
+}
+
+// ── Answer handling ─────────────────────────────────────────────────────────
+function handleAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+  const topic = topics.find(t => t.id === activeTopic);
+  const q = topic.questions[activeQ];
+  const st = totals[activeTopic];
+  st.seen++;
+  if (chosen === q.ans) st.correct++;
+
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.classList.add('locked');
+    if (i === q.ans) b.classList.add('correct');
+    else if (i === chosen) b.classList.add('wrong');
+  });
+
+  document.getElementById('exp-wrap').innerHTML =
+    `<div class="explanation">${q.exp}</div>`;
+
+  const nav = document.getElementById('nav-wrap');
+  if (activeQ < topic.questions.length - 1) {
+    const nb = document.createElement('button');
+    nb.className = 'nav-btn primary'; nb.textContent = 'Next question';
+    nb.addEventListener('click', () => { activeQ++; answered = false; renderAll(); });
+    nav.appendChild(nb);
+  } else {
+    const s = totals[activeTopic];
+    const pct = Math.round((s.correct / s.total) * 100);
+    nav.innerHTML = `<span class="score-pill">Topic score: <strong>${s.correct}/${s.total} (${pct}%)</strong></span>`;
+    const rb = document.createElement('button');
+    rb.className = 'nav-btn'; rb.textContent = 'Retry topic';
+    rb.addEventListener('click', () => {
+      totals[activeTopic] = {correct:0, seen:0, total:topic.questions.length};
+      activeQ = 0; answered = false; renderAll();
+    });
+    nav.appendChild(rb);
+
+    // Check if all questions answered
+    if (totalAnswered() === totalQuestions()) setTimeout(showFinalScore, 600);
+  }
+  updateProgress();
+  renderTopicBar();
+}
+
+// ── Final score ─────────────────────────────────────────────────────────────
+function showFinalScore() {
+  const totalCorrect = Object.values(totals).reduce((s,t) => s + t.correct, 0);
+  const total = totalQuestions();
+  const pct = Math.round((totalCorrect / total) * 100);
+  const pass = totalCorrect >= 13;
+
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="card all-done">
+      <div class="score-big ${pass ? 'pass' : 'fail'}">${totalCorrect}/${total}</div>
+      <div class="score-label">${pct}% &nbsp;·&nbsp; ${pass ? '✓ Ready for Week 2' : 'Review and retry'}</div>
+      <div class="result-grid" style="margin-top:1.5rem">
+        ${topics.map(t => {
+          const s = totals[t.id];
+          const p = s.total > 0 ? Math.round((s.correct/s.total)*100) : 0;
+          return `<div class="result-row">
+            <div class="r-label">${t.label}</div>
+            <div class="r-nums">${s.correct}/${s.total}</div>
+            <div style="font-size:12px;color:${p>=80?'#065f46':'#991b1b'}">${p}%</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="nav-btn" style="margin-top:1rem" onclick="resetAll()">Start over</button>
+    </div>`;
+}
+
+function resetAll() {
+  topics.forEach(t => totals[t.id] = {correct:0, seen:0, total:t.questions.length});
+  activeTopic = null; activeQ = 0; answered = false;
+  document.getElementById('progress').style.width = '0%';
+  renderAll();
+}
+
+function renderAll() { renderTopicBar(); renderQuestion(); }
+renderAll();
+</script>
+</body>
+</html>

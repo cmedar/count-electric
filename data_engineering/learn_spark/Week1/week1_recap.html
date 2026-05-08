@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 1 Recap — Apache Spark Fundamentals</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4ed;
+    --bg2: #eae9e2;
+    --ink: #3d3d3a;
+    --muted: #73726c;
+    --accent: #e06c2b;
+    --blue: #2563eb;
+    --green: #16a34a;
+    --red: #dc2626;
+    --purple: #7c3aed;
+    --teal: #0891b2;
+    --border: #d4d2ca;
+    --code-bg: #282c34;
+    --code-fg: #abb2bf;
+    --tab-active: #e06c2b;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--ink);
+    color: #f5f4ed;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+  header p  { font-size: 0.82rem; color: #aaa; }
+  .badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Tab bar ───────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: var(--bg2);
+    border-bottom: 2px solid var(--border);
+    padding: 0 24px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--tab-active); border-bottom-color: var(--tab-active); }
+
+  /* ── Content ────────────────────────────────────────────── */
+  .tab-panel { display: none; padding: 28px 32px 48px; max-width: 960px; }
+  .tab-panel.active { display: block; }
+
+  h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--ink); }
+  h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 10px; color: var(--ink); }
+  p  { margin-bottom: 10px; color: var(--ink); font-size: 0.93rem; }
+
+  /* ── Cards ──────────────────────────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .card-body { font-size: 0.9rem; }
+  .card.accent { border-left: 4px solid var(--accent); }
+  .card.blue   { border-left: 4px solid var(--blue); }
+  .card.green  { border-left: 4px solid var(--green); }
+  .card.purple { border-left: 4px solid var(--purple); }
+  .card.teal   { border-left: 4px solid var(--teal); }
+
+  /* ── Comparison tables ──────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin-bottom: 24px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th {
+    background: var(--bg2);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--ink);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td { padding: 9px 14px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #fafaf7; }
+  .tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .tag-green  { background: #dcfce7; color: #15803d; }
+  .tag-red    { background: #fee2e2; color: #b91c1c; }
+  .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+  .tag-orange { background: #ffedd5; color: #c2410c; }
+  .tag-purple { background: #ede9fe; color: #6d28d9; }
+
+  /* ── Code blocks ────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+  .kw   { color: #c678dd; }
+  .fn   { color: #61afef; }
+  .str  { color: #98c379; }
+  .num  { color: #d19a66; }
+  .cm   { color: #5c6370; font-style: italic; }
+  .op   { color: #56b6c2; }
+  .cls  { color: #e5c07b; }
+
+  /* ── Callout boxes ──────────────────────────────────────── */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff7f0;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+  }
+  .callout.info  { border-color: var(--blue);   background: #eff6ff; }
+  .callout.warn  { border-color: #f59e0b;        background: #fffbeb; }
+  .callout.tip   { border-color: var(--green);   background: #f0fdf4; }
+  .callout strong { font-weight: 700; }
+
+  /* ── Exam tip pills ─────────────────────────────────────── */
+  .tip-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .tip-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+  .tip-list li::before {
+    content: "★";
+    color: var(--accent);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Arch diagram (CSS only) ────────────────────────────── */
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin: 20px 0 28px;
+    font-size: 0.85rem;
+  }
+  .arch-box {
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 24px;
+    background: #fff;
+    text-align: center;
+    font-weight: 600;
+    min-width: 180px;
+  }
+  .arch-box.driver { border-color: var(--accent); background: #fff7f0; color: var(--accent); }
+  .arch-box.cm     { border-color: var(--blue);   background: #eff6ff; color: var(--blue); }
+  .arch-box.exec   { border-color: var(--green);  background: #f0fdf4; color: var(--green); }
+  .arch-sub { font-size: 0.73rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
+  .arch-arrow { font-size: 1.2rem; color: var(--muted); margin: 2px 0; }
+  .arch-row { display: flex; gap: 12px; }
+
+  /* ── Pipeline flow ──────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 16px 0 24px;
+  }
+  .pipe-step {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .pipe-arrow {
+    color: var(--muted);
+    padding: 0 4px;
+    font-size: 1.1rem;
+  }
+  .pipe-step.action { border-color: var(--accent); color: var(--accent); background: #fff7f0; }
+  .pipe-step.stage  { border-color: var(--blue);   color: var(--blue);   background: #eff6ff; }
+  .pipe-step.task   { border-color: var(--green);  color: var(--green);  background: #f0fdf4; }
+
+  /* ── Scrollspy top quick-links ──────────────────────────── */
+  .section-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+  .section-links a {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    transition: background 0.12s;
+  }
+  .section-links a:hover { background: #e0dfda; color: var(--ink); }
+
+  /* ── Memory anchor offset ───────────────────────────────── */
+  [id] { scroll-margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Week 1 Recap — Apache Spark Fundamentals</h1>
+    <p>Architecture · DataFrame API · Spark SQL · Reading &amp; Writing · Exam Tips</p>
+  </div>
+  <span class="badge">Databricks Certified DE Associate</span>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab-btn active" role="tab" onclick="switchTab('arch')">Architecture</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('df')">DataFrame API</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('sql')">Spark SQL</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('io')">Reading &amp; Writing</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('tips')">Exam Tips</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 1: Architecture
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel active" id="panel-arch">
+  <div class="section-links">
+    <a href="#arch-components">Components</a>
+    <a href="#arch-execution">Execution Model</a>
+    <a href="#arch-narrow-wide">Narrow vs Wide</a>
+    <a href="#arch-deploy">Deployment</a>
+    <a href="#arch-fault">Fault Tolerance</a>
+  </div>
+
+  <h2>Spark Architecture</h2>
+
+  <h3 id="arch-components">Cluster Components</h3>
+  <div class="arch-diagram">
+    <div class="arch-box driver">
+      Driver
+      <div class="arch-sub">SparkContext · DAG Scheduler · Task Scheduler</div>
+    </div>
+    <div class="arch-arrow">↕</div>
+    <div class="arch-box cm">
+      Cluster Manager
+      <div class="arch-sub">YARN · K8s · Standalone · Mesos</div>
+    </div>
+    <div class="arch-arrow">↕</div>
+    <div class="arch-row">
+      <div class="arch-box exec">Executor<br><span class="arch-sub">Tasks · Cache</span></div>
+      <div class="arch-box exec">Executor<br><span class="arch-sub">Tasks · Cache</span></div>
+      <div class="arch-box exec">Executor<br><span class="arch-sub">Tasks · Cache</span></div>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card accent">
+      <div class="card-title">Driver</div>
+      <div class="card-body">Runs your <code>main()</code>. Creates <code>SparkContext</code>. Builds the DAG, schedules stages and tasks. Holds the query plan. One per application.</div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">Cluster Manager</div>
+      <div class="card-body">Allocates resources (CPU, RAM) from the cluster. Spark is agnostic — works with YARN, Kubernetes, Standalone, Mesos, or Databricks-managed.</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">Executor</div>
+      <div class="card-body">JVM process on a worker node. Runs tasks assigned by the driver. Stores cached data. Sends metrics back to driver.</div>
+    </div>
+    <div class="card purple">
+      <div class="card-title">SparkContext vs SparkSession</div>
+      <div class="card-body"><code>SparkContext</code> — old RDD-era entry point.<br><code>SparkSession</code> — modern unified entry point. Also exposes <code>.sparkContext</code>.</div>
+    </div>
+  </div>
+
+  <h3 id="arch-execution">Execution Model: Action → Job → Stage → Task</h3>
+
+  <div class="pipeline">
+    <div class="pipe-step action">Action<br><small>e.g. count()</small></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">Job</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step stage">Stage 1<br><small>narrow ops</small></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">Shuffle</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step stage">Stage 2<br><small>narrow ops</small></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step task">Tasks<br><small>1 per partition</small></div>
+  </div>
+
+  <div class="callout info">
+    <strong>Key rule:</strong> A new stage is created at each shuffle boundary. Number of tasks in a stage = number of partitions being processed.
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Transformations</div>
+      <div class="card-body">Lazy — build the DAG but don't execute.<br><code>filter()</code>, <code>select()</code>, <code>join()</code>, <code>groupBy()</code>, etc.</div>
+    </div>
+    <div class="card accent">
+      <div class="card-title">Actions</div>
+      <div class="card-body">Trigger execution.<br><code>count()</code>, <code>collect()</code>, <code>show()</code>, <code>write()</code>, <code>take(n)</code></div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">Lazy Evaluation</div>
+      <div class="card-body">Spark waits until an action is called, then optimizes the full DAG via Catalyst before running anything.</div>
+    </div>
+  </div>
+
+  <h3 id="arch-narrow-wide">Narrow vs Wide Transformations</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Type</th><th>Definition</th><th>Examples</th><th>Shuffle?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Narrow</strong></td>
+          <td>Each output partition depends on exactly one input partition</td>
+          <td><code>filter</code>, <code>select</code>, <code>map</code>, <code>union</code>, <code>coalesce</code></td>
+          <td><span class="tag tag-green">No</span></td>
+        </tr>
+        <tr>
+          <td><strong>Wide</strong></td>
+          <td>Output partitions depend on multiple input partitions</td>
+          <td><code>groupBy</code>, <code>join</code>, <code>distinct</code>, <code>orderBy</code>, <code>repartition</code></td>
+          <td><span class="tag tag-red">Yes</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <strong>Note:</strong> <code>coalesce(n)</code> reduces partitions without a full shuffle (narrow). <code>repartition(n)</code> does a full shuffle (wide). Use <code>coalesce</code> when reducing partition count.
+  </div>
+
+  <h3 id="arch-deploy">Deployment Modes</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mode</th><th>Driver runs on</th><th>Use case</th></tr></thead>
+      <tbody>
+        <tr><td><strong>client</strong></td><td>Machine submitting the job</td><td>Interactive (notebooks, shells) — driver output visible locally</td></tr>
+        <tr><td><strong>cluster</strong></td><td>A node in the cluster</td><td>Production — driver runs inside cluster, client can disconnect</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="arch-fault">Fault Tolerance &amp; Lineage</h3>
+  <div class="card-grid">
+    <div class="card teal">
+      <div class="card-title">RDD Lineage</div>
+      <div class="card-body">Spark tracks the full chain of transformations (DAG). If a partition is lost, Spark recomputes it from its lineage — no data replication needed.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Checkpointing</div>
+      <div class="card-body">Breaks the lineage by saving state to disk. Essential for long lineage chains (e.g., streaming) or graphs where recomputation would be too expensive.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Speculative Execution</div>
+      <div class="card-body">If a task runs slower than others, Spark launches a duplicate on another node. First to finish wins. Controlled by <code>spark.speculation</code>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 2: DataFrame API
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-df">
+  <div class="section-links">
+    <a href="#df-create">Creating DataFrames</a>
+    <a href="#df-transforms">Key Transformations</a>
+    <a href="#df-agg">Aggregations</a>
+    <a href="#df-columns">Column Operations</a>
+    <a href="#df-types">Types</a>
+  </div>
+
+  <h2>DataFrame API</h2>
+
+  <h3 id="df-create">Creating DataFrames</h3>
+  <pre><span class="cm"># From a list of tuples</span>
+df = spark.<span class="fn">createDataFrame</span>(
+    [(<span class="num">1</span>, <span class="str">"Alice"</span>, <span class="num">29</span>), (<span class="num">2</span>, <span class="str">"Bob"</span>, <span class="num">34</span>)],
+    schema=<span class="str">"id LONG, name STRING, age INT"</span>
+)
+
+<span class="cm"># With explicit StructType</span>
+<span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> StructType, StructField, StringType, LongType
+schema = StructType([
+    StructField(<span class="str">"id"</span>,   LongType(),   nullable=<span class="kw">False</span>),
+    StructField(<span class="str">"name"</span>, StringType(), nullable=<span class="kw">True</span>),
+])
+
+<span class="cm"># From range (useful for testing)</span>
+df = spark.<span class="fn">range</span>(<span class="num">1000</span>)  <span class="cm"># creates id column 0..999</span></pre>
+
+  <h3 id="df-transforms">Key Transformations</h3>
+  <pre><span class="cm"># Select</span>
+df.<span class="fn">select</span>(<span class="str">"name"</span>, <span class="str">"age"</span>)
+df.<span class="fn">select</span>(col(<span class="str">"age"</span>) + <span class="num">1</span>)
+
+<span class="cm"># Filter  (where and filter are aliases)</span>
+df.<span class="fn">filter</span>(col(<span class="str">"age"</span>) > <span class="num">30</span>)
+df.<span class="fn">where</span>(<span class="str">"age > 30"</span>)
+
+<span class="cm"># Add / rename / drop columns</span>
+df.<span class="fn">withColumn</span>(<span class="str">"age_next"</span>, col(<span class="str">"age"</span>) + <span class="num">1</span>)
+df.<span class="fn">withColumnRenamed</span>(<span class="str">"age"</span>, <span class="str">"years"</span>)
+df.<span class="fn">drop</span>(<span class="str">"age"</span>)
+
+<span class="cm"># Sort</span>
+df.<span class="fn">sort</span>(col(<span class="str">"age"</span>).<span class="fn">desc</span>())
+df.<span class="fn">orderBy</span>(<span class="str">"name"</span>, <span class="fn">ascending</span>=<span class="kw">False</span>)
+
+<span class="cm"># Limit and distinct</span>
+df.<span class="fn">limit</span>(<span class="num">100</span>)
+df.<span class="fn">distinct</span>()</pre>
+
+  <h3 id="df-agg">Aggregations &amp; GroupBy</h3>
+  <pre><span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+
+df.<span class="fn">groupBy</span>(<span class="str">"dept"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">count</span>(<span class="str">"*"</span>).<span class="fn">alias</span>(<span class="str">"n"</span>),
+    F.<span class="fn">avg</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"avg_sal"</span>),
+    F.<span class="fn">max</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"max_sal"</span>),
+    F.<span class="fn">sum</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"total"</span>),
+    F.<span class="fn">countDistinct</span>(<span class="str">"role"</span>).<span class="fn">alias</span>(<span class="str">"roles"</span>)
+)</pre>
+
+  <h3 id="df-columns">Commonly-Used Column Functions</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Function</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>F.lit(value)</code></td><td>Creates a literal column constant</td></tr>
+        <tr><td><code>F.col("name")</code></td><td>Reference a column by name</td></tr>
+        <tr><td><code>F.when(cond, val).otherwise(val)</code></td><td>Conditional (like SQL CASE WHEN)</td></tr>
+        <tr><td><code>F.coalesce(*cols)</code></td><td>First non-null value across columns</td></tr>
+        <tr><td><code>F.isNull() / isNotNull()</code></td><td>Null checks</td></tr>
+        <tr><td><code>F.cast("type")</code></td><td>Type cast a column</td></tr>
+        <tr><td><code>F.to_date("col", "fmt")</code></td><td>String → DateType</td></tr>
+        <tr><td><code>F.date_format(col, "fmt")</code></td><td>Date → formatted string</td></tr>
+        <tr><td><code>F.year/month/dayofmonth(col)</code></td><td>Extract date parts</td></tr>
+        <tr><td><code>F.upper/lower/trim(col)</code></td><td>String operations</td></tr>
+        <tr><td><code>F.split(col, "sep")</code></td><td>String → ArrayType</td></tr>
+        <tr><td><code>F.explode(col)</code></td><td>Array → one row per element (drops nulls)</td></tr>
+        <tr><td><code>F.explode_outer(col)</code></td><td>Like explode but keeps null rows</td></tr>
+        <tr><td><code>F.size(col)</code></td><td>Array/map length</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="df-types">Joins</h3>
+  <pre><span class="cm"># Default join is inner</span>
+df1.<span class="fn">join</span>(df2, on=<span class="str">"id"</span>, how=<span class="str">"inner"</span>)   <span class="cm"># inner, left, right, full, semi, anti</span>
+
+<span class="cm"># Broadcast join — hint to avoid shuffle for small tables</span>
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> broadcast
+df_big.<span class="fn">join</span>(<span class="fn">broadcast</span>(df_small), <span class="str">"id"</span>)</pre>
+
+  <div class="callout tip">
+    <strong>Exam tip:</strong> <code>df.join(other, on="id")</code> with a string column name avoids column duplication. Using a condition like <code>df.id == other.id</code> creates two <code>id</code> columns — you must drop one.
+  </div>
+
+  <h3>Partitions</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Operation</th><th>Shuffle?</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr><td><code>repartition(n)</code></td><td><span class="tag tag-red">Yes</span></td><td>Increase or evenly distribute partitions (wide)</td></tr>
+        <tr><td><code>coalesce(n)</code></td><td><span class="tag tag-green">No</span></td><td>Reduce partitions cheaply (narrow, can create skew)</td></tr>
+        <tr><td><code>df.rdd.getNumPartitions()</code></td><td>—</td><td>Inspect current partition count</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 3: Spark SQL
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-sql">
+  <div class="section-links">
+    <a href="#sql-views">Views</a>
+    <a href="#sql-mixed">Python ↔ SQL</a>
+    <a href="#sql-builtins">Built-ins</a>
+    <a href="#sql-window">Window Functions</a>
+    <a href="#sql-catalyst">Catalyst</a>
+  </div>
+
+  <h2>Spark SQL</h2>
+
+  <h3 id="sql-views">Temp Views &amp; Global Views</h3>
+  <pre><span class="cm"># Session-scoped temp view (most common)</span>
+df.<span class="fn">createOrReplaceTempView</span>(<span class="str">"sales"</span>)
+spark.sql(<span class="str">"SELECT * FROM sales WHERE amount > 100"</span>)
+
+<span class="cm"># Global temp view — visible across sessions in same app</span>
+df.<span class="fn">createOrReplaceGlobalTempView</span>(<span class="str">"sales_global"</span>)
+spark.sql(<span class="str">"SELECT * FROM global_temp.sales_global"</span>)  <span class="cm"># note: global_temp prefix</span></pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>View Type</th><th>Scope</th><th>Prefix in SQL</th><th>Persists?</th></tr></thead>
+      <tbody>
+        <tr><td>Temp View</td><td>Current SparkSession</td><td>just the name</td><td><span class="tag tag-red">No</span></td></tr>
+        <tr><td>Global Temp View</td><td>All sessions in same app</td><td><code>global_temp.</code></td><td><span class="tag tag-red">No</span></td></tr>
+        <tr><td>Catalog Table / Hive</td><td>Cross-session, persisted</td><td>just the name</td><td><span class="tag tag-green">Yes</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="sql-mixed">Mixing Python &amp; SQL</h3>
+  <pre><span class="cm"># SQL → DataFrame</span>
+result = spark.sql(<span class="str">"SELECT dept, COUNT(*) AS n FROM employees GROUP BY dept"</span>)
+
+<span class="cm"># DataFrame → SQL</span>
+result.<span class="fn">createOrReplaceTempView</span>(<span class="str">"dept_counts"</span>)
+spark.sql(<span class="str">"SELECT * FROM dept_counts ORDER BY n DESC"</span>)
+
+<span class="cm"># Spark SQL in Databricks notebooks — %sql magic</span>
+<span class="cm"># %sql</span>
+<span class="cm"># SELECT * FROM dept_counts LIMIT 10</span></pre>
+
+  <h3 id="sql-builtins">Key Built-in SQL Functions</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Category</th><th>Functions</th></tr></thead>
+      <tbody>
+        <tr><td>Aggregate</td><td><code>COUNT(*)</code>, <code>SUM</code>, <code>AVG</code>, <code>MAX</code>, <code>MIN</code>, <code>COUNT(DISTINCT col)</code></td></tr>
+        <tr><td>String</td><td><code>UPPER</code>, <code>LOWER</code>, <code>TRIM</code>, <code>CONCAT</code>, <code>SUBSTRING</code>, <code>REGEXP_REPLACE</code>, <code>SPLIT</code></td></tr>
+        <tr><td>Date/Time</td><td><code>YEAR</code>, <code>MONTH</code>, <code>DAYOFMONTH</code>, <code>DATE_FORMAT</code>, <code>DATEDIFF</code>, <code>ADD_MONTHS</code>, <code>DATE_TRUNC</code></td></tr>
+        <tr><td>Conditional</td><td><code>CASE WHEN ... THEN ... ELSE ... END</code>, <code>IF(cond, a, b)</code>, <code>COALESCE</code>, <code>NULLIF</code>, <code>NVL</code></td></tr>
+        <tr><td>Array/Map</td><td><code>EXPLODE</code>, <code>COLLECT_LIST</code>, <code>COLLECT_SET</code>, <code>ARRAY_CONTAINS</code>, <code>SIZE</code></td></tr>
+        <tr><td>JSON</td><td><code>FROM_JSON</code>, <code>TO_JSON</code>, <code>GET_JSON_OBJECT</code>, <code>JSON_TUPLE</code></td></tr>
+        <tr><td>Math</td><td><code>ROUND</code>, <code>FLOOR</code>, <code>CEIL</code>, <code>ABS</code>, <code>POW</code>, <code>SQRT</code>, <code>LOG</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="sql-window">Window Functions</h3>
+  <pre><span class="kw">from</span> pyspark.sql <span class="kw">import</span> Window
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> rank, dense_rank, row_number, lag, lead, sum <span class="kw">as</span> _sum
+
+w = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>).<span class="fn">orderBy</span>(col(<span class="str">"salary"</span>).<span class="fn">desc</span>())
+
+df.<span class="fn">withColumn</span>(<span class="str">"rank"</span>,        <span class="fn">rank</span>().<span class="fn">over</span>(w))
+  .<span class="fn">withColumn</span>(<span class="str">"dense_rank"</span>,  <span class="fn">dense_rank</span>().<span class="fn">over</span>(w))
+  .<span class="fn">withColumn</span>(<span class="str">"row_number"</span>,  <span class="fn">row_number</span>().<span class="fn">over</span>(w))</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Function</th><th>Ties</th><th>Gap after tie?</th><th>Example (scores 100,100,90)</th></tr></thead>
+      <tbody>
+        <tr><td><code>rank()</code></td><td>Same rank</td><td><span class="tag tag-orange">Yes</span></td><td>1, 1, 3</td></tr>
+        <tr><td><code>dense_rank()</code></td><td>Same rank</td><td><span class="tag tag-green">No</span></td><td>1, 1, 2</td></tr>
+        <tr><td><code>row_number()</code></td><td>Arbitrary tiebreak</td><td>—</td><td>1, 2, 3</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><span class="cm"># Running sum (cumulative) within partition</span>
+w2 = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>).<span class="fn">orderBy</span>(<span class="str">"date"</span>).<span class="fn">rowsBetween</span>(Window.unboundedPreceding, Window.currentRow)
+df.<span class="fn">withColumn</span>(<span class="str">"cum_sales"</span>, <span class="fn">_sum</span>(<span class="str">"sales"</span>).<span class="fn">over</span>(w2))
+
+<span class="cm"># Lag / Lead</span>
+df.<span class="fn">withColumn</span>(<span class="str">"prev_sales"</span>, <span class="fn">lag</span>(<span class="str">"sales"</span>, <span class="num">1</span>).<span class="fn">over</span>(w))
+df.<span class="fn">withColumn</span>(<span class="str">"next_sales"</span>, <span class="fn">lead</span>(<span class="str">"sales"</span>, <span class="num">1</span>).<span class="fn">over</span>(w))</pre>
+
+  <h3 id="sql-catalyst">Catalyst Optimizer</h3>
+  <div class="card-grid">
+    <div class="card accent">
+      <div class="card-title">4 Phases</div>
+      <div class="card-body">
+        1. <strong>Analysis</strong> — resolve names &amp; types<br>
+        2. <strong>Logical Optimization</strong> — predicate pushdown, constant folding<br>
+        3. <strong>Physical Planning</strong> — choose algorithms<br>
+        4. <strong>Code Generation</strong> — compile to JVM bytecode (Tungsten)
+      </div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">Predicate Pushdown</div>
+      <div class="card-body">Filters are pushed as early as possible — ideally into the data source scan (e.g., Parquet column pruning + row group skipping).</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">Explain Plan</div>
+      <div class="card-body"><code>df.explain(True)</code> shows: Parsed → Analyzed → Optimized → Physical plan. Use this to debug performance.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 4: Reading & Writing
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-io">
+  <div class="section-links">
+    <a href="#io-read">Reading Data</a>
+    <a href="#io-write">Writing Data</a>
+    <a href="#io-formats">Formats</a>
+    <a href="#io-delta">Delta Lake Basics</a>
+  </div>
+
+  <h2>Reading &amp; Writing</h2>
+
+  <h3 id="io-read">Reading Data</h3>
+  <pre><span class="cm"># CSV — infer schema (slower; scans full file)</span>
+df = spark.read.<span class="fn">format</span>(<span class="str">"csv"</span>).<span class="fn">option</span>(<span class="str">"header"</span>, <span class="str">"true"</span>).<span class="fn">option</span>(<span class="str">"inferSchema"</span>, <span class="str">"true"</span>).<span class="fn">load</span>(<span class="str">"path/"</span>)
+
+<span class="cm"># CSV — explicit schema (faster; production-safe)</span>
+df = spark.read.<span class="fn">csv</span>(<span class="str">"path/"</span>, header=<span class="kw">True</span>, schema=my_schema)
+
+<span class="cm"># Parquet (schema embedded in file)</span>
+df = spark.read.<span class="fn">parquet</span>(<span class="str">"path/"</span>)
+
+<span class="cm"># JSON</span>
+df = spark.read.<span class="fn">json</span>(<span class="str">"path/"</span>)
+
+<span class="cm"># Delta</span>
+df = spark.read.<span class="fn">format</span>(<span class="str">"delta"</span>).<span class="fn">load</span>(<span class="str">"path/"</span>)
+
+<span class="cm"># Options chaining</span>
+df = (spark.read
+    .<span class="fn">format</span>(<span class="str">"csv"</span>)
+    .<span class="fn">option</span>(<span class="str">"header"</span>, <span class="kw">True</span>)
+    .<span class="fn">option</span>(<span class="str">"sep"</span>, <span class="str">";"</span>)
+    .<span class="fn">schema</span>(my_schema)
+    .<span class="fn">load</span>(<span class="str">"path/"</span>)
+)</pre>
+
+  <h3 id="io-write">Writing Data</h3>
+  <pre><span class="cm"># Save modes</span>
+df.<span class="fn">write</span>.<span class="fn">mode</span>(<span class="str">"overwrite"</span>).<span class="fn">parquet</span>(<span class="str">"output/"</span>)
+df.<span class="fn">write</span>.<span class="fn">mode</span>(<span class="str">"append"</span>).<span class="fn">format</span>(<span class="str">"delta"</span>).<span class="fn">save</span>(<span class="str">"output/"</span>)
+
+<span class="cm"># Partition by column (creates directory per value)</span>
+df.<span class="fn">write</span>.<span class="fn">partitionBy</span>(<span class="str">"year"</span>, <span class="str">"month"</span>).<span class="fn">parquet</span>(<span class="str">"output/"</span>)
+
+<span class="cm"># Save as table (catalog registered)</span>
+df.<span class="fn">write</span>.<span class="fn">saveAsTable</span>(<span class="str">"my_database.my_table"</span>)
+
+<span class="cm"># Control output file count</span>
+df.<span class="fn">coalesce</span>(<span class="num">1</span>).<span class="fn">write</span>.<span class="fn">csv</span>(<span class="str">"output/"</span>)   <span class="cm"># single file (use with care)</span></pre>
+
+  <h3>Save Modes</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mode</th><th>Behavior if data exists</th></tr></thead>
+      <tbody>
+        <tr><td><code>"overwrite"</code></td><td>Replaces all existing data at path</td></tr>
+        <tr><td><code>"append"</code></td><td>Adds new data alongside existing data</td></tr>
+        <tr><td><code>"ignore"</code></td><td>Silently skips write if data exists (no error)</td></tr>
+        <tr><td><code>"error"</code> / <code>"errorifexists"</code></td><td>Raises an error if data exists (default)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="io-formats">File Format Comparison</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Format</th><th>Columnar?</th><th>Splittable?</th><th>Schema?</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>CSV</strong></td>
+          <td><span class="tag tag-red">No</span></td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td>Optional</td>
+          <td>Interchange, source ingestion</td>
+        </tr>
+        <tr>
+          <td><strong>JSON</strong></td>
+          <td><span class="tag tag-red">No</span></td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td>Optional</td>
+          <td>Semi-structured APIs</td>
+        </tr>
+        <tr>
+          <td><strong>Parquet</strong></td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td>Embedded</td>
+          <td>Analytics — fast column reads, efficient compression</td>
+        </tr>
+        <tr>
+          <td><strong>ORC</strong></td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td>Embedded</td>
+          <td>Hive workloads</td>
+        </tr>
+        <tr>
+          <td><strong>Delta</strong></td>
+          <td><span class="tag tag-green">Yes</span> (Parquet + log)</td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td>Embedded</td>
+          <td>Lakehouse — ACID, time travel, schema evolution</td>
+        </tr>
+        <tr>
+          <td><strong>Avro</strong></td>
+          <td><span class="tag tag-red">No</span> (row)</td>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td>Embedded</td>
+          <td>Kafka, write-heavy, schema evolution</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="io-delta">Delta Lake Basics</h3>
+  <pre><span class="cm"># Convert Parquet to Delta</span>
+<span class="kw">from</span> delta.tables <span class="kw">import</span> DeltaTable
+DeltaTable.<span class="fn">convertToDelta</span>(spark, <span class="str">"parquet.`path/`"</span>)
+
+<span class="cm"># Time travel</span>
+spark.read.<span class="fn">format</span>(<span class="str">"delta"</span>).<span class="fn">option</span>(<span class="str">"versionAsOf"</span>, <span class="num">3</span>).<span class="fn">load</span>(<span class="str">"path/"</span>)
+spark.read.<span class="fn">format</span>(<span class="str">"delta"</span>).<span class="fn">option</span>(<span class="str">"timestampAsOf"</span>, <span class="str">"2024-01-01"</span>).<span class="fn">load</span>(<span class="str">"path/"</span>)
+
+<span class="cm"># History</span>
+DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"path/"</span>).<span class="fn">history</span>().<span class="fn">show</span>()
+
+<span class="cm"># Merge (upsert)</span>
+DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</span>).<span class="fn">alias</span>(<span class="str">"t"</span>) \
+  .<span class="fn">merge</span>(updates_df.<span class="fn">alias</span>(<span class="str">"s"</span>), <span class="str">"t.id = s.id"</span>) \
+  .<span class="fn">whenMatchedUpdateAll</span>() \
+  .<span class="fn">whenNotMatchedInsertAll</span>() \
+  .<span class="fn">execute</span>()</pre>
+
+  <div class="callout tip">
+    <strong>Exam tip:</strong> Delta stores data as Parquet files + a transaction log (<code>_delta_log/</code>). ACID is achieved via the transaction log, not special file encoding.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 5: Exam Tips
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-tips">
+  <h2>Exam Tips &amp; Common Traps</h2>
+
+  <h3>Architecture &amp; Execution</h3>
+  <ul class="tip-list">
+    <li>Only <strong>actions</strong> trigger job execution. Transformations are lazy. Classic trap: "which of these triggers a job?" — pick <code>count()</code>, not <code>filter()</code>.</li>
+    <li>Number of tasks in a stage = number of <strong>input partitions</strong> for that stage. After a shuffle, default post-shuffle partitions = <code>spark.sql.shuffle.partitions</code> (default <strong>200</strong>).</li>
+    <li><code>coalesce</code> is narrow (no shuffle); <code>repartition</code> is wide (shuffle). Only <code>repartition</code> can <em>increase</em> partition count reliably.</li>
+    <li>Driver runs in <strong>client mode</strong> on the submitting machine, <strong>cluster mode</strong> inside the cluster. Notebooks always use client mode.</li>
+    <li>Executor memory layout: <code>spark.executor.memory</code> → heap for storage + execution. <code>spark.executor.memoryOverhead</code> → off-heap (native libs, Python workers).</li>
+  </ul>
+
+  <h3>DataFrame API</h3>
+  <ul class="tip-list">
+    <li><code>select()</code> returns only specified columns. <code>withColumn()</code> adds/replaces one column but keeps the rest.</li>
+    <li><code>filter()</code> and <code>where()</code> are <strong>identical</strong> — both narrow transformations.</li>
+    <li>Joining on a string column name (<code>df.join(other, "id")</code>) avoids duplicate columns. Joining on a condition (<code>df.id == other.id</code>) keeps both — you must drop one.</li>
+    <li><code>explode()</code> drops null or empty arrays. <code>explode_outer()</code> preserves rows with null/empty array as a single null-value row.</li>
+    <li><code>collect()</code> pulls all data to the driver — dangerous on large datasets. Use <code>take(n)</code> or <code>show(n)</code> instead.</li>
+  </ul>
+
+  <h3>Spark SQL</h3>
+  <ul class="tip-list">
+    <li>Global temp views must be queried with the <code>global_temp.</code> prefix. Forgetting this prefix is a common wrong-answer trap.</li>
+    <li><code>rank()</code> leaves gaps after ties (1,1,3). <code>dense_rank()</code> does not (1,1,2). <code>row_number()</code> is unique even for ties (arbitrary tiebreak).</li>
+    <li>Catalyst optimizer phase order: Analysis → Logical Optimization → Physical Planning → Code Generation. Predicate pushdown happens in Logical Optimization.</li>
+    <li>SQL DML: <code>INSERT INTO</code> appends. <code>INSERT OVERWRITE</code> replaces all data. <code>MERGE INTO</code> does upsert.</li>
+  </ul>
+
+  <h3>Reading &amp; Writing</h3>
+  <ul class="tip-list">
+    <li>Default write mode is <code>"error"</code> (fails if path exists). You usually want <code>"overwrite"</code> or <code>"append"</code>.</li>
+    <li>Parquet is columnar and splittable — the default format for analytics in Spark. CSV/JSON are row-based and slower for analytical queries.</li>
+    <li><code>inferSchema=True</code> on CSV scans the whole file twice. In production, always provide an explicit schema.</li>
+    <li>Delta time travel: <code>versionAsOf</code> takes an integer version number; <code>timestampAsOf</code> takes a date/timestamp string.</li>
+    <li>Managed vs External tables: dropping a <strong>managed</strong> table deletes both metadata <em>and</em> data files. Dropping an <strong>external</strong> table deletes only the metadata.</li>
+  </ul>
+
+  <h3>Numbers to Know</h3>
+  <div class="card-grid" style="margin-top:12px">
+    <div class="card accent">
+      <div class="card-title">Default shuffle partitions</div>
+      <div class="card-body" style="font-size:1.6rem;font-weight:700;color:var(--accent)">200</div>
+      <div class="card-body" style="margin-top:4px"><code>spark.sql.shuffle.partitions</code></div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">Broadcast threshold</div>
+      <div class="card-body" style="font-size:1.6rem;font-weight:700;color:var(--blue)">10 MB</div>
+      <div class="card-body" style="margin-top:4px"><code>spark.sql.autoBroadcastJoinThreshold</code></div>
+    </div>
+    <div class="card green">
+      <div class="card-title">Default executor cores</div>
+      <div class="card-body" style="font-size:1.6rem;font-weight:700;color:var(--green)">1</div>
+      <div class="card-body" style="margin-top:4px"><code>spark.executor.cores</code> default</div>
+    </div>
+    <div class="card purple">
+      <div class="card-title">Default parallelism</div>
+      <div class="card-body" style="font-size:1.6rem;font-weight:700;color:var(--purple)">8</div>
+      <div class="card-body" style="margin-top:4px"><code>spark.default.parallelism</code> local mode</td></div>
+    </div>
+    <div class="card teal">
+      <div class="card-title">Spark file target size</div>
+      <div class="card-body" style="font-size:1.6rem;font-weight:700;color:var(--teal)">128 MB</div>
+      <div class="card-body" style="margin-top:4px">default HDFS block / Parquet file target</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:28px">Quick Decision Tree</h3>
+  <div class="callout">
+    <strong>Want to read faster from large files?</strong> → Use Parquet + predicate pushdown + column pruning
+  </div>
+  <div class="callout">
+    <strong>Join causing shuffle / OOM?</strong> → Broadcast the smaller table with <code>broadcast()</code> hint
+  </div>
+  <div class="callout">
+    <strong>Too many small output files?</strong> → <code>coalesce(n)</code> before writing
+  </div>
+  <div class="callout">
+    <strong>Need to re-use a DataFrame multiple times?</strong> → <code>df.cache()</code> or <code>df.persist()</code>
+  </div>
+  <div class="callout warn">
+    <strong>Common trap:</strong> <code>df.cache()</code> alone doesn't execute — it just marks the DF for caching. The first action that touches the DF will actually populate the cache.
+  </div>
+  <div class="callout tip">
+    <strong>Study order for exam:</strong> Architecture → DataFrame API transformations → SQL views &amp; DML → Delta Lake → AQE/Caching → Streaming/Auto Loader
+  </div>
+</section>
+
+<script>
+  function switchTab(id) {
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+      const ids = ['arch','df','sql','io','tips'];
+      btn.classList.toggle('active', ids[i] === id);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('active', p.id === 'panel-' + id);
+    });
+    // Auto-resize if inside Databricks iframe
+    if (window.frameElement) {
+      setTimeout(() => {
+        window.frameElement.style.height = (document.body.scrollHeight + 30) + 'px';
+      }, 50);
+    }
+  }
+
+  // Initial iframe resize
+  if (window.frameElement) {
+    window.frameElement.style.height = (document.body.scrollHeight + 30) + 'px';
+  }
+</script>
+
+</body>
+</html>

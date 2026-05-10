@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark Day 3 Quiz</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 1.5rem; max-width: 720px; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.25rem; }
+  .topic-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; }
+  .topic-btn { padding: 7px 13px; border: 1px solid #ccc; border-radius: 8px; background: #fff; color: #1a1a1a; cursor: pointer; font-size: 13px; font-family: inherit; }
+  .topic-btn:hover { background: #f5f5f5; }
+  .topic-btn.active { background: #e8f0fe; color: #1a56db; border-color: #93b4f8; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+  .meta span { font-size: 13px; color: #666; }
+  .question { font-size: 15px; font-weight: 500; margin-bottom: 1rem; line-height: 1.5; }
+  .opt-btn { width: 100%; text-align: left; padding: 10px 14px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #1a1a1a; cursor: pointer; font-size: 14px; font-family: inherit; line-height: 1.4; }
+  .opt-btn:hover { background: #f5f5f5; }
+  .opt-btn.correct { background: #ecfdf5 !important; border-color: #6ee7b7 !important; color: #065f46 !important; pointer-events: none; }
+  .opt-btn.wrong { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #991b1b !important; pointer-events: none; }
+  .opt-btn.locked { pointer-events: none; }
+  .exp { padding: 10px 14px; border-left: 3px solid #93b4f8; font-size: 13px; color: #444; margin-top: 1rem; line-height: 1.6; background: #f8faff; border-radius: 0 6px 6px 0; }
+  .mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+  .placeholder { font-size: 15px; color: #888; }
+  .score-line { font-size: 14px; color: #555; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>Spark day 3 quiz</h1>
+<div class="topic-bar" id="topic-bar"></div>
+<div id="quiz-area"><p class="placeholder">Pick a topic above to start.</p></div>
+
+<script>
+const topics = [
+  {
+    id:"transact", label:"Transformation vs action",
+    questions:[
+      {
+        q:"Which of these is an action?",
+        opts:["filter()","groupBy()","count()","select()"],
+        ans:2,
+        exp:"count() triggers execution — Spark sends tasks to Executors and returns a number to the Driver. filter(), groupBy(), and select() are transformations — they just add nodes to the DAG."
+      },
+      {
+        q:"You write 10 chained transformations. When does Spark actually read data from S3?",
+        opts:["After the first transformation","After every transformation","Only when an action is called","When you define the DataFrame"],
+        ans:2,
+        exp:"Spark is lazy. All 10 transformations just build the DAG. The S3 read happens only when an action like show(), write(), or count() is called."
+      },
+      {
+        q:"Which of these triggers a shuffle?",
+        opts:["select()","filter()","withColumn()","distinct()"],
+        ans:3,
+        exp:"distinct() needs to find identical rows across all partitions — it requires a shuffle. select(), filter(), and withColumn() are narrow transformations that work partition-by-partition."
+      },
+      {
+        q:"What is the difference between a transformation and an action in one sentence?",
+        opts:[
+          "Transformations read data, actions write data",
+          "Transformations add a node to the DAG, actions execute the DAG",
+          "Transformations are fast, actions are slow",
+          "Transformations run on the Driver, actions run on Executors"
+        ],
+        ans:1,
+        exp:"Exactly this. Transformations are lazy — they describe what to do. Actions are eager — they trigger the actual computation on the cluster."
+      }
+    ]
+  },
+  {
+    id:"catalyst", label:"Catalyst 4 phases",
+    questions:[
+      {
+        q:"In which Catalyst phase does Spark verify that column names actually exist in the schema?",
+        opts:["Unresolved","Resolved","Optimised","Physical"],
+        ans:1,
+        exp:"Phase 2 — Resolved. Catalyst reads the Parquet footer and confirms every column name and type. An unresolved column like col('amountt') would fail here with AnalysisException."
+      },
+      {
+        q:"Predicate pushdown, column pruning, and constant folding happen in which phase?",
+        opts:["Unresolved","Resolved","Optimised","Physical"],
+        ans:2,
+        exp:"Phase 3 — Optimised. Catalyst rewrites the DAG to be more efficient without changing the result. It moves filters earlier, drops unused columns, and simplifies constant expressions."
+      },
+      {
+        q:"Which phase produces what explain() shows you?",
+        opts:["Unresolved","Resolved","Optimised","Physical"],
+        ans:3,
+        exp:"Phase 4 — Physical. Catalyst decides how to execute on the actual cluster — join strategies, shuffle placement, task breakdown. explain() prints this final physical plan."
+      },
+      {
+        q:"Your query filters on a column that doesn't exist. Which phase throws the error?",
+        opts:[
+          "Unresolved — immediately when you write the code",
+          "Resolved — when Catalyst checks the schema",
+          "Optimised — when rewriting the DAG",
+          "Physical — when tasks start running"
+        ],
+        ans:1,
+        exp:"Resolved (phase 2). The unresolved phase accepts any column name as a string. Phase 2 checks it against the actual schema and throws AnalysisException before any execution happens."
+      }
+    ]
+  },
+  {
+    id:"optimisations", label:"3 Catalyst optimisations",
+    questions:[
+      {
+        q:"Your Parquet file has 20 columns but your query only uses 2. What does Catalyst do?",
+        opts:[
+          "Reads all 20 columns then drops 18 after loading",
+          "Prunes unused columns — fetches only the 2 needed from S3",
+          "Caches all 20 columns for future queries",
+          "Raises a warning but reads everything"
+        ],
+        ans:1,
+        exp:"Column pruning. Catalyst rewrites the FileScan node to request only the 2 needed columns from S3. On a columnar format like Parquet this can reduce I/O by 90%+."
+      },
+      {
+        q:"You write filter(col('amount') > (100000 / 10)). What does Catalyst do with the division?",
+        opts:[
+          "Evaluates 100000/10 once at planning time, replaces with 10000.0",
+          "Evaluates 100000/10 for every row at execution time",
+          "Pushes the division down to the Executor",
+          "Leaves the expression as-is for the JVM to handle"
+        ],
+        ans:0,
+        exp:"Constant folding. Catalyst evaluates constant expressions during the optimisation phase and replaces them with the result. 800 million rows never see the division — it happened once during planning."
+      },
+      {
+        q:"You filter on date >= '2024-01-01' before a groupBy. Where does Catalyst move that filter?",
+        opts:[
+          "After the groupBy to reduce aggregation work",
+          "Into the shuffle phase",
+          "As early as possible — ideally into the S3 read itself",
+          "It stays exactly where you wrote it"
+        ],
+        ans:2,
+        exp:"Predicate pushdown. Catalyst moves the filter as early as possible in the DAG. For Parquet on S3 it pushes all the way into the FileScan — Spark checks row group statistics in the footer and skips entire row groups that don't match."
+      }
+    ]
+  },
+  {
+    id:"explainplan", label:"Reading explain()",
+    questions:[
+      {
+        q:"You call df.explain(). Which direction do you read the output?",
+        opts:[
+          "Top to bottom — first node executes first",
+          "Bottom to top — bottom is where execution starts",
+          "Left to right",
+          "It doesn't matter, nodes are independent"
+        ],
+        ans:1,
+        exp:"Bottom to top. The bottom node is always the data source (FileScan). Execution flows upward through the tree. The top node produces your final result."
+      },
+      {
+        q:"You see an Exchange node in the physical plan. What does it mean?",
+        opts:[
+          "Data is being written to S3",
+          "A cache() call was made",
+          "A shuffle — data moves between workers here, and this is a stage boundary",
+          "The Driver is collecting results"
+        ],
+        ans:2,
+        exp:"Exchange = shuffle = stage boundary. Everything below Exchange is Stage 1, everything above is Stage 2. Counting Exchange nodes in explain() tells you how many shuffles your job has."
+      },
+      {
+        q:"You see FileScan parquet [customer_id, amount] but your table has 20 columns. What happened?",
+        opts:[
+          "Spark found a corrupted schema",
+          "Column pruning — Catalyst dropped the 18 unused columns from the scan",
+          "The other 18 columns are read in a separate scan",
+          "AQE removed them at runtime"
+        ],
+        ans:1,
+        exp:"Column pruning applied during phase 3. Catalyst saw you only reference customer_id and amount downstream and rewrote the FileScan to fetch only those two columns from S3."
+      }
+    ]
+  },
+  {
+    id:"aqe", label:"AQE",
+    questions:[
+      {
+        q:"spark.sql.shuffle.partitions defaults to 200. Why is this almost always wrong?",
+        opts:[
+          "200 is too high for any real workload",
+          "It was set for Hadoop 1.0 and never updated",
+          "It ignores actual data size — 200 may be too few for 1TB or too many for 1GB",
+          "It conflicts with the number of Executor cores"
+        ],
+        ans:2,
+        exp:"200 is a static guess made before execution. For 120 GB it might produce buckets that are too large. For a 500 MB table it produces tiny tasks with more scheduling overhead than work. AQE fixes this by measuring actual shuffle output."
+      },
+      {
+        q:"When does AQE make its decisions?",
+        opts:[
+          "Before the job starts, during planning",
+          "After each stage completes, based on real statistics",
+          "Only during the shuffle phase",
+          "When you call explain()"
+        ],
+        ans:1,
+        exp:"AQE waits for a stage to finish, then inspects the actual shuffle output size and partition statistics before planning the next stage. It reacts to real data, not estimates."
+      },
+      {
+        q:"One customer_id has 50 million transactions, all others average 500. AQE detects this. What does it do?",
+        opts:[
+          "Skips that customer_id entirely",
+          "Raises a skew warning and stops the job",
+          "Splits the oversized bucket into multiple sub-tasks that run in parallel",
+          "Moves all 50M rows to the Driver"
+        ],
+        ans:2,
+        exp:"Skew join optimisation. AQE detects that one partition is much larger than the median and automatically splits it into sub-tasks. The final result is still correct — the sub-results are merged — but that one customer no longer holds up the entire stage."
+      }
+    ]
+  },
+  {
+    id:"collect", label:"Why collect() is dangerous",
+    questions:[
+      {
+        q:"You call df.collect() on your 120 GB bank transactions table. What happens?",
+        opts:[
+          "Spark streams the data efficiently to your notebook",
+          "All 800M rows travel to the Driver JVM — it runs out of heap memory and crashes",
+          "Spark automatically samples 1000 rows instead",
+          "The Executors cache the data and return a reference"
+        ],
+        ans:1,
+        exp:"collect() pulls every row across the network into the Driver JVM heap. The Driver is typically allocated 4–8 GB. 120 GB of data causes OutOfMemoryError. In Kubernetes the Driver pod gets OOMKilled — you lose the entire SparkSession."
+      },
+      {
+        q:"What is the safe alternative to collect() when inspecting data during development?",
+        opts:["toPandas()","take(1000000)","show(50)","cache()"],
+        ans:2,
+        exp:"show(n) fetches only n rows to the Driver — safe at any scale. toPandas() is collect() in disguise. take(1M) is still dangerous on large data. cache() keeps data on Executors but doesn't move it to the Driver."
+      },
+      {
+        q:"When is collect() actually safe to use?",
+        opts:[
+          "Never — always use write()",
+          "Only on DataFrames with fewer than 1 million rows",
+          "After a heavy aggregation that reduces 800M rows to a small result like 500 rows",
+          "Only in local mode"
+        ],
+        ans:2,
+        exp:"collect() is fine when the result is genuinely small — a list of flagged accounts, a single number, a lookup table. The pattern: aggregate in Spark first to reduce the data, then collect the small result to Python."
+      }
+    ]
+  }
+];
+
+const scores = {};
+topics.forEach(t => scores[t.id] = {correct:0, total:0});
+let activeTopic = null;
+let activeQ = 0;
+let answered = false;
+
+function renderTopicBar() {
+  const bar = document.getElementById('topic-bar');
+  bar.innerHTML = '';
+  topics.forEach(t => {
+    const s = scores[t.id];
+    const btn = document.createElement('button');
+    btn.className = 'topic-btn' + (activeTopic === t.id ? ' active' : '');
+    btn.textContent = t.label + (s.total > 0 ? ' ' + s.correct + '/' + s.total : '');
+    btn.addEventListener('click', () => { activeTopic = t.id; activeQ = 0; answered = false; renderAll(); });
+    bar.appendChild(btn);
+  });
+}
+
+function renderQuestion() {
+  const area = document.getElementById('quiz-area');
+  if (!activeTopic) { area.innerHTML = '<p class="placeholder">Pick a topic above to start.</p>'; return; }
+  const topic = topics.find(t => t.id === activeTopic);
+  const q = topic.questions[activeQ];
+  area.innerHTML =
+    '<div class="meta"><span>' + topic.label + '</span><span>' + (activeQ+1) + ' / ' + topic.questions.length + '</span></div>' +
+    '<p class="question">' + q.q + '</p>' +
+    '<div id="opts-wrap"></div><div id="exp-wrap"></div><div id="nav-wrap" style="margin-top:1rem"></div>';
+  const wrap = document.getElementById('opts-wrap');
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt;
+    btn.addEventListener('click', () => handleAnswer(i));
+    wrap.appendChild(btn);
+  });
+}
+
+function handleAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+  const topic = topics.find(t => t.id === activeTopic);
+  const q = topic.questions[activeQ];
+  scores[activeTopic].total++;
+  if (chosen === q.ans) scores[activeTopic].correct++;
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.classList.add('locked');
+    if (i === q.ans) b.classList.add('correct');
+    else if (i === chosen) b.classList.add('wrong');
+  });
+  document.getElementById('exp-wrap').innerHTML = '<div class="exp">' + q.exp + '</div>';
+  const nav = document.getElementById('nav-wrap');
+  if (activeQ < topic.questions.length - 1) {
+    const nb = document.createElement('button');
+    nb.className = 'topic-btn';
+    nb.textContent = 'Next question →';
+    nb.addEventListener('click', () => { activeQ++; answered = false; renderAll(); });
+    nav.appendChild(nb);
+  } else {
+    const s = scores[activeTopic];
+    nav.innerHTML = '<p class="score-line">Topic done — <strong>' + s.correct + '/' + s.total + '</strong></p>';
+    const rb = document.createElement('button');
+    rb.className = 'topic-btn';
+    rb.textContent = 'Retry topic';
+    rb.addEventListener('click', () => { scores[activeTopic]={correct:0,total:0}; activeQ=0; answered=false; renderAll(); });
+    nav.appendChild(rb);
+  }
+  renderTopicBar();
+}
+
+function renderAll() { renderTopicBar(); renderQuestion(); }
+renderAll();
+</script>
+</body>
+</html>

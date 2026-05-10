@@ -11,12 +11,25 @@
   .header h1{font-size:18px;font-weight:600;color:#1a1a1a}
   .header p{font-size:13px;color:#666;margin-top:3px}
   .container{max-width:780px;margin:0 auto;padding:1.5rem}
-  .topic-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5rem}
+  /* ── Deck selector ── */
+  .deck-bar{display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap}
+  .deck-btn{flex:1;min-width:200px;display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid #e8e8e4;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s}
+  .deck-btn:hover{border-color:#93b4f8}
+  .deck-btn.active{border-color:#1a56db;background:#f0f4ff}
+  .deck-icon{font-size:22px;flex-shrink:0}
+  .deck-name{font-size:14px;font-weight:600;color:#1a1a1a;display:block}
+  .deck-sub{font-size:11px;color:#888;display:block;margin-top:1px}
+  /* ── Day label divider in topic bar ── */
+  .day-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#aaa;align-self:center;padding:0 4px;white-space:nowrap}
+  .day-divider{width:1px;background:#e8e8e4;align-self:stretch;margin:2px 0}
+  /* ── Topic bar ── */
+  .topic-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.5rem;align-items:center}
   .topic-btn{padding:7px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#555;cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
   .topic-btn:hover{border-color:#93b4f8;color:#1a56db}
   .topic-btn.active{background:#1a56db;color:#fff;border-color:#1a56db}
   .topic-btn .badge{display:inline-block;background:rgba(255,255,255,.25);border-radius:10px;padding:1px 6px;font-size:11px;margin-left:5px}
   .topic-btn:not(.active) .badge{background:#f0f0ec;color:#888}
+  /* ── Cards & questions ── */
   .card{background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:1.5rem;margin-bottom:1rem}
   .q-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
   .q-meta .topic-tag{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;background:#f5f4f0;padding:3px 8px;border-radius:4px}
@@ -41,8 +54,6 @@
   .progress-bar{height:3px;background:#e8e8e4;border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
   .progress-fill{height:100%;background:#1a56db;border-radius:2px;transition:width .3s}
   .all-done{text-align:center;padding:2rem}
-  .all-done h2{font-size:20px;font-weight:600;margin-bottom:.5rem}
-  .all-done p{color:#666;font-size:14px;margin-bottom:1.25rem}
   .score-big{font-size:48px;font-weight:700;color:#1a56db;line-height:1}
   .score-label{font-size:14px;color:#888;margin-top:.25rem}
   .result-row{background:#f8f9fb;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
@@ -56,255 +67,493 @@
 
 <div class="header">
   <h1>Week 1 Quiz — Spark Foundations</h1>
-  <p>31 questions &nbsp;·&nbsp; Target: 25 / 31 (80%) before moving to Week 2</p>
+  <p id="header-sub">16 questions &nbsp;·&nbsp; Target: 13 / 16 (80%) before moving to Week 2</p>
 </div>
 
 <div class="container">
-  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+
+  <!-- Deck selector -->
+  <div class="deck-bar">
+    <button class="deck-btn active" id="deck-cert" onclick="switchDeck('cert')">
+      <span class="deck-icon">🎓</span>
+      <span>
+        <span class="deck-name">Certification Practice</span>
+        <span class="deck-sub">16 questions · exam-style · 80% to pass</span>
+      </span>
+    </button>
+    <button class="deck-btn" id="deck-daily" onclick="switchDeck('daily')">
+      <span class="deck-icon">⚡</span>
+      <span>
+        <span class="deck-name">Daily Quick Checks</span>
+        <span class="deck-sub">35 questions · Day 2 &amp; 3 · conceptual checks</span>
+      </span>
+    </button>
+  </div>
+
   <div class="topic-bar" id="topic-bar"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
   <div id="quiz-area"><p class="placeholder">Select a topic above to begin.</p></div>
+
 </div>
 
 <script>
-const topics = [
-  {
-    id:"arch", label:"Architecture",
-    questions:[
-      { q:"Which Spark deployment mode requires ALL executors to run on a single worker node?",
-        opts:["Cluster mode","Local mode","Client mode","Standard mode"],
-        ans:1,
-        exp:"<strong>Local mode</strong> (local[*]) runs the Driver and all Executors inside a single JVM on one machine — no cluster required. Perfect for development and testing. <em>Client mode</em> keeps the Driver on the submitting machine while Executors run on cluster workers. <em>Cluster mode</em> moves the Driver inside the cluster — used for production batch jobs." },
-      { q:"Which component breaks a Spark application into tasks and schedules them onto Executors?",
-        opts:["Cluster Manager","Driver","Executor","Worker Node"],
-        ans:1,
-        exp:"<strong>The Driver</strong> runs your main() function, creates the SparkContext, builds the DAG, and schedules tasks onto Executors." },
-      { q:"What does the Cluster Manager do in Spark?",
-        opts:["Runs transformations on data","Allocates resources (CPU/memory) across the cluster","Stores the lineage graph","Serializes DataFrames"],
-        ans:1,
-        exp:"The Cluster Manager (YARN, Mesos, Kubernetes, Standalone) negotiates resources. It does not touch your data." },
-      { q:"Where does actual data processing happen in Spark?",
-        opts:["Driver JVM","Cluster Manager","Executors","SparkContext"],
-        ans:2,
-        exp:"<strong>Executors</strong> are JVM processes on Worker nodes. They run tasks, cache data, and report results back to the Driver." }
+// ── Data ────────────────────────────────────────────────────────────────────
+const decks = {
+
+  cert: {
+    headerSub: "16 questions · Target: 13 / 16 (80%) before moving to Week 2",
+    passScore: 13,
+    passLabel: "Ready for Week 2",
+    topics: [
+      {
+        id:"arch", label:"Architecture",
+        questions:[
+          { q:"Which Spark deployment mode requires ALL executors to run on a single worker node?",
+            opts:["Cluster mode","Local mode","Client mode","Standard mode"],
+            ans:1,
+            exp:"<strong>Local mode</strong> (local[*]) runs the Driver and all Executors inside a single JVM on one machine — no cluster required. Perfect for development and testing. <em>Client mode</em> keeps the Driver on the submitting machine while Executors run on cluster workers. <em>Cluster mode</em> moves the Driver inside the cluster — used for production batch jobs." }
+        ]
+      },
+      {
+        id:"df", label:"DataFrame API",
+        questions:[
+          { q:"Which approach correctly replaces the 'division' column with a new 'state' column AND renames 'mName' to 'managerName'?",
+            opts:[
+              "withColumn(\"state\", col(\"division\")).drop(\"division\").withColumnRenamed(\"mName\", \"managerName\")",
+              "withColumnRenamed(\"state\", \"division\").withColumnRenamed(\"mName\", \"managerName\")",
+              "withColumn(col(\"division\"), state).withColumnRenamed(\"managerName\", \"mName\")",
+              "drop(\"division\").withColumnRenamed(\"state\", lit(\"default_state\"))"
+            ],
+            code:true, ans:0,
+            exp:"<strong>A is correct.</strong> Three steps: (1) withColumn(\"state\", col(\"division\")) creates a new 'state' column from 'division'. (2) drop(\"division\") removes the old column. (3) withColumnRenamed(\"mName\", \"managerName\") renames. Option B renames in the wrong direction. Option C passes a Column object as the first arg to withColumn — must be a plain string. Option D is invalid." },
+          { q:"Which snippet correctly sorts a DataFrame by salary and age descending, prints the schema, and converts results to a list of row dicts?",
+            opts:[
+              "orderBy(desc(), desc()) · printSchema() · toPandas().values.tolist()",
+              "sort(ascending=[False,False]) · schema() · toList()",
+              "orderBy(col(\"salary\").desc(), col(\"age\").desc()).collect() · printSchema() · [row.asDict() for row in result]",
+              "sort([\"salary\",\"age\"], descending=True).show() · describe() · list(result)"
+            ],
+            ans:2,
+            exp:"<strong>C is correct.</strong> orderBy(col().desc()) is the correct multi-column descending sort. collect() materialises the rows. printSchema() prints the schema. asDict() converts each Row to a dict. Option A: toPandas().values.tolist() gives lists, not dicts. Option B: schema() is not a method; toList() doesn't exist. Option D: sort() has no 'descending' kwarg; show() returns None." },
+          { q:"Which fragment drops ALL rows that have at least one null value in ANY column?",
+            opts:["storesDF.na.drop(\"all\")","storesDF.na.drop(subset=\"sqft\")","storesDF.na.drop()","storesDF.dropna(\"all\")"],
+            ans:2,
+            exp:"<strong>C: na.drop()</strong> with no arguments uses the default how='any', dropping rows where ANY column is null. Option A (how='all') only drops rows where ALL columns are null — too permissive. Option B only checks the 'sqft' column. Option D: dropna(\"all\") is equivalent to A." },
+          { q:"Which code returns a new DataFrame with a column sqft100 that is 1/100th of column sqft?",
+            opts:[
+              "storesDF.withColumn(\"sqft100\", col(\"sqft\") * 100)",
+              "storesDF.withColumn(\"sqft100\", sqft / 100)",
+              "storesDF.withColumn(col(\"sqft100\"), col(\"sqft\") / 100)",
+              "storesDF.withColumn(\"sqft100\", col(\"sqft\") / 100)",
+              "storesDF.newColumn(\"sqft100\", sqft / 100)"
+            ],
+            ans:3,
+            exp:"<strong>D is correct.</strong> withColumn(name_string, column_expr) — first arg is a plain string, second is a Column expression. Option A multiplies by 100 (100× not ÷100). Option B uses bare 'sqft' — must use col(\"sqft\"). Option C passes a Column object as the first arg (must be a string). Option E: newColumn() does not exist." }
+        ]
+      },
+      {
+        id:"sql", label:"Spark SQL",
+        questions:[
+          { q:"Which SQL snippet correctly demonstrates a DDL operation to CREATE a table?",
+            opts:[
+              "CREATE TABLE employees (id INT, name STRING);",
+              "INSERT INTO employees (id, name) VALUES (1, 'Alice');",
+              "ALTER TABLE employees ADD COLUMN salary DECIMAL(10,2);",
+              "DROP TABLE employees;"
+            ],
+            code:true, ans:0,
+            exp:"<strong>A.</strong> CREATE TABLE is the canonical DDL (Data Definition Language) operation for creating schema structure. INSERT INTO (B) is DML — it adds data, not schema. ALTER TABLE (C) is also DDL but modifies an existing table rather than creating one. DROP TABLE (D) is DDL but removes the table." },
+          { q:"A junior engineer needs a Spark-managed table where Spark controls both data AND metadata, stored in DBFS. Which command is correct?",
+            opts:[
+              "CREATE TABLE t (id STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse/t'",
+              "CREATE TABLE t (id STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse'",
+              "CREATE MANAGED TABLE t (id STRING);",
+              "CREATE EXTERNAL t (id STRING) USING DBFS;",
+              "CREATE TABLE t (id STRING);"
+            ],
+            code:true, ans:4,
+            exp:"<strong>E.</strong> A managed table is created by omitting the LOCATION clause — Spark automatically stores data in the default DBFS warehouse path. Any table with LOCATION becomes an external table (A, B). 'CREATE MANAGED TABLE' (C) and 'CREATE EXTERNAL ... USING DBFS' (D) are not valid Spark SQL syntax." },
+          { q:"A data engineer needs a persistent, cross-session relational object that pulls from multiple tables WITHOUT copying or storing physical data. Which object should be created?",
+            opts:["View","Temporary view","Delta Table","Database","Spark SQL Table"],
+            ans:0,
+            exp:"<strong>A: View.</strong> A regular view is persisted in the metastore and accessible across sessions, but stores only the query definition — no physical data is copied. A Temporary view (B) is session-scoped and disappears when the session ends. A Delta Table (C) and Spark SQL Table (E) both store physical data. A Database (D) is a namespace/container." },
+          { q:"A data entity must display data from multiple tables AND save to a physical location. Which object should be created?",
+            opts:["View","Function","Database","Table"],
+            ans:3,
+            exp:"<strong>D: Table.</strong> A table (Delta or Parquet) stores data physically and can be created from multiple sources using CTAS (CREATE TABLE AS SELECT). A View (A) is virtual — no physical copy. A Function (B) is reusable logic, not a data entity. A Database (C) is a namespace/container." },
+          { q:"How do you read a Spark SQL table named 'sales' as a PySpark DataFrame?",
+            opts:[
+              "SELECT * FROM sales",
+              "There is no way to share data between PySpark and SQL",
+              "spark.sql(\"sales\")",
+              "spark.data.table(\"sales\")",
+              "spark.table(\"sales\")"
+            ],
+            code:true, ans:4,
+            exp:"<strong>E: spark.table(\"sales\")</strong> loads a registered table from the metastore and returns it as a DataFrame. A is SQL syntax only — must be wrapped in spark.sql(). B is false — PySpark and SQL share the same metastore. C: spark.sql() requires a full SQL query string. D: spark.data.table() does not exist in the API." }
+        ]
+      },
+      {
+        id:"io", label:"Reading & Writing",
+        questions:[
+          { q:"Which code correctly writes df to Parquet, partitioned by country, overwriting any existing data?",
+            opts:[
+              "df.write.mode(\"append\").partitionBy(\"country\").parquet(\"/data/out\")",
+              "df.write.partitionBy(\"country\").parquet(\"/data/out\")",
+              "df.write.mode(\"overwrite\").parquet(\"/data/out\")",
+              "df.write.mode(\"overwrite\").partitionBy(\"country\").parquet(\"/data/out\")"
+            ],
+            code:true, ans:3,
+            exp:"<strong>D.</strong> All three are required: mode(\"overwrite\"), partitionBy(\"country\"), and parquet(path). Option A uses append — doesn't overwrite. Option B has no mode — default is error if path exists. Option C has no partitionBy — data won't be partitioned." },
+          { q:"A CREATE TABLE statement reads from a CSV file. Which line correctly specifies the file format?\n\nCREATE TABLE new_table\n____\nOPTIONS (header='true', delimiter='|')\nLOCATION '/path/to/csv'",
+            opts:["FROM \"/path/to/csv\"","USING CSV","FROM CSV","USING DELTA"],
+            code:true, ans:1,
+            exp:"<strong>B: USING CSV.</strong> The USING clause specifies the data source format in a CREATE TABLE statement. USING CSV tells Spark to use the CSV reader with the OPTIONS provided. FROM (A, C) belongs in SELECT queries, not CREATE TABLE. USING DELTA (D) creates a Delta table — it doesn't support CSV OPTIONS." },
+          { q:"Why is creating an external table from Parquet preferred over CSV?",
+            opts:[
+              "Parquet files can be partitioned (CSV cannot)",
+              "CTAS statements cannot be used on CSV files",
+              "Parquet stores column names and types in the file metadata — schema inference works automatically",
+              "Parquet files automatically become Delta tables",
+              "Parquet files are always smaller than CSV files"
+            ],
+            ans:2,
+            exp:"<strong>C.</strong> Parquet embeds schema metadata (column names, data types, nullability) in every file. When creating an external table, Databricks infers the schema automatically. CSV has no embedded schema — you must manually define every column. Options A, B, D, E are all false." }
+        ]
+      },
+      {
+        id:"dml", label:"DML & Python+SQL",
+        questions:[
+          { q:"Which SQL keyword appends new rows to an existing Delta table?",
+            opts:["UPDATE","COPY","INSERT INTO","DELETE","UNION"],
+            ans:2,
+            exp:"<strong>C: INSERT INTO</strong> adds rows without removing existing data — it appends. UPDATE (A) modifies existing rows. COPY INTO is a separate Databricks command for loading files; bare COPY (B) is not valid SQL. DELETE (D) removes rows. UNION (E) combines SELECT results in a query — it does not write data." },
+          { q:"A data engineer has a new record: id='a1', rank=6, rating=9.4. Which SQL command appends it to my_table?",
+            opts:[
+              "INSERT INTO my_table VALUES ('a1', 6, 9.4)",
+              "INSERT VALUES ('a1', 6, 9.4) INTO my_table",
+              "UPDATE my_table VALUES ('a1', 6, 9.4)",
+              "UPDATE VALUES ('a1', 6, 9.4) my_table"
+            ],
+            code:true, ans:0,
+            exp:"<strong>A.</strong> Standard SQL syntax: INSERT INTO table VALUES (val1, val2, ...). Option B has wrong word order — the table name must follow INSERT INTO immediately. Option C: UPDATE does not use VALUES like this — it requires SET col = val. Option D is completely invalid SQL." },
+          { q:"A data engineer has a Python variable table_name. Which approach correctly runs a SQL query using it in PySpark?",
+            opts:[
+              "spark.delta.sql(f\"SELECT customer_id, spend FROM {table_name}\")",
+              "spark.sql(f\"SELECT customer_id, spend FROM {table_name}\")",
+              "spark.table(f\"SELECT customer_id, spend FROM {table_name}\")",
+              "dbutils.sql(f\"SELECT customer_id, spend FROM {table_name}\")"
+            ],
+            code:true, ans:1,
+            exp:"<strong>B: spark.sql()</strong> executes any SQL string. Using an f-string injects the Python variable directly into the query. spark.delta.sql (A) does not exist. spark.table() (C) takes a table name only — not a full query. dbutils has no .sql() method (D)." }
+        ]
+      }
     ]
   },
-  {
-    id:"df", label:"DataFrame API",
-    questions:[
-      { q:"Which approach correctly replaces the 'division' column with a new 'state' column AND renames 'mName' to 'managerName'?",
-        opts:[
-          "withColumn(\"state\", col(\"division\")).drop(\"division\").withColumnRenamed(\"mName\", \"managerName\")",
-          "withColumnRenamed(\"state\", \"division\").withColumnRenamed(\"mName\", \"managerName\")",
-          "withColumn(col(\"division\"), state).withColumnRenamed(\"managerName\", \"mName\")",
-          "drop(\"division\").withColumnRenamed(\"state\", lit(\"default_state\"))"
-        ],
-        code:true, ans:0,
-        exp:"<strong>A is correct.</strong> Three steps: (1) withColumn(\"state\", col(\"division\")) creates a new 'state' column from 'division'. (2) drop(\"division\") removes the old column. (3) withColumnRenamed(\"mName\", \"managerName\") renames. Option B renames in the wrong direction. Option C passes a Column object as the first arg to withColumn — must be a plain string. Option D is invalid." },
-      { q:"Which snippet correctly sorts a DataFrame by salary and age descending, prints the schema, and converts results to a list of row dicts?",
-        opts:[
-          "orderBy(desc(), desc()) · printSchema() · toPandas().values.tolist()",
-          "sort(ascending=[False,False]) · schema() · toList()",
-          "orderBy(col(\"salary\").desc(), col(\"age\").desc()).collect() · printSchema() · [row.asDict() for row in result]",
-          "sort([\"salary\",\"age\"], descending=True).show() · describe() · list(result)"
-        ],
-        ans:2,
-        exp:"<strong>C is correct.</strong> orderBy(col().desc()) is the correct multi-column descending sort. collect() materialises the rows. printSchema() prints the schema. asDict() converts each Row to a dict. Option A: toPandas().values.tolist() gives lists, not dicts. Option B: schema() is not a method; toList() doesn't exist. Option D: sort() has no 'descending' kwarg; show() returns None." },
-      { q:"Which fragment drops ALL rows that have at least one null value in ANY column?",
-        opts:["storesDF.na.drop(\"all\")","storesDF.na.drop(subset=\"sqft\")","storesDF.na.drop()","storesDF.dropna(\"all\")"],
-        ans:2,
-        exp:"<strong>C: na.drop()</strong> with no arguments uses the default how='any', dropping rows where ANY column is null. Option A (how='all') only drops rows where ALL columns are null — too permissive. Option B only checks the 'sqft' column. Option D: dropna(\"all\") is equivalent to A." },
-      { q:"Which code returns a new DataFrame with a column sqft100 that is 1/100th of column sqft?",
-        opts:[
-          "storesDF.withColumn(\"sqft100\", col(\"sqft\") * 100)",
-          "storesDF.withColumn(\"sqft100\", sqft / 100)",
-          "storesDF.withColumn(col(\"sqft100\"), col(\"sqft\") / 100)",
-          "storesDF.withColumn(\"sqft100\", col(\"sqft\") / 100)",
-          "storesDF.newColumn(\"sqft100\", sqft / 100)"
-        ],
-        ans:3,
-        exp:"<strong>D is correct.</strong> withColumn(name_string, column_expr) — first arg is a plain string, second is a Column expression. Option A multiplies by 100 (100× not ÷100). Option B uses bare 'sqft' — must use col(\"sqft\"). Option C passes a Column object as the first arg (must be a string). Option E: newColumn() does not exist." }
-    ]
-  },
-  {
-    id:"sql", label:"Spark SQL",
-    questions:[
-      { q:"Which SQL snippet correctly demonstrates a DDL operation to CREATE a table?",
-        opts:[
-          "CREATE TABLE employees (id INT, name STRING);",
-          "INSERT INTO employees (id, name) VALUES (1, 'Alice');",
-          "ALTER TABLE employees ADD COLUMN salary DECIMAL(10,2);",
-          "DROP TABLE employees;"
-        ],
-        code:true, ans:0,
-        exp:"<strong>A.</strong> CREATE TABLE is the canonical DDL (Data Definition Language) operation for creating schema structure. INSERT INTO (B) is DML — it adds data, not schema. ALTER TABLE (C) is also DDL but modifies an existing table rather than creating one. DROP TABLE (D) is DDL but removes the table." },
-      { q:"A junior engineer needs a Spark-managed table where Spark controls both data AND metadata, stored in DBFS. Which command is correct?",
-        opts:[
-          "CREATE TABLE t (id STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse/t'",
-          "CREATE TABLE t (id STRING) USING parquet LOCATION 'dbfs:/user/hive/warehouse'",
-          "CREATE MANAGED TABLE t (id STRING);",
-          "CREATE EXTERNAL t (id STRING) USING DBFS;",
-          "CREATE TABLE t (id STRING);"
-        ],
-        code:true, ans:4,
-        exp:"<strong>E.</strong> A managed table is created by omitting the LOCATION clause — Spark automatically stores data in the default DBFS warehouse path. Any table with LOCATION becomes an external table (A, B). 'CREATE MANAGED TABLE' (C) and 'CREATE EXTERNAL ... USING DBFS' (D) are not valid Spark SQL syntax." },
-      { q:"A data engineer needs a persistent, cross-session relational object that pulls from multiple tables WITHOUT copying or storing physical data. Which object should be created?",
-        opts:["View","Temporary view","Delta Table","Database","Spark SQL Table"],
-        ans:0,
-        exp:"<strong>A: View.</strong> A regular view is persisted in the metastore and accessible across sessions, but stores only the query definition — no physical data is copied. A Temporary view (B) is session-scoped and disappears when the session ends. A Delta Table (C) and Spark SQL Table (E) both store physical data. A Database (D) is a namespace/container." },
-      { q:"A data entity must display data from multiple tables AND save to a physical location. Which object should be created?",
-        opts:["View","Function","Database","Table"],
-        ans:3,
-        exp:"<strong>D: Table.</strong> A table (Delta or Parquet) stores data physically and can be created from multiple sources using CTAS (CREATE TABLE AS SELECT). A View (A) is virtual — no physical copy. A Function (B) is reusable logic, not a data entity. A Database (C) is a namespace/container." },
-      { q:"How do you read a Spark SQL table named 'sales' as a PySpark DataFrame?",
-        opts:[
-          "SELECT * FROM sales",
-          "There is no way to share data between PySpark and SQL",
-          "spark.sql(\"sales\")",
-          "spark.data.table(\"sales\")",
-          "spark.table(\"sales\")"
-        ],
-        code:true, ans:4,
-        exp:"<strong>E: spark.table(\"sales\")</strong> loads a registered table from the metastore and returns it as a DataFrame. A is SQL syntax only — must be wrapped in spark.sql(). B is false — PySpark and SQL share the same metastore. C: spark.sql() requires a full SQL query string. D: spark.data.table() does not exist in the API." }
-    ]
-  },
-  {
-    id:"io", label:"Reading & Writing",
-    questions:[
-      { q:"Which code correctly writes df to Parquet, partitioned by country, overwriting any existing data?",
-        opts:[
-          "df.write.mode(\"append\").partitionBy(\"country\").parquet(\"/data/out\")",
-          "df.write.partitionBy(\"country\").parquet(\"/data/out\")",
-          "df.write.mode(\"overwrite\").parquet(\"/data/out\")",
-          "df.write.mode(\"overwrite\").partitionBy(\"country\").parquet(\"/data/out\")"
-        ],
-        code:true, ans:3,
-        exp:"<strong>D.</strong> All three are required: mode(\"overwrite\"), partitionBy(\"country\"), and parquet(path). Option A uses append — doesn't overwrite. Option B has no mode — default is error if path exists. Option C has no partitionBy — data won't be partitioned." },
-      { q:"A CREATE TABLE statement reads from a CSV file. Which line correctly specifies the file format?\n\nCREATE TABLE new_table\n____\nOPTIONS (header='true', delimiter='|')\nLOCATION '/path/to/csv'",
-        opts:["FROM \"/path/to/csv\"","USING CSV","FROM CSV","USING DELTA"],
-        code:true, ans:1,
-        exp:"<strong>B: USING CSV.</strong> The USING clause specifies the data source format in a CREATE TABLE statement. USING CSV tells Spark to use the CSV reader with the OPTIONS provided. FROM (A, C) belongs in SELECT queries, not CREATE TABLE. USING DELTA (D) creates a Delta table — it doesn't support CSV OPTIONS." },
-      { q:"Why is creating an external table from Parquet preferred over CSV?",
-        opts:[
-          "Parquet files can be partitioned (CSV cannot)",
-          "CTAS statements cannot be used on CSV files",
-          "Parquet stores column names and types in the file metadata — schema inference works automatically",
-          "Parquet files automatically become Delta tables",
-          "Parquet files are always smaller than CSV files"
-        ],
-        ans:2,
-        exp:"<strong>C.</strong> Parquet embeds schema metadata (column names, data types, nullability) in every file. When creating an external table, Databricks infers the schema automatically. CSV has no embedded schema — you must manually define every column. Options A, B, D, E are all false." }
-    ]
-  },
-  {
-    id:"dml", label:"DML & Python+SQL",
-    questions:[
-      { q:"Which SQL keyword appends new rows to an existing Delta table?",
-        opts:["UPDATE","COPY","INSERT INTO","DELETE","UNION"],
-        ans:2,
-        exp:"<strong>C: INSERT INTO</strong> adds rows without removing existing data — it appends. UPDATE (A) modifies existing rows. COPY INTO is a separate Databricks command for loading files; bare COPY (B) is not valid SQL. DELETE (D) removes rows. UNION (E) combines SELECT results in a query — it does not write data." },
-      { q:"A data engineer has a new record: id='a1', rank=6, rating=9.4. Which SQL command appends it to my_table?",
-        opts:[
-          "INSERT INTO my_table VALUES ('a1', 6, 9.4)",
-          "INSERT VALUES ('a1', 6, 9.4) INTO my_table",
-          "UPDATE my_table VALUES ('a1', 6, 9.4)",
-          "UPDATE VALUES ('a1', 6, 9.4) my_table"
-        ],
-        code:true, ans:0,
-        exp:"<strong>A.</strong> Standard SQL syntax: INSERT INTO table VALUES (val1, val2, ...). Option B has wrong word order — the table name must follow INSERT INTO immediately. Option C: UPDATE does not use VALUES like this — it requires SET col = val. Option D is completely invalid SQL." },
-      { q:"A data engineer has a Python variable table_name. Which approach correctly runs a SQL query using it in PySpark?",
-        opts:[
-          "spark.delta.sql(f\"SELECT customer_id, spend FROM {table_name}\")",
-          "spark.sql(f\"SELECT customer_id, spend FROM {table_name}\")",
-          "spark.table(f\"SELECT customer_id, spend FROM {table_name}\")",
-          "dbutils.sql(f\"SELECT customer_id, spend FROM {table_name}\")"
-        ],
-        code:true, ans:1,
-        exp:"<strong>B: spark.sql()</strong> executes any SQL string. Using an f-string injects the Python variable directly into the query. spark.delta.sql (A) does not exist. spark.table() (C) takes a table name only — not a full query. dbutils has no .sql() method (D)." }
-    ]
-  },
-  {
-    id:"jobstages", label:"Job → Stages → Tasks",
-    questions:[
-      { q:"What triggers Spark to actually execute a computation?",
-        opts:["A transformation like map()","An action like count() or show()","Creating a DataFrame","Calling explain()"],
-        ans:1,
-        exp:"Transformations are lazy — they just build a plan. An action like <code>collect()</code>, <code>count()</code>, <code>show()</code>, or <code>write()</code> triggers execution." },
-      { q:"What creates a stage boundary in Spark?",
-        opts:["Any transformation","A narrow transformation","A shuffle (wide transformation)","Calling cache()"],
-        ans:2,
-        exp:"Shuffles require data to move between partitions across the network — Spark must complete Stage N before starting Stage N+1." },
-      { q:"How does a Task relate to a Stage?",
-        opts:["One Task per Job","One Task per Stage","One Task per partition within a Stage","One Task per Executor"],
-        ans:2,
-        exp:"A Stage is split into Tasks — one per partition. 200 partitions means 200 Tasks, each running on one Executor slot." }
-    ]
-  },
-  {
-    id:"transformations", label:"Narrow vs Wide",
-    questions:[
-      { q:"Which of these is a narrow transformation?",
-        opts:["groupBy()","join() on two large tables","filter()","distinct()"],
-        ans:2,
-        exp:"<code>filter()</code> keeps each row in its current partition — no data moves. <code>groupBy</code>, <code>join</code>, and <code>distinct</code> all require shuffles." },
-      { q:"Why is groupBy() a wide transformation?",
-        opts:["It creates a new DataFrame","Rows with the same key may live in different partitions and must be co-located","It always reads from disk","It uses more memory"],
-        ans:1,
-        exp:"To aggregate by a key, all rows for that key must land on the same executor. Since they are scattered across partitions, a shuffle is needed." },
-      { q:"Which set contains only narrow transformations?",
-        opts:["map, filter, select","groupBy, join, repartition","distinct, orderBy, join","map, groupBy, filter"],
-        ans:0,
-        exp:"<code>map</code>, <code>filter</code>, and <code>select</code> operate partition-by-partition with no cross-partition data movement. All others trigger shuffles." }
-    ]
-  },
-  {
-    id:"deploy", label:"Deployment Modes",
-    questions:[
-      { q:"In client mode, where does the Driver run?",
-        opts:["On a worker node inside the cluster","On the machine that submitted the job","On the Cluster Manager","On the first Executor"],
-        ans:1,
-        exp:"<strong>Client mode:</strong> Driver stays on your local machine. Good for interactive notebooks. If your machine dies, the job dies." },
-      { q:"In cluster mode, what happens to the Driver?",
-        opts:["It runs on the submitting machine","It is deployed inside the cluster on a worker node","It merges with the Cluster Manager","It is not used"],
-        ans:1,
-        exp:"<strong>Cluster mode:</strong> Driver runs inside the cluster. The submitting process exits after launch. Best for production batch jobs." },
-      { q:"When would you use local mode?",
-        opts:["Production ETL pipelines","Multi-node distributed jobs","Development, testing, and learning on a single machine","When the cluster is down for maintenance"],
-        ans:2,
-        exp:"<code>local[*]</code> runs Driver and Executors in the same JVM process. No cluster needed — great for development and unit tests." }
-    ]
-  },
-  {
-    id:"fault", label:"Fault Tolerance",
-    questions:[
-      { q:"How does Spark recover from a lost partition without rerunning everything?",
-        opts:["Restores from a checkpoint on HDFS","Uses lineage to recompute only the lost partition","Asks another Executor to copy its partition","Re-reads all source data from scratch"],
-        ans:1,
-        exp:"Spark tracks the DAG of transformations (lineage). If a partition is lost, it replays only the transformations needed to rebuild it." },
-      { q:"What is the lineage graph in Spark?",
-        opts:["A log of completed tasks","A record of which Executors ran which tasks","A DAG showing how each partition was derived from transformations","The physical execution plan after optimization"],
-        ans:2,
-        exp:"The lineage (DAG) records every transformation applied to produce each partition — the recipe Spark uses to rebuild lost data." },
-      { q:"When would you explicitly checkpoint a DataFrame?",
-        opts:["Before every action","When the lineage chain becomes very long, to truncate recomputation cost","Only with streaming jobs","When switching from client to cluster mode"],
-        ans:1,
-        exp:"After many chained transformations, recomputing from scratch gets expensive. Checkpointing saves a snapshot and truncates the lineage." }
+
+  daily: {
+    headerSub: "35 questions · Day 2 & 3 quick checks · conceptual understanding",
+    passScore: null,
+    topics: [
+      // ── Day 2 ──────────────────────────────────────────────
+      {
+        id:"d2-arch", label:"Driver / Cluster / Executor", day:"Day 2",
+        questions:[
+          { q:"Which component breaks a Spark application into tasks and schedules them onto Executors?",
+            opts:["Cluster Manager","Driver","Executor","Worker Node"],
+            ans:1,
+            exp:"<strong>The Driver</strong> runs your main() function, creates the SparkContext, builds the DAG, and schedules tasks onto Executors." },
+          { q:"What does the Cluster Manager do?",
+            opts:["Runs transformations on data","Allocates resources (CPU/memory) across the cluster","Stores the lineage graph","Serializes DataFrames"],
+            ans:1,
+            exp:"The Cluster Manager (YARN, Mesos, Kubernetes, Standalone) negotiates resources. It does not touch your data." },
+          { q:"Where does actual data processing happen in Spark?",
+            opts:["Driver JVM","Cluster Manager","Executors","SparkContext"],
+            ans:2,
+            exp:"<strong>Executors</strong> are JVM processes on Worker nodes. They run tasks, cache data, and report results back to the Driver." }
+        ]
+      },
+      {
+        id:"d2-jobstages", label:"Job → Stages → Tasks", day:"Day 2",
+        questions:[
+          { q:"What triggers Spark to actually execute a computation?",
+            opts:["A transformation like map()","An action like count() or show()","Creating a DataFrame","Calling explain()"],
+            ans:1,
+            exp:"Transformations are lazy — they just build a plan. An action like <code>collect()</code>, <code>count()</code>, <code>show()</code>, or <code>write()</code> triggers execution." },
+          { q:"What creates a stage boundary in Spark?",
+            opts:["Any transformation","A narrow transformation","A shuffle (wide transformation)","Calling cache()"],
+            ans:2,
+            exp:"Shuffles require data to move between partitions across the network — Spark must complete Stage N before starting Stage N+1." },
+          { q:"How does a Task relate to a Stage?",
+            opts:["One Task per Job","One Task per Stage","One Task per partition within a Stage","One Task per Executor"],
+            ans:2,
+            exp:"A Stage is split into Tasks — one per partition. 200 partitions means 200 Tasks, each running on one Executor slot." }
+        ]
+      },
+      {
+        id:"d2-narrow", label:"Narrow vs Wide", day:"Day 2",
+        questions:[
+          { q:"Which of these is a narrow transformation?",
+            opts:["groupBy()","join() on two large tables","filter()","distinct()"],
+            ans:2,
+            exp:"<code>filter()</code> keeps each row in its current partition — no data moves. <code>groupBy</code>, <code>join</code>, and <code>distinct</code> all require shuffles." },
+          { q:"Why is groupBy() a wide transformation?",
+            opts:["It creates a new DataFrame","Rows with the same key may live in different partitions and must be co-located","It always reads from disk","It uses more memory"],
+            ans:1,
+            exp:"To aggregate by a key, all rows for that key must land on the same executor. Since they are scattered across partitions, a shuffle is needed." },
+          { q:"Which set contains only narrow transformations?",
+            opts:["map, filter, select","groupBy, join, repartition","distinct, orderBy, join","map, groupBy, filter"],
+            ans:0,
+            exp:"<code>map</code>, <code>filter</code>, and <code>select</code> operate partition-by-partition with no cross-partition data movement. All others trigger shuffles." }
+        ]
+      },
+      {
+        id:"d2-deploy", label:"Deployment Modes", day:"Day 2",
+        questions:[
+          { q:"In client mode, where does the Driver run?",
+            opts:["On a worker node inside the cluster","On the machine that submitted the job","On the Cluster Manager","On the first Executor"],
+            ans:1,
+            exp:"<strong>Client mode:</strong> Driver stays on your local machine. Good for interactive notebooks. If your machine dies, the job dies." },
+          { q:"In cluster mode, what happens to the Driver?",
+            opts:["It runs on the submitting machine","It is deployed inside the cluster on a worker node","It merges with the Cluster Manager","It is not used"],
+            ans:1,
+            exp:"<strong>Cluster mode:</strong> Driver runs inside the cluster. The submitting process exits after launch. Best for production batch jobs." },
+          { q:"When would you use local mode?",
+            opts:["Production ETL pipelines","Multi-node distributed jobs","Development, testing, and learning on a single machine","When the cluster is down for maintenance"],
+            ans:2,
+            exp:"<code>local[*]</code> runs Driver and Executors in the same JVM process. No cluster needed — great for development and unit tests." }
+        ]
+      },
+      {
+        id:"d2-fault", label:"Fault Tolerance", day:"Day 2",
+        questions:[
+          { q:"How does Spark recover from a lost partition without rerunning everything?",
+            opts:["Restores from a checkpoint on HDFS","Uses lineage to recompute only the lost partition","Asks another Executor to copy its partition","Re-reads all source data from scratch"],
+            ans:1,
+            exp:"Spark tracks the DAG of transformations (lineage). If a partition is lost, it replays only the transformations needed to rebuild it." },
+          { q:"What is the lineage graph in Spark?",
+            opts:["A log of completed tasks","A record of which Executors ran which tasks","A DAG showing how each partition was derived from transformations","The physical execution plan after optimization"],
+            ans:2,
+            exp:"The lineage (DAG) records every transformation applied to produce each partition — the recipe Spark uses to rebuild lost data." },
+          { q:"When would you explicitly checkpoint a DataFrame?",
+            opts:["Before every action","When the lineage chain becomes very long, to truncate recomputation cost","Only with streaming jobs","When switching from client to cluster mode"],
+            ans:1,
+            exp:"After many chained transformations, recomputing from scratch gets expensive. Checkpointing saves a snapshot and truncates the lineage." }
+        ]
+      },
+      // ── Day 3 ──────────────────────────────────────────────
+      {
+        id:"d3-transact", label:"Transformation vs Action", day:"Day 3",
+        questions:[
+          { q:"Which of these is an action?",
+            opts:["filter()","groupBy()","count()","select()"],
+            ans:2,
+            exp:"count() triggers execution — Spark sends tasks to Executors and returns a number to the Driver. filter(), groupBy(), and select() are transformations — they just add nodes to the DAG." },
+          { q:"You write 10 chained transformations. When does Spark actually read data from S3?",
+            opts:["After the first transformation","After every transformation","Only when an action is called","When you define the DataFrame"],
+            ans:2,
+            exp:"Spark is lazy. All 10 transformations just build the DAG. The S3 read happens only when an action like show(), write(), or count() is called." },
+          { q:"Which of these triggers a shuffle?",
+            opts:["select()","filter()","withColumn()","distinct()"],
+            ans:3,
+            exp:"distinct() needs to find identical rows across all partitions — it requires a shuffle. select(), filter(), and withColumn() are narrow transformations that work partition-by-partition." },
+          { q:"What is the difference between a transformation and an action?",
+            opts:[
+              "Transformations read data, actions write data",
+              "Transformations add a node to the DAG, actions execute the DAG",
+              "Transformations are fast, actions are slow",
+              "Transformations run on the Driver, actions run on Executors"
+            ],
+            ans:1,
+            exp:"Exactly this. Transformations are lazy — they describe what to do. Actions are eager — they trigger the actual computation on the cluster." }
+        ]
+      },
+      {
+        id:"d3-catalyst", label:"Catalyst 4 Phases", day:"Day 3",
+        questions:[
+          { q:"In which Catalyst phase does Spark verify that column names actually exist in the schema?",
+            opts:["Unresolved","Resolved","Optimised","Physical"],
+            ans:1,
+            exp:"Phase 2 — Resolved. Catalyst reads the Parquet footer and confirms every column name and type. An unresolved column like col('amountt') would fail here with AnalysisException." },
+          { q:"Predicate pushdown, column pruning, and constant folding happen in which phase?",
+            opts:["Unresolved","Resolved","Optimised","Physical"],
+            ans:2,
+            exp:"Phase 3 — Optimised. Catalyst rewrites the DAG to be more efficient without changing the result. It moves filters earlier, drops unused columns, and simplifies constant expressions." },
+          { q:"Which phase produces what explain() shows you?",
+            opts:["Unresolved","Resolved","Optimised","Physical"],
+            ans:3,
+            exp:"Phase 4 — Physical. Catalyst decides how to execute on the actual cluster — join strategies, shuffle placement, task breakdown. explain() prints this final physical plan." },
+          { q:"Your query filters on a column that doesn't exist. Which phase throws the error?",
+            opts:[
+              "Unresolved — immediately when you write the code",
+              "Resolved — when Catalyst checks the schema",
+              "Optimised — when rewriting the DAG",
+              "Physical — when tasks start running"
+            ],
+            ans:1,
+            exp:"Resolved (phase 2). The unresolved phase accepts any column name as a string. Phase 2 checks it against the actual schema and throws AnalysisException before any execution happens." }
+        ]
+      },
+      {
+        id:"d3-optimise", label:"Catalyst Optimisations", day:"Day 3",
+        questions:[
+          { q:"Your Parquet file has 20 columns but your query only uses 2. What does Catalyst do?",
+            opts:[
+              "Reads all 20 columns then drops 18 after loading",
+              "Prunes unused columns — fetches only the 2 needed from S3",
+              "Caches all 20 columns for future queries",
+              "Raises a warning but reads everything"
+            ],
+            ans:1,
+            exp:"Column pruning. Catalyst rewrites the FileScan node to request only the 2 needed columns from S3. On a columnar format like Parquet this can reduce I/O by 90%+." },
+          { q:"You write filter(col('amount') > (100000 / 10)). What does Catalyst do with the division?",
+            opts:[
+              "Evaluates 100000/10 once at planning time, replaces with 10000.0",
+              "Evaluates 100000/10 for every row at execution time",
+              "Pushes the division down to the Executor",
+              "Leaves the expression as-is for the JVM to handle"
+            ],
+            ans:0,
+            exp:"Constant folding. Catalyst evaluates constant expressions during the optimisation phase and replaces them with the result. 800 million rows never see the division — it happened once during planning." },
+          { q:"You filter on date >= '2024-01-01' before a groupBy. Where does Catalyst move that filter?",
+            opts:[
+              "After the groupBy to reduce aggregation work",
+              "Into the shuffle phase",
+              "As early as possible — ideally into the S3 read itself",
+              "It stays exactly where you wrote it"
+            ],
+            ans:2,
+            exp:"Predicate pushdown. Catalyst moves the filter as early as possible in the DAG. For Parquet on S3 it pushes all the way into the FileScan — Spark checks row group statistics in the footer and skips entire row groups that don't match." }
+        ]
+      },
+      {
+        id:"d3-explain", label:"Reading explain()", day:"Day 3",
+        questions:[
+          { q:"You call df.explain(). Which direction do you read the output?",
+            opts:[
+              "Top to bottom — first node executes first",
+              "Bottom to top — bottom is where execution starts",
+              "Left to right",
+              "It doesn't matter, nodes are independent"
+            ],
+            ans:1,
+            exp:"Bottom to top. The bottom node is always the data source (FileScan). Execution flows upward through the tree. The top node produces your final result." },
+          { q:"You see an Exchange node in the physical plan. What does it mean?",
+            opts:[
+              "Data is being written to S3",
+              "A cache() call was made",
+              "A shuffle — data moves between workers here, and this is a stage boundary",
+              "The Driver is collecting results"
+            ],
+            ans:2,
+            exp:"Exchange = shuffle = stage boundary. Everything below Exchange is Stage 1, everything above is Stage 2. Counting Exchange nodes in explain() tells you how many shuffles your job has." },
+          { q:"You see FileScan parquet [customer_id, amount] but your table has 20 columns. What happened?",
+            opts:[
+              "Spark found a corrupted schema",
+              "Column pruning — Catalyst dropped the 18 unused columns from the scan",
+              "The other 18 columns are read in a separate scan",
+              "AQE removed them at runtime"
+            ],
+            ans:1,
+            exp:"Column pruning applied during phase 3. Catalyst saw you only reference customer_id and amount downstream and rewrote the FileScan to fetch only those two columns from S3." }
+        ]
+      },
+      {
+        id:"d3-aqe", label:"AQE", day:"Day 3",
+        questions:[
+          { q:"spark.sql.shuffle.partitions defaults to 200. Why is this almost always wrong?",
+            opts:[
+              "200 is too high for any real workload",
+              "It was set for Hadoop 1.0 and never updated",
+              "It ignores actual data size — 200 may be too few for 1TB or too many for 1GB",
+              "It conflicts with the number of Executor cores"
+            ],
+            ans:2,
+            exp:"200 is a static guess made before execution. For 120 GB it might produce buckets that are too large. For a 500 MB table it produces tiny tasks with more scheduling overhead than work. AQE fixes this by measuring actual shuffle output." },
+          { q:"When does AQE make its decisions?",
+            opts:[
+              "Before the job starts, during planning",
+              "After each stage completes, based on real statistics",
+              "Only during the shuffle phase",
+              "When you call explain()"
+            ],
+            ans:1,
+            exp:"AQE waits for a stage to finish, then inspects the actual shuffle output size and partition statistics before planning the next stage. It reacts to real data, not estimates." },
+          { q:"One customer_id has 50M transactions, others average 500. AQE detects this. What does it do?",
+            opts:[
+              "Skips that customer_id entirely",
+              "Raises a skew warning and stops the job",
+              "Splits the oversized bucket into multiple sub-tasks that run in parallel",
+              "Moves all 50M rows to the Driver"
+            ],
+            ans:2,
+            exp:"Skew join optimisation. AQE detects that one partition is much larger than the median and automatically splits it into sub-tasks. The final result is still correct — the sub-results are merged — but that one customer no longer holds up the entire stage." }
+        ]
+      },
+      {
+        id:"d3-collect", label:"Why collect() is dangerous", day:"Day 3",
+        questions:[
+          { q:"You call df.collect() on your 120 GB bank transactions table. What happens?",
+            opts:[
+              "Spark streams the data efficiently to your notebook",
+              "All 800M rows travel to the Driver JVM — it runs out of heap memory and crashes",
+              "Spark automatically samples 1000 rows instead",
+              "The Executors cache the data and return a reference"
+            ],
+            ans:1,
+            exp:"collect() pulls every row across the network into the Driver JVM heap. The Driver is typically allocated 4–8 GB. 120 GB of data causes OutOfMemoryError. In Kubernetes the Driver pod gets OOMKilled — you lose the entire SparkSession." },
+          { q:"What is the safe alternative to collect() when inspecting data during development?",
+            opts:["toPandas()","take(1000000)","show(50)","cache()"],
+            ans:2,
+            exp:"show(n) fetches only n rows to the Driver — safe at any scale. toPandas() is collect() in disguise. take(1M) is still dangerous on large data. cache() keeps data on Executors but doesn't move it to the Driver." },
+          { q:"When is collect() actually safe to use?",
+            opts:[
+              "Never — always use write()",
+              "Only on DataFrames with fewer than 1 million rows",
+              "After a heavy aggregation that reduces 800M rows to a small result like 500 rows",
+              "Only in local mode"
+            ],
+            ans:2,
+            exp:"collect() is fine when the result is genuinely small — a list of flagged accounts, a single number, a lookup table. The pattern: aggregate in Spark first to reduce the data, then collect the small result to Python." }
+        ]
+      }
     ]
   }
-];
+};
 
-// ── State ──────────────────────────────────────────────────────────────────
-const totals = {};
-topics.forEach(t => totals[t.id] = {correct:0, seen:0, total:t.questions.length});
+// ── State ───────────────────────────────────────────────────────────────────
+let activeDeck = 'cert';
+let totals = {};
 let activeTopic = null;
 let activeQ = 0;
 let answered = false;
 
-// ── Overall progress ────────────────────────────────────────────────────────
+function initTotals() {
+  totals = {};
+  decks[activeDeck].topics.forEach(t => {
+    totals[t.id] = {correct:0, seen:0, total:t.questions.length};
+  });
+}
+initTotals();
+
+// ── Deck switching ──────────────────────────────────────────────────────────
+function switchDeck(id) {
+  activeDeck = id;
+  activeTopic = null; activeQ = 0; answered = false;
+  initTotals();
+  document.getElementById('progress').style.width = '0%';
+  document.getElementById('header-sub').textContent = decks[id].headerSub;
+  document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('deck-' + id).classList.add('active');
+  renderAll();
+}
+
+// ── Progress ────────────────────────────────────────────────────────────────
 function totalAnswered() {
   return Object.values(totals).reduce((s,t) => s + t.seen, 0);
 }
 function totalQuestions() {
-  return topics.reduce((s,t) => s + t.questions.length, 0);
+  return decks[activeDeck].topics.reduce((s,t) => s + t.questions.length, 0);
 }
 function updateProgress() {
   const pct = (totalAnswered() / totalQuestions()) * 100;
@@ -315,7 +564,24 @@ function updateProgress() {
 function renderTopicBar() {
   const bar = document.getElementById('topic-bar');
   bar.innerHTML = '';
+  const topics = decks[activeDeck].topics;
+  let lastDay = null;
+
   topics.forEach(t => {
+    // Render day label divider for daily deck
+    if (t.day && t.day !== lastDay) {
+      if (lastDay !== null) {
+        const div = document.createElement('span');
+        div.className = 'day-divider';
+        bar.appendChild(div);
+      }
+      const lbl = document.createElement('span');
+      lbl.className = 'day-label';
+      lbl.textContent = t.day;
+      bar.appendChild(lbl);
+      lastDay = t.day;
+    }
+
     const st = totals[t.id];
     const btn = document.createElement('button');
     btn.className = 'topic-btn' + (activeTopic === t.id ? ' active' : '');
@@ -335,9 +601,8 @@ function renderQuestion() {
     area.innerHTML = '<p class="placeholder">Select a topic above to begin.</p>';
     return;
   }
-  const topic = topics.find(t => t.id === activeTopic);
+  const topic = decks[activeDeck].topics.find(t => t.id === activeTopic);
   const q = topic.questions[activeQ];
-  const pct = Math.round(((activeQ) / topic.questions.length) * 100);
 
   area.innerHTML = `
     <div class="card">
@@ -367,7 +632,7 @@ function renderQuestion() {
 function handleAnswer(chosen) {
   if (answered) return;
   answered = true;
-  const topic = topics.find(t => t.id === activeTopic);
+  const topic = decks[activeDeck].topics.find(t => t.id === activeTopic);
   const q = topic.questions[activeQ];
   const st = totals[activeTopic];
   st.seen++;
@@ -400,7 +665,6 @@ function handleAnswer(chosen) {
     });
     nav.appendChild(rb);
 
-    // Check if all questions answered
     if (totalAnswered() === totalQuestions()) setTimeout(showFinalScore, 600);
   }
   updateProgress();
@@ -412,29 +676,31 @@ function showFinalScore() {
   const totalCorrect = Object.values(totals).reduce((s,t) => s + t.correct, 0);
   const total = totalQuestions();
   const pct = Math.round((totalCorrect / total) * 100);
-  const pass = totalCorrect >= 13;
+  const passScore = decks[activeDeck].passScore;
+  const pass = passScore !== null ? totalCorrect >= passScore : pct >= 80;
+  const passLabel = decks[activeDeck].passLabel || (pass ? '✓ Great work!' : 'Review and retry');
+
+  const topicBreakdown = decks[activeDeck].topics.map(t => {
+    const s = totals[t.id];
+    const p = s.total > 0 ? Math.round((s.correct/s.total)*100) : 0;
+    return `<div class="result-row">
+      <div class="r-label">${t.label}</div>
+      <div class="r-nums">${s.correct}/${s.total}</div>
+      <div style="font-size:12px;color:${p>=80?'#065f46':'#991b1b'}">${p}%</div>
+    </div>`;
+  }).join('');
 
   document.getElementById('quiz-area').innerHTML = `
     <div class="card all-done">
       <div class="score-big ${pass ? 'pass' : 'fail'}">${totalCorrect}/${total}</div>
-      <div class="score-label">${pct}% &nbsp;·&nbsp; ${pass ? '✓ Ready for Week 2' : 'Review and retry'}</div>
-      <div class="result-grid" style="margin-top:1.5rem">
-        ${topics.map(t => {
-          const s = totals[t.id];
-          const p = s.total > 0 ? Math.round((s.correct/s.total)*100) : 0;
-          return `<div class="result-row">
-            <div class="r-label">${t.label}</div>
-            <div class="r-nums">${s.correct}/${s.total}</div>
-            <div style="font-size:12px;color:${p>=80?'#065f46':'#991b1b'}">${p}%</div>
-          </div>`;
-        }).join('')}
-      </div>
+      <div class="score-label">${pct}% &nbsp;·&nbsp; ${pass ? '✓ ' + passLabel : passLabel}</div>
+      <div class="result-grid" style="margin-top:1.5rem">${topicBreakdown}</div>
       <button class="nav-btn" style="margin-top:1rem" onclick="resetAll()">Start over</button>
     </div>`;
 }
 
 function resetAll() {
-  topics.forEach(t => totals[t.id] = {correct:0, seen:0, total:t.questions.length});
+  initTotals();
   activeTopic = null; activeQ = 0; answered = false;
   document.getElementById('progress').style.width = '0%';
   renderAll();
@@ -442,6 +708,10 @@ function resetAll() {
 
 function renderAll() { renderTopicBar(); renderQuestion(); }
 renderAll();
+
+if (window.frameElement) {
+  window.frameElement.style.height = (document.body.scrollHeight + 30) + 'px';
+}
 </script>
 </body>
 </html>

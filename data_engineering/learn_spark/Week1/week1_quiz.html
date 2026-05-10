@@ -61,6 +61,7 @@
   .result-row .r-nums{font-size:28px;font-weight:600;color:#1a1a1a}
   .result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:1rem 0}
   .pass{color:#065f46} .fail{color:#991b1b}
+  .code-block{background:#f5f4ed;border-radius:6px;padding:10px 14px;font-size:12px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;margin:0.75rem 0;overflow-x:auto;line-height:1.6;color:#222;white-space:pre}
 </style>
 </head>
 <body>
@@ -85,7 +86,7 @@
       <span class="deck-icon">⚡</span>
       <span>
         <span class="deck-name">Daily Quick Checks</span>
-        <span class="deck-sub">35 questions · Day 2 &amp; 3 · conceptual checks</span>
+        <span class="deck-sub">45 questions · Day 2–5 · conceptual checks</span>
       </span>
     </button>
   </div>
@@ -252,7 +253,7 @@ const decks = {
   },
 
   daily: {
-    headerSub: "35 questions · Day 2 & 3 quick checks · conceptual understanding",
+    headerSub: "45 questions · Day 2–5 quick checks · conceptual understanding",
     passScore: null,
     topics: [
       // ── Day 2 ──────────────────────────────────────────────
@@ -516,6 +517,97 @@ const decks = {
             ans:2,
             exp:"collect() is fine when the result is genuinely small — a list of flagged accounts, a single number, a lookup table. The pattern: aggregate in Spark first to reduce the data, then collect the small result to Python." }
         ]
+      },
+      // ── Day 4 ──────────────────────────────────────────────
+      {
+        id:"d4-gotchas", label:"Day 4 · Gotchas", day:"Day 4",
+        questions:[
+          { q:"What does this return for a row where amount = 500?",
+            pre:`df.withColumn("category",\n  when(col("amount") > 10000, "high")\n)`,
+            opts:["\"low\"","\"high\"","null","An error is thrown"],
+            ans:2,
+            exp:"Missing <code>otherwise()</code> means all unmatched rows silently become null. No error, no warning. Always add <code>.otherwise(\"default\")</code> unless you explicitly want nulls." },
+          { q:"You cast a string column containing \"abc\" to IntegerType. What value does Spark store?",
+            pre:`df.withColumn("amount_int", col("amount_str").cast("integer"))`,
+            opts:["0","null","Throws AnalysisException","Throws RuntimeException"],
+            ans:1,
+            exp:"Cast failures are silent. Spark stores null and moves on. No exception, no warning. This is one of the most common sources of silent data corruption in pipelines." },
+          { q:"You join two DataFrames both having a column called 'id'. Which column reference is safest inside the join condition?",
+            opts:["df1[\"id\"] / df2[\"id\"] — bracket notation on the specific DataFrame","\"id\" as a plain string","col(\"id\") — it's always unambiguous","They all behave the same"],
+            ans:0,
+            exp:"When two DataFrames share column names, <code>df1[\"id\"]</code> or <code>df2[\"id\"]</code> (bracket notation on the specific DataFrame) is the safest — it explicitly scopes to one DataFrame. <code>col(\"id\")</code> can be ambiguous in joins. Plain string shorthand is the most dangerous." },
+          { q:"Which of these correctly uses expr() to compute days since a transaction?",
+            opts:[
+              "df.withColumn(\"days_old\", expr(datediff(current_date(), txn_date)))",
+              "df.withColumn(\"days_old\", expr(\"datediff(current_date(), txn_date)\"))",
+              "df.withColumn(\"days_old\", datediff(expr(\"current_date()\"), col(\"txn_date\")))",
+              "expr() cannot be used inside withColumn()"
+            ],
+            ans:1,
+            exp:"<code>expr()</code> takes a SQL string — the expression goes inside quotes. This is one of its main advantages: you can write full SQL including functions, CASE WHEN, and date arithmetic without hunting for the equivalent DataFrame API method." }
+        ]
+      },
+      // ── Day 5 ──────────────────────────────────────────────
+      {
+        id:"d5-gotchas", label:"Day 5 · Gotchas", day:"Day 5",
+        questions:[
+          { q:"What is wrong with this filter?",
+            pre:`df.filter(col("amount") > 1000 | col("country") == "NL")`,
+            opts:[
+              "Should use 'or' instead of |",
+              "Python evaluates | before > and ==, producing wrong results silently",
+              "filter() doesn't support | operator",
+              "Nothing is wrong"
+            ],
+            ans:1,
+            exp:"Python operator precedence: <code>|</code> binds tighter than <code>></code> and <code>==</code>. The expression parses incorrectly. Always wrap each condition in parentheses: <code>(col(\"amount\") > 1000) | (col(\"country\") == \"NL\")</code>." },
+          { q:"Your transactions table has some rows where amount is null. How many rows does this filter return?",
+            pre:`df.filter(col("amount") > 1000)`,
+            opts:[
+              "Rows where amount > 1000, plus rows where amount is null",
+              "Only rows where amount > 1000 — null rows are silently excluded",
+              "Throws NullPointerException",
+              "All rows — null is treated as 0"
+            ],
+            ans:1,
+            exp:"Null comparisons always return null in Spark SQL, which is treated as false by filter(). Null rows silently disappear. If you need them: <code>filter((col(\"amount\") > 1000) | col(\"amount\").isNull())</code>." },
+          { q:"You have a transactions table. customer_A appears in 3 rows with different amounts. What does each return?",
+            opts:[
+              "Both return 1 row for customer_A",
+              "distinct() returns 3 rows, dropDuplicates(['customer_id']) returns 1",
+              "distinct() returns 1 row, dropDuplicates(['customer_id']) returns 1",
+              "dropDuplicates() throws if there are duplicate values"
+            ],
+            ans:1,
+            exp:"<code>distinct()</code> compares all columns — 3 rows with different amounts are all distinct. <code>dropDuplicates(['customer_id'])</code> only looks at customer_id and keeps the first occurrence, returning 1 row per customer." },
+          { q:"You call df.fillna(0) on a DataFrame with both integer and string columns. What happens to the string nulls?",
+            opts:[
+              "String nulls are filled with \"0\"",
+              "String nulls are silently skipped — fillna(0) only affects numeric columns",
+              "Throws a type mismatch error",
+              "All nulls including strings are filled with 0"
+            ],
+            ans:1,
+            exp:"<code>fillna()</code> is type-sensitive. <code>fillna(0)</code> only fills numeric columns. String nulls remain null. Use <code>fillna(0, subset=[\"amount\", \"fee\"])</code> to be explicit and avoid surprises." },
+          { q:"You call orderBy('amount') on your 120 GB transactions table. What kind of transformation is this?",
+            opts:[
+              "Narrow — each partition sorts independently",
+              "Wide — requires a global shuffle to produce a fully sorted output",
+              "It depends on the number of partitions",
+              "It is an action, not a transformation"
+            ],
+            ans:1,
+            exp:"orderBy() is wide — it needs to see all rows to determine global order, which requires a shuffle. On 120 GB this is expensive. For top-N results, use <code>orderBy(col(\"amount\").desc()).limit(10)</code> — Spark optimises this combination to avoid sorting the full dataset." },
+          { q:"You call df.sample(fraction=0.1) on a 1 million row table. How many rows do you get back?",
+            opts:[
+              "Exactly 100,000",
+              "Approximately 100,000 — could be 97K or 103K",
+              "At most 100,000 — never more",
+              "Exactly 100,000 with a fixed seed"
+            ],
+            ans:1,
+            exp:"<code>sample()</code> is probabilistic — each row is independently included with the given probability. The result is approximate. For exactly n rows use <code>df.limit(n)</code>. A fixed <code>seed</code> makes it reproducible but still approximate in size." }
+        ]
       }
     ]
   }
@@ -611,6 +703,7 @@ function renderQuestion() {
         <span class="q-num">${activeQ + 1} / ${topic.questions.length}</span>
       </div>
       <p class="question">${q.q.replace(/\n/g,'<br>')}</p>
+      ${q.pre ? `<pre class="code-block">${q.pre}</pre>` : ''}
       <div id="opts-wrap"></div>
       <div id="exp-wrap"></div>
       <div id="nav-wrap" class="nav"></div>

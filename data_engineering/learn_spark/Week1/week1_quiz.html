@@ -86,7 +86,7 @@
       <span class="deck-icon">⚡</span>
       <span>
         <span class="deck-name">Daily Quick Checks</span>
-        <span class="deck-sub">45 questions · Day 2–5 · conceptual checks</span>
+        <span class="deck-sub">57 questions · Day 2–6 · conceptual checks</span>
       </span>
     </button>
   </div>
@@ -253,7 +253,7 @@ const decks = {
   },
 
   daily: {
-    headerSub: "45 questions · Day 2–5 quick checks · conceptual understanding",
+    headerSub: "57 questions · Day 2–6 quick checks · conceptual understanding",
     passScore: null,
     topics: [
       // ── Day 2 ──────────────────────────────────────────────
@@ -607,6 +607,135 @@ const decks = {
             ],
             ans:1,
             exp:"<code>sample()</code> is probabilistic — each row is independently included with the given probability. The result is approximate. For exactly n rows use <code>df.limit(n)</code>. A fixed <code>seed</code> makes it reproducible but still approximate in size." }
+        ]
+      },
+      // ── Day 6 ──────────────────────────────────────────────
+      {
+        id:"d6-views", label:"Day 6 · Temp Views & Catalog", day:"Day 6",
+        questions:[
+          { q:"You register a temp view and then your SparkSession ends. What happens to the view?",
+            pre:`df.createOrReplaceTempView("transactions")`,
+            opts:[
+              "It persists until manually dropped with spark.catalog.dropTempView()",
+              "It is automatically saved to the metastore",
+              "It disappears — temp views are session-scoped",
+              "It becomes a global temp view automatically"
+            ],
+            ans:2,
+            exp:"Temp views are session-scoped — they live and die with the SparkSession. Global temp views (<code>createOrReplaceGlobalTempView</code>) survive across sessions in the same application and require the <code>global_temp.</code> prefix to query." },
+          { q:"You created a global temp view called 'transactions'. Which query is correct?",
+            opts:[
+              "SELECT * FROM transactions",
+              "SELECT * FROM global.transactions",
+              "SELECT * FROM global_temp.transactions",
+              "SELECT * FROM spark_catalog.transactions"
+            ],
+            ans:2,
+            exp:"Global temp views are stored in a special database called <code>global_temp</code>. You must use the fully qualified name <code>global_temp.view_name</code>. Forgetting this prefix is a common exam trap." },
+          { q:"Which spark.catalog method tells you whether a view currently exists in the session?",
+            opts:[
+              "spark.catalog.listViews()",
+              "spark.catalog.tableExists(\"view_name\")",
+              "spark.catalog.getView(\"view_name\")",
+              "spark.catalog.describeTable(\"view_name\")"
+            ],
+            ans:1,
+            exp:"<code>spark.catalog.tableExists(\"view_name\")</code> returns True or False. <code>listViews()</code> returns a DataFrame of all views — you'd have to filter it. On the exam, know that <code>tableExists</code>, <code>listTables</code>, <code>dropTempView</code>, and <code>cacheTable</code> are the main catalog methods." },
+          { q:"You call createOrReplaceTempView('transactions') twice with different DataFrames. What happens?",
+            opts:[
+              "Throws an error — view already exists",
+              "Creates a second view called 'transactions_1'",
+              "Silently replaces the first view with the second",
+              "Both views exist — queries use the first one"
+            ],
+            ans:2,
+            exp:"The 'OrReplace' part is key — it silently overwrites the existing view with no error. This is useful in notebooks where you iterate on a DataFrame and re-register it. Use <code>createTempView()</code> (without OrReplace) if you want an error on duplicate names." }
+        ]
+      },
+      {
+        id:"d6-window", label:"Day 6 · Window Functions & Nulls", day:"Day 6",
+        questions:[
+          { q:"What does this query return for each row?",
+            pre:`SELECT customer_id, amount,\n  SUM(amount) OVER (\n    PARTITION BY customer_id\n    ORDER BY txn_date\n  ) AS running_total\nFROM transactions`,
+            opts:[
+              "The total sum of amount for each customer across all rows",
+              "A running cumulative sum per customer ordered by date",
+              "The sum of amount for the current row only",
+              "Throws an error — SUM requires GROUP BY"
+            ],
+            ans:1,
+            exp:"OVER with PARTITION BY + ORDER BY produces a running aggregate — each row gets the cumulative sum up to that row within its customer partition. Without ORDER BY it would return the total sum for the whole partition on every row." },
+          { q:"You want the single highest transaction per customer. Which is correct?",
+            pre:`-- Option A\nSELECT * FROM transactions\nQUALIFY RANK() OVER (PARTITION BY customer_id ORDER BY amount DESC) = 1\n\n-- Option B\nSELECT * FROM (\n  SELECT *, RANK() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS rnk\n  FROM transactions\n) WHERE rnk = 1`,
+            opts:[
+              "Only Option A works — QUALIFY is required for window filtering",
+              "Only Option B works — QUALIFY is not supported in Spark SQL",
+              "Both work and produce the same result",
+              "Neither works — use GROUP BY instead"
+            ],
+            ans:2,
+            exp:"Both are valid in Spark SQL. QUALIFY is cleaner — it filters on window function results directly without a subquery. Option B is the traditional SQL pattern that works everywhere. On the exam, know both exist and produce the same result." },
+          { q:"A transaction has a null country. What does this CASE WHEN return?",
+            pre:`CASE\n  WHEN country = 'NL' THEN 'Netherlands'\n  WHEN country = 'DE' THEN 'Germany'\nEND`,
+            opts:[
+              "Throws a NullPointerException",
+              "Returns an empty string",
+              "Returns null — no condition matches null",
+              "Returns 'NL' as the default"
+            ],
+            ans:2,
+            exp:"Null never matches any equality condition in SQL — <code>null = 'NL'</code> evaluates to null, not false. With no ELSE clause, unmatched rows return null. Fix with: <code>ELSE 'Unknown'</code> or add <code>WHEN country IS NULL THEN 'Unknown'</code>." },
+          { q:"Your amount column has 3 nulls out of 1000 rows. What does SUM(amount) return?",
+            opts:[
+              "null — any null in the column makes the whole sum null",
+              "The sum of the 997 non-null rows — nulls are ignored",
+              "0 — nulls are treated as zero",
+              "Throws an error"
+            ],
+            ans:1,
+            exp:"Aggregate functions in Spark SQL ignore nulls by default — same behaviour as standard SQL. SUM, AVG, COUNT(*) vs COUNT(col) is worth knowing: <code>COUNT(*)</code> counts all rows including nulls, <code>COUNT(amount)</code> counts only non-null values." }
+        ]
+      },
+      {
+        id:"d6-joins-sql", label:"Day 6 · Joins & SQL API", day:"Day 6",
+        questions:[
+          { q:"A colleague says spark.sql() is faster than the DataFrame API for aggregations. Is this true?",
+            opts:[
+              "Yes — SQL bypasses the DataFrame API overhead",
+              "No — both compile to the same physical plan via Catalyst",
+              "It depends on the number of partitions",
+              "Yes — SQL uses a different execution engine"
+            ],
+            ans:1,
+            exp:"Both APIs go through Catalyst and produce identical physical plans. There is zero performance difference. Choose based on readability and team preference — SQL for reporting-style queries, DataFrame API for programmatic pipeline logic." },
+          { q:"You LEFT JOIN transactions to a customers table. A transaction has a customer_id that doesn't exist in customers. What happens to that row?",
+            opts:[
+              "The row is dropped from the result",
+              "The row is kept — customer columns are null",
+              "Spark throws a referential integrity error",
+              "The row is moved to a separate error DataFrame"
+            ],
+            ans:1,
+            exp:"LEFT JOIN keeps all rows from the left table regardless of matches. Unmatched rows from the right table produce nulls in the right-side columns. This is critical in banking pipelines where orphaned transactions must not silently disappear." },
+          { q:"You join a 120 GB transactions table with a 500 KB currency lookup table. What should Spark do to avoid a full shuffle?",
+            opts:[
+              "Sort-merge join — sort both tables by join key",
+              "Broadcast join — send the small table to every Executor",
+              "Hash join — hash both tables into buckets",
+              "Cross join — it's the only safe option"
+            ],
+            ans:1,
+            exp:"Broadcast join sends the small table (500 KB) to every Executor in full. Each Executor joins locally with no network shuffle of the large table. Spark does this automatically when the small table is below <code>spark.sql.autoBroadcastJoinThreshold</code> (default 10 MB). You can force it with <code>broadcast(df)</code>." },
+          { q:"You run spark.sql(...) and want to filter the result further using the DataFrame API. Is this possible?",
+            pre:`result = spark.sql("SELECT customer_id, SUM(amount) as total FROM txns GROUP BY customer_id")\nresult.filter(col("total") > 50000).write.parquet("s3://...")`,
+            opts:[
+              "No — spark.sql() returns a Row object, not a DataFrame",
+              "Yes — spark.sql() always returns a DataFrame and you can chain any DataFrame operation",
+              "Only if you re-register it as a temp view first",
+              "Yes but only show() and collect() work on SQL results"
+            ],
+            ans:1,
+            exp:"<code>spark.sql()</code> always returns a standard DataFrame. You can chain any DataFrame operation on it — filter, join, withColumn, write. Mixing SQL and DataFrame API in the same job is completely normal and very common in production." }
         ]
       }
     ]

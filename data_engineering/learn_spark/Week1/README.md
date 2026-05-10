@@ -15,6 +15,5 @@ Core concepts for the Databricks Certified Data Engineer Associate exam.
 
 | Resource | Link |
 |---|---|
-| Quiz (16 questions) | [week1_quiz.html](https://cmedar.github.io/count-electric/data_engineering/learn_spark/Week1/week1_quiz.html) |
+| Quiz (31 questions) | [week1_quiz.html](https://cmedar.github.io/count-electric/data_engineering/learn_spark/Week1/week1_quiz.html) |
 | Recap cheatsheet | [week1_recap.html](https://cmedar.github.io/count-electric/data_engineering/learn_spark/Week1/week1_recap.html) |
-| K8s walkthrough | [spark_k8s_bank_walkthrough.html](https://cmedar.github.io/count-electric/data_engineering/learn_spark/Week1/spark_k8s_bank_walkthrough.html) |

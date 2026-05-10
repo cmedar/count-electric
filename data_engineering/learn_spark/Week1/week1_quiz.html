@@ -73,7 +73,19 @@ const topics = [
       { q:"Which Spark deployment mode requires ALL executors to run on a single worker node?",
         opts:["Cluster mode","Local mode","Client mode","Standard mode"],
         ans:1,
-        exp:"<strong>Local mode</strong> (local[*]) runs the Driver and all Executors inside a single JVM on one machine — no cluster required. Perfect for development and testing. <em>Client mode</em> keeps the Driver on the submitting machine while Executors run on cluster workers. <em>Cluster mode</em> moves the Driver inside the cluster — used for production batch jobs." }
+        exp:"<strong>Local mode</strong> (local[*]) runs the Driver and all Executors inside a single JVM on one machine — no cluster required. Perfect for development and testing. <em>Client mode</em> keeps the Driver on the submitting machine while Executors run on cluster workers. <em>Cluster mode</em> moves the Driver inside the cluster — used for production batch jobs." },
+      { q:"Which component breaks a Spark application into tasks and schedules them onto Executors?",
+        opts:["Cluster Manager","Driver","Executor","Worker Node"],
+        ans:1,
+        exp:"<strong>The Driver</strong> runs your main() function, creates the SparkContext, builds the DAG, and schedules tasks onto Executors." },
+      { q:"What does the Cluster Manager do in Spark?",
+        opts:["Runs transformations on data","Allocates resources (CPU/memory) across the cluster","Stores the lineage graph","Serializes DataFrames"],
+        ans:1,
+        exp:"The Cluster Manager (YARN, Mesos, Kubernetes, Standalone) negotiates resources. It does not touch your data." },
+      { q:"Where does actual data processing happen in Spark?",
+        opts:["Driver JVM","Cluster Manager","Executors","SparkContext"],
+        ans:2,
+        exp:"<strong>Executors</strong> are JVM processes on Worker nodes. They run tasks, cache data, and report results back to the Driver." }
     ]
   },
   {
@@ -208,6 +220,74 @@ const topics = [
         ],
         code:true, ans:1,
         exp:"<strong>B: spark.sql()</strong> executes any SQL string. Using an f-string injects the Python variable directly into the query. spark.delta.sql (A) does not exist. spark.table() (C) takes a table name only — not a full query. dbutils has no .sql() method (D)." }
+    ]
+  },
+  {
+    id:"jobstages", label:"Job → Stages → Tasks",
+    questions:[
+      { q:"What triggers Spark to actually execute a computation?",
+        opts:["A transformation like map()","An action like count() or show()","Creating a DataFrame","Calling explain()"],
+        ans:1,
+        exp:"Transformations are lazy — they just build a plan. An action like <code>collect()</code>, <code>count()</code>, <code>show()</code>, or <code>write()</code> triggers execution." },
+      { q:"What creates a stage boundary in Spark?",
+        opts:["Any transformation","A narrow transformation","A shuffle (wide transformation)","Calling cache()"],
+        ans:2,
+        exp:"Shuffles require data to move between partitions across the network — Spark must complete Stage N before starting Stage N+1." },
+      { q:"How does a Task relate to a Stage?",
+        opts:["One Task per Job","One Task per Stage","One Task per partition within a Stage","One Task per Executor"],
+        ans:2,
+        exp:"A Stage is split into Tasks — one per partition. 200 partitions means 200 Tasks, each running on one Executor slot." }
+    ]
+  },
+  {
+    id:"transformations", label:"Narrow vs Wide",
+    questions:[
+      { q:"Which of these is a narrow transformation?",
+        opts:["groupBy()","join() on two large tables","filter()","distinct()"],
+        ans:2,
+        exp:"<code>filter()</code> keeps each row in its current partition — no data moves. <code>groupBy</code>, <code>join</code>, and <code>distinct</code> all require shuffles." },
+      { q:"Why is groupBy() a wide transformation?",
+        opts:["It creates a new DataFrame","Rows with the same key may live in different partitions and must be co-located","It always reads from disk","It uses more memory"],
+        ans:1,
+        exp:"To aggregate by a key, all rows for that key must land on the same executor. Since they are scattered across partitions, a shuffle is needed." },
+      { q:"Which set contains only narrow transformations?",
+        opts:["map, filter, select","groupBy, join, repartition","distinct, orderBy, join","map, groupBy, filter"],
+        ans:0,
+        exp:"<code>map</code>, <code>filter</code>, and <code>select</code> operate partition-by-partition with no cross-partition data movement. All others trigger shuffles." }
+    ]
+  },
+  {
+    id:"deploy", label:"Deployment Modes",
+    questions:[
+      { q:"In client mode, where does the Driver run?",
+        opts:["On a worker node inside the cluster","On the machine that submitted the job","On the Cluster Manager","On the first Executor"],
+        ans:1,
+        exp:"<strong>Client mode:</strong> Driver stays on your local machine. Good for interactive notebooks. If your machine dies, the job dies." },
+      { q:"In cluster mode, what happens to the Driver?",
+        opts:["It runs on the submitting machine","It is deployed inside the cluster on a worker node","It merges with the Cluster Manager","It is not used"],
+        ans:1,
+        exp:"<strong>Cluster mode:</strong> Driver runs inside the cluster. The submitting process exits after launch. Best for production batch jobs." },
+      { q:"When would you use local mode?",
+        opts:["Production ETL pipelines","Multi-node distributed jobs","Development, testing, and learning on a single machine","When the cluster is down for maintenance"],
+        ans:2,
+        exp:"<code>local[*]</code> runs Driver and Executors in the same JVM process. No cluster needed — great for development and unit tests." }
+    ]
+  },
+  {
+    id:"fault", label:"Fault Tolerance",
+    questions:[
+      { q:"How does Spark recover from a lost partition without rerunning everything?",
+        opts:["Restores from a checkpoint on HDFS","Uses lineage to recompute only the lost partition","Asks another Executor to copy its partition","Re-reads all source data from scratch"],
+        ans:1,
+        exp:"Spark tracks the DAG of transformations (lineage). If a partition is lost, it replays only the transformations needed to rebuild it." },
+      { q:"What is the lineage graph in Spark?",
+        opts:["A log of completed tasks","A record of which Executors ran which tasks","A DAG showing how each partition was derived from transformations","The physical execution plan after optimization"],
+        ans:2,
+        exp:"The lineage (DAG) records every transformation applied to produce each partition — the recipe Spark uses to rebuild lost data." },
+      { q:"When would you explicitly checkpoint a DataFrame?",
+        opts:["Before every action","When the lineage chain becomes very long, to truncate recomputation cost","Only with streaming jobs","When switching from client to cluster mode"],
+        ans:1,
+        exp:"After many chained transformations, recomputing from scratch gets expensive. Checkpointing saves a snapshot and truncates the lineage." }
     ]
   }
 ];

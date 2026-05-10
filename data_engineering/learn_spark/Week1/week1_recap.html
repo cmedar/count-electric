@@ -22,6 +22,22 @@
     --code-bg: #282c34;
     --code-fg: #abb2bf;
     --tab-active: #e06c2b;
+    /* walkthrough CSS vars */
+    --color-border-secondary: #d4d2ca;
+    --color-text-info: #0891b2;
+    --color-border-info: #0891b2;
+    --color-background-info: #e0f7fa;
+    --color-background-primary: #fff;
+    --color-background-secondary: #f5f4ed;
+    --color-text-primary: #3d3d3a;
+    --color-text-secondary: #73726c;
+    --color-text-tertiary: #a0a09a;
+    --color-text-danger: #dc2626;
+    --color-text-success: #16a34a;
+    --color-border-success: #16a34a;
+    --color-border-danger: #dc2626;
+    --border-radius-md: 6px;
+    --font-mono: 'Fira Code', 'Cascadia Code', Menlo, monospace;
   }
 
   body {
@@ -279,6 +295,26 @@
 
   /* ── Memory anchor offset ───────────────────────────────── */
   [id] { scroll-margin-top: 16px; }
+
+  /* ── K8s walkthrough scoped ─────────────────────────────── */
+  #panel-k8s .step-dot{width:10px;height:10px;border-radius:50%;background:#d4d2ca;transition:background .2s;display:inline-block}
+  #panel-k8s .step-dot.active{background:#0891b2}
+  #panel-k8s .nav-btn{padding:7px 16px;border:0.5px solid #d4d2ca;border-radius:6px;background:#fff;color:#3d3d3a;cursor:pointer;font-size:13px;font-family:inherit}
+  #panel-k8s .nav-btn:hover{background:#f5f4ed}
+  #panel-k8s .nav-btn:disabled{opacity:0.35;cursor:default}
+  #panel-k8s .wt-badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;margin-right:4px}
+  #panel-k8s .b-purple{background:#EEEDFE;color:#3C3489}
+  #panel-k8s .b-teal{background:#E1F5EE;color:#085041}
+  #panel-k8s .b-coral{background:#FAECE7;color:#712B13}
+  #panel-k8s .b-amber{background:#FAEEDA;color:#633806}
+  #panel-k8s .b-gray{background:#F1EFE8;color:#444441}
+  #panel-k8s .node-box{border:0.5px solid #d4d2ca;border-radius:6px;padding:8px 10px;font-size:12px;background:#fff}
+  #panel-k8s .highlight{border-color:#0891b2!important;background:#e0f7fa!important}
+  #panel-k8s .dim{opacity:0.35}
+  #panel-k8s .wt-row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+  #panel-k8s .wt-col{display:flex;flex-direction:column;gap:6px}
+  #panel-k8s .wt-label{font-size:11px;color:#a0a09a;margin-bottom:2px}
+  #panel-k8s .mono{font-family:'Fira Code','Cascadia Code',Menlo,monospace;font-size:11px;color:#73726c}
 </style>
 </head>
 <body>
@@ -297,6 +333,7 @@
   <button class="tab-btn" role="tab" onclick="switchTab('sql')">Spark SQL</button>
   <button class="tab-btn" role="tab" onclick="switchTab('io')">Reading &amp; Writing</button>
   <button class="tab-btn" role="tab" onclick="switchTab('tips')">Exam Tips</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('k8s')">K8s Walkthrough</button>
 </nav>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -314,22 +351,67 @@
   <h2>Spark Architecture</h2>
 
   <h3 id="arch-components">Cluster Components</h3>
-  <div class="arch-diagram">
-    <div class="arch-box driver">
-      Driver
-      <div class="arch-sub">SparkContext · DAG Scheduler · Task Scheduler</div>
-    </div>
-    <div class="arch-arrow">↕</div>
-    <div class="arch-box cm">
-      Cluster Manager
-      <div class="arch-sub">YARN · K8s · Standalone · Mesos</div>
-    </div>
-    <div class="arch-arrow">↕</div>
-    <div class="arch-row">
-      <div class="arch-box exec">Executor<br><span class="arch-sub">Tasks · Cache</span></div>
-      <div class="arch-box exec">Executor<br><span class="arch-sub">Tasks · Cache</span></div>
-      <div class="arch-box exec">Executor<br><span class="arch-sub">Tasks · Cache</span></div>
-    </div>
+  <div style="margin:20px 0 28px;max-width:720px">
+<svg width="100%" viewBox="0 0 711.25 360" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Spark architecture: Driver, Cluster Manager, Executors</title>
+  <desc>The Driver sends tasks to Executors via the Cluster Manager. Executors run on Worker nodes and send results back to the Driver.</desc>
+  <defs>
+    <marker id="arrow-arch" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  <mask id="imagine-text-gaps-dk49qp" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="711.25" height="360" fill="white"/><rect x="315.09375" y="44.234375" width="49.8125" height="21.53125" fill="black" rx="2"/><rect x="255.671875" y="65.484375" width="168.65625" height="19.03125" fill="black" rx="2"/><rect x="280.421875" y="162.234375" width="119.15625" height="21.515625" fill="black" rx="2"/><rect x="265.625" y="183.484375" width="148.75" height="19.03125" fill="black" rx="2"/><rect x="80.03125" y="281.25" width="139.9375" height="21.515625" fill="black" rx="2"/><rect x="78.28125" y="302.484375" width="143.4375" height="19.015625" fill="black" rx="2"/><rect x="458.609375" y="281.25" width="142.78125" height="21.515625" fill="black" rx="2"/><rect x="458.28125" y="302.484375" width="143.4375" height="19.015625" fill="black" rx="2"/><rect x="238.28125" y="114.484375" width="105.4375" height="19.015625" fill="black" rx="2"/><rect x="162.171875" y="232.078125" width="45.65625" height="19.015625" fill="black" rx="2"/><rect x="472.171875" y="232.078125" width="45.65625" height="19.015625" fill="black" rx="2"/><rect x="42.640625" y="154.078125" width="38.71875" height="19.015625" fill="black" rx="2"/><rect x="-25.25" y="186.078125" width="47.25" height="19.015625" fill="black" rx="2"/><rect x="598.640625" y="154.078125" width="38.71875" height="19.015625" fill="black" rx="2"/><rect x="658" y="186.078125" width="47.25" height="19.015625" fill="black" rx="2"/></mask></defs>
+
+  <!-- Driver -->
+  <g style="fill:rgb(0,0,0);stroke:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;font-weight:400">
+    <rect x="240" y="30" width="200" height="64" rx="8" style="fill:rgb(238,237,254);stroke:rgb(83,74,183);stroke-width:0.5px"/>
+    <text x="340" y="55" text-anchor="middle" dominant-baseline="central" style="fill:rgb(60,52,137);font-size:14px;font-weight:500">Driver</text>
+    <text x="340" y="75" text-anchor="middle" dominant-baseline="central" style="fill:rgb(83,74,183);font-size:12px">Builds DAG, schedules tasks</text>
+  </g>
+
+  <!-- Cluster Manager -->
+  <g style="fill:rgb(0,0,0);stroke:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px">
+    <rect x="240" y="148" width="200" height="64" rx="8" style="fill:rgb(225,245,238);stroke:rgb(15,110,86);stroke-width:0.5px"/>
+    <text x="340" y="173" text-anchor="middle" dominant-baseline="central" style="fill:rgb(8,80,65);font-size:14px;font-weight:500">Cluster manager</text>
+    <text x="340" y="193" text-anchor="middle" dominant-baseline="central" style="fill:rgb(15,110,86);font-size:12px">Allocates CPU &amp; memory</text>
+  </g>
+
+  <!-- Worker 1 + Executor -->
+  <g style="fill:rgb(0,0,0);stroke:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px">
+    <rect x="60" y="270" width="180" height="64" rx="8" style="fill:rgb(250,236,231);stroke:rgb(153,60,29);stroke-width:0.5px"/>
+    <text x="150" y="292" text-anchor="middle" dominant-baseline="central" style="fill:rgb(113,43,19);font-size:14px;font-weight:500">Executor (worker 1)</text>
+    <text x="150" y="312" text-anchor="middle" dominant-baseline="central" style="fill:rgb(153,60,29);font-size:12px">Runs tasks, caches data</text>
+  </g>
+
+  <!-- Worker 2 + Executor -->
+  <g style="fill:rgb(0,0,0);stroke:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px">
+    <rect x="440" y="270" width="180" height="64" rx="8" style="fill:rgb(250,236,231);stroke:rgb(153,60,29);stroke-width:0.5px"/>
+    <text x="530" y="292" text-anchor="middle" dominant-baseline="central" style="fill:rgb(113,43,19);font-size:14px;font-weight:500">Executor (worker 2)</text>
+    <text x="530" y="312" text-anchor="middle" dominant-baseline="central" style="fill:rgb(153,60,29);font-size:12px">Runs tasks, caches data</text>
+  </g>
+
+  <!-- Driver → Cluster Manager -->
+  <line x1="340" y1="94" x2="340" y2="146" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-arch)" mask="url(#imagine-text-gaps-dk49qp)"/>
+  <rect x="244" y="112" width="94" height="18" rx="4" fill="#f5f4ed"/>
+  <text x="291" y="124" text-anchor="middle" dominant-baseline="central" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">resource request</text>
+
+  <!-- Cluster Manager → Executors -->
+  <line x1="270" y1="212" x2="190" y2="268" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-arch)"/>
+  <text x="185" y="246" text-anchor="middle" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">launch</text>
+  <line x1="410" y1="212" x2="490" y2="268" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-arch)"/>
+  <text x="495" y="246" text-anchor="middle" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">launch</text>
+
+  <!-- Driver ↔ Executor 1 -->
+  <path d="M240 80 Q100 80 100 268" fill="none" stroke="#3d3d3a" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#arrow-arch)"/>
+  <text x="62" y="168" text-anchor="middle" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">tasks</text>
+  <path d="M60 302 Q20 302 20 80 Q20 62 60 62" fill="none" stroke="#3d3d3a" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#arrow-arch)"/>
+  <text x="18" y="200" text-anchor="end" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">results</text>
+
+  <!-- Driver ↔ Executor 2 -->
+  <path d="M440 80 Q580 80 580 268" fill="none" stroke="#3d3d3a" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#arrow-arch)"/>
+  <text x="618" y="168" text-anchor="middle" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">tasks</text>
+  <path d="M620 302 Q660 302 660 80 Q660 62 620 62" fill="none" stroke="#3d3d3a" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#arrow-arch)"/>
+  <text x="662" y="200" text-anchor="start" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">results</text>
+</svg>
   </div>
 
   <div class="card-grid">
@@ -353,18 +435,91 @@
 
   <h3 id="arch-execution">Execution Model: Action → Job → Stage → Task</h3>
 
-  <div class="pipeline">
-    <div class="pipe-step action">Action<br><small>e.g. count()</small></div>
-    <div class="pipe-arrow">→</div>
-    <div class="pipe-step">Job</div>
-    <div class="pipe-arrow">→</div>
-    <div class="pipe-step stage">Stage 1<br><small>narrow ops</small></div>
-    <div class="pipe-arrow">→</div>
-    <div class="pipe-step">Shuffle</div>
-    <div class="pipe-arrow">→</div>
-    <div class="pipe-step stage">Stage 2<br><small>narrow ops</small></div>
-    <div class="pipe-arrow">→</div>
-    <div class="pipe-step task">Tasks<br><small>1 per partition</small></div>
+  <div style="margin:16px 0 24px;max-width:720px">
+<svg width="100%" viewBox="0 0 680 380" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Spark execution model: Action triggers Job, split into Stages, each Stage into Tasks</title>
+  <desc>An action like count() triggers a Job. A shuffle boundary splits the Job into Stages. Each Stage is divided into Tasks, one per partition.</desc>
+  <defs>
+    <marker id="arrow-jobs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  <mask id="imagine-text-gaps-81iyo9" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="680" height="380" fill="white"/><rect x="313.71875" y="31.234375" width="52.5625" height="21.53125" fill="black" rx="2"/><rect x="258.671875" y="50.484375" width="162.65625" height="19.03125" fill="black" rx="2"/><rect x="348" y="83.484375" width="52.515625" height="19.03125" fill="black" rx="2"/><rect x="323.65625" y="115.234375" width="32.6875" height="21.53125" fill="black" rx="2"/><rect x="254.5" y="134.484375" width="171" height="19.03125" fill="black" rx="2"/><rect x="348" y="167.484375" width="92.484375" height="19.03125" fill="black" rx="2"/><rect x="147.609375" y="199.234375" width="54.78125" height="21.515625" fill="black" rx="2"/><rect x="98.34375" y="218.484375" width="153.3125" height="19.03125" fill="black" rx="2"/><rect x="476.203125" y="199.234375" width="57.59375" height="21.515625" fill="black" rx="2"/><rect x="430.453125" y="218.484375" width="149.09375" height="19.03125" fill="black" rx="2"/><rect x="183" y="251.484375" width="85.84375" height="19.015625" fill="black" rx="2"/><rect x="70.203125" y="285.25" width="47.59375" height="21.515625" fill="black" rx="2"/><rect x="148.796875" y="285.25" width="50.40625" height="21.515625" fill="black" rx="2"/><rect x="228.953125" y="285.25" width="50.09375" height="21.515625" fill="black" rx="2"/><rect x="513" y="251.484375" width="85.84375" height="19.015625" fill="black" rx="2"/><rect x="400.203125" y="285.25" width="47.59375" height="21.515625" fill="black" rx="2"/><rect x="478.796875" y="285.25" width="50.40625" height="21.515625" fill="black" rx="2"/><rect x="558.953125" y="285.25" width="50.09375" height="21.515625" fill="black" rx="2"/><rect x="149.390625" y="344.078125" width="381.21875" height="19.015625" fill="black" rx="2"/></mask></defs>
+
+  <!-- Action -->
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="240" y="20" width="200" height="56" rx="8" style="fill:rgb(250,238,218);stroke:rgb(133,79,11);stroke-width:0.5px"/>
+    <text x="340" y="42" text-anchor="middle" dominant-baseline="central" style="fill:rgb(99,56,6);font-size:14px;font-weight:500">Action</text>
+    <text x="340" y="60" text-anchor="middle" dominant-baseline="central" style="fill:rgb(133,79,11);font-size:12px">e.g. count(), show(), write()</text>
+  </g>
+
+  <line x1="340" y1="76" x2="340" y2="104" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-jobs)"/>
+  <text x="352" y="93" dominant-baseline="central" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">triggers</text>
+
+  <!-- Job -->
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="240" y="104" width="200" height="56" rx="8" style="fill:rgb(238,237,254);stroke:rgb(83,74,183);stroke-width:0.5px"/>
+    <text x="340" y="126" text-anchor="middle" dominant-baseline="central" style="fill:rgb(60,52,137);font-size:14px;font-weight:500">Job</text>
+    <text x="340" y="144" text-anchor="middle" dominant-baseline="central" style="fill:rgb(83,74,183);font-size:12px">Full computation from action</text>
+  </g>
+
+  <line x1="340" y1="160" x2="340" y2="188" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-jobs)"/>
+  <text x="352" y="177" dominant-baseline="central" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">split by shuffle</text>
+
+  <!-- Stage 1 -->
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="60" y="188" width="230" height="56" rx="8" style="fill:rgb(225,245,238);stroke:rgb(15,110,86);stroke-width:0.5px"/>
+    <text x="175" y="210" text-anchor="middle" dominant-baseline="central" style="fill:rgb(8,80,65);font-size:14px;font-weight:500">Stage 1</text>
+    <text x="175" y="228" text-anchor="middle" dominant-baseline="central" style="fill:rgb(15,110,86);font-size:12px">filter, map → shuffle write</text>
+  </g>
+
+  <!-- Stage 2 -->
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="390" y="188" width="230" height="56" rx="8" style="fill:rgb(225,245,238);stroke:rgb(15,110,86);stroke-width:0.5px"/>
+    <text x="505" y="210" text-anchor="middle" dominant-baseline="central" style="fill:rgb(8,80,65);font-size:14px;font-weight:500">Stage 2</text>
+    <text x="505" y="228" text-anchor="middle" dominant-baseline="central" style="fill:rgb(15,110,86);font-size:12px">shuffle read → aggregate</text>
+  </g>
+
+  <line x1="290" y1="160" x2="175" y2="186" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-jobs)"/>
+  <line x1="390" y1="160" x2="505" y2="186" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-jobs)" mask="url(#imagine-text-gaps-81iyo9)"/>
+
+  <!-- Tasks under Stage 1 -->
+  <line x1="175" y1="244" x2="175" y2="272" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-jobs)"/>
+  <text x="187" y="261" dominant-baseline="central" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">1 per partition</text>
+
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="60" y="272" width="68" height="40" rx="6" style="fill:rgb(241,239,232);stroke:rgb(95,94,90);stroke-width:0.5px"/>
+    <text x="94" y="296" text-anchor="middle" dominant-baseline="central" style="fill:rgb(68,68,65);font-size:14px;font-weight:500">Task 1</text>
+  </g>
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="140" y="272" width="68" height="40" rx="6" style="fill:rgb(241,239,232);stroke:rgb(95,94,90);stroke-width:0.5px"/>
+    <text x="174" y="296" text-anchor="middle" dominant-baseline="central" style="fill:rgb(68,68,65);font-size:14px;font-weight:500">Task 2</text>
+  </g>
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="220" y="272" width="68" height="40" rx="6" style="fill:rgb(241,239,232);stroke:rgb(95,94,90);stroke-width:0.5px"/>
+    <text x="254" y="296" text-anchor="middle" dominant-baseline="central" style="fill:rgb(68,68,65);font-size:14px;font-weight:500">Task 3</text>
+  </g>
+
+  <!-- Tasks under Stage 2 -->
+  <line x1="505" y1="244" x2="505" y2="272" stroke="#3d3d3a" stroke-width="1" marker-end="url(#arrow-jobs)"/>
+  <text x="517" y="261" dominant-baseline="central" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">1 per partition</text>
+
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="390" y="272" width="68" height="40" rx="6" style="fill:rgb(241,239,232);stroke:rgb(95,94,90);stroke-width:0.5px"/>
+    <text x="424" y="296" text-anchor="middle" dominant-baseline="central" style="fill:rgb(68,68,65);font-size:14px;font-weight:500">Task 1</text>
+  </g>
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="470" y="272" width="68" height="40" rx="6" style="fill:rgb(241,239,232);stroke:rgb(95,94,90);stroke-width:0.5px"/>
+    <text x="504" y="296" text-anchor="middle" dominant-baseline="central" style="fill:rgb(68,68,65);font-size:14px;font-weight:500">Task 2</text>
+  </g>
+  <g style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <rect x="550" y="272" width="68" height="40" rx="6" style="fill:rgb(241,239,232);stroke:rgb(95,94,90);stroke-width:0.5px"/>
+    <text x="584" y="296" text-anchor="middle" dominant-baseline="central" style="fill:rgb(68,68,65);font-size:14px;font-weight:500">Task 3</text>
+  </g>
+
+  <!-- Shuffle boundary label -->
+  <line x1="60" y1="340" x2="620" y2="340" stroke="#73726c" stroke-width="0.5" stroke-dasharray="4 3" opacity="0.4"/>
+  <text x="340" y="358" text-anchor="middle" opacity="0.6" style="fill:rgb(61,61,58);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">↑ shuffle boundary — stage 1 must complete before stage 2 starts</text>
+</svg>
   </div>
 
   <div class="callout info">
@@ -895,22 +1050,232 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
   </div>
 </section>
 
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 6: K8s Walkthrough
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-k8s">
+  <h2>End-to-End Walkthrough: Spark on Kubernetes</h2>
+  <p style="margin-bottom:20px;color:var(--muted);font-size:0.9rem">120 GB bank transactions table — groupBy customer_id, 4-node K8s cluster. Step through each phase of execution.</p>
+
+  <div style="padding:1rem 0;max-width:760px">
+
+    <div id="step-dots" style="display:flex;gap:8px;margin-bottom:1.25rem;align-items:center">
+      <span style="font-size:12px;color:#a0a09a;margin-right:4px">step</span>
+    </div>
+
+    <div id="stage-label" style="font-size:13px;color:#73726c;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600"></div>
+    <div id="stage-title" style="font-size:17px;font-weight:600;color:#3d3d3a;margin-bottom:10px"></div>
+    <div id="stage-desc" style="font-size:14px;color:#73726c;line-height:1.65;margin-bottom:1.25rem;max-width:600px"></div>
+
+    <div id="diagram" style="margin-bottom:1.25rem"></div>
+
+    <div id="detail-box" style="border-left:2px solid #0891b2;padding:8px 14px;font-size:13px;color:#73726c;border-radius:0 6px 6px 0;margin-bottom:1.25rem;display:none;background:#e0f7fa"></div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+      <button class="nav-btn" id="btn-prev" onclick="go(-1)">← prev</button>
+      <button class="nav-btn" id="btn-next" onclick="go(1)">next →</button>
+    </div>
+  </div>
+</section>
+
 <script>
   function switchTab(id) {
     document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-      const ids = ['arch','df','sql','io','tips'];
+      const ids = ['arch','df','sql','io','tips','k8s'];
       btn.classList.toggle('active', ids[i] === id);
     });
     document.querySelectorAll('.tab-panel').forEach(p => {
       p.classList.toggle('active', p.id === 'panel-' + id);
     });
-    // Auto-resize if inside Databricks iframe
     if (window.frameElement) {
       setTimeout(() => {
         window.frameElement.style.height = (document.body.scrollHeight + 30) + 'px';
       }, 50);
     }
   }
+
+  // K8s walkthrough logic
+  const steps = [
+    {
+      label: "setup",
+      title: "The cluster: 1 Driver + 3 workers",
+      desc: "Kubernetes schedules 4 pods. One pod runs the Spark Driver (your SparkSession). The other three are Worker pods — each gets a slice of CPU and RAM as Executors. Your bank transaction table is a Parquet file on S3: 120 GB, ~800 million rows.",
+      detail: "In Kubernetes mode the Driver itself runs as a pod. The Cluster Manager is Kubernetes — it launches Executor pods on request and restarts them if they crash.",
+      diag: () => `
+      <div class="wt-row" style="align-items:stretch">
+        <div class="wt-col" style="min-width:130px">
+          <div class="wt-label">Driver pod</div>
+          <div class="node-box highlight" style="flex:1">
+            <div class="wt-badge b-purple">Driver</div>
+            <div style="margin-top:6px;font-size:12px;color:#73726c">SparkSession<br>DAG builder<br>Task scheduler</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;padding:0 6px;color:#a0a09a;font-size:18px">→</div>
+        <div class="wt-col" style="flex:1">
+          <div class="wt-label">Worker pods (Executors)</div>
+          <div class="wt-row" style="flex:1">
+            ${[1,2,3].map(i=>`<div class="node-box" style="flex:1;min-width:100px">
+              <div class="wt-badge b-coral">Worker ${i}</div>
+              <div style="margin-top:6px" class="mono">8 cores<br>32 GB RAM</div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#a0a09a">
+        <span class="wt-badge b-gray">S3</span> transactions.parquet — 120 GB, ~800M rows
+      </div>`
+    },
+    {
+      label: "reading",
+      title: "Spark reads the file — partitions are born",
+      desc: "Spark asks S3 how many 128 MB Parquet row groups the file has. It gets back ~960 row groups. Each becomes one partition. Spark creates 960 tasks in Stage 1 — one per partition. No data has moved yet. This is still lazy.",
+      detail: "Spark's default partition size is 128 MB (spark.sql.files.maxPartitionBytes). 120 GB ÷ 128 MB ≈ 960 partitions. Each partition holds roughly 800K rows.",
+      diag: () => `
+      <div style="margin-bottom:8px;font-size:12px;color:#a0a09a">960 partitions created from S3 row groups</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;max-width:580px">
+        ${Array.from({length:40},(_,i)=>`<div style="width:22px;height:22px;border-radius:4px;background:${i<10?'#E1F5EE':'#F1EFE8'};border:0.5px solid ${i<10?'#0F6E56':'#D3D1C7'};font-size:9px;display:flex;align-items:center;justify-content:center;color:${i<10?'#085041':'#888780'}">${i+1}</div>`).join('')}
+        <div style="width:22px;height:22px;border-radius:4px;background:#F1EFE8;border:0.5px solid #D3D1C7;font-size:9px;display:flex;align-items:center;justify-content:center;color:#888780">…</div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#a0a09a">showing 40 of 960 &nbsp;·&nbsp; each = ~128 MB = ~800K rows</div>`
+    },
+    {
+      label: "stage1",
+      title: "Stage 1: tasks run in parallel across workers",
+      desc: "The Driver sends tasks to the 3 Executors. Each Executor has 8 cores → 8 concurrent tasks. All 3 workers together run 24 tasks at a time. 960 tasks ÷ 24 concurrent = ~40 rounds. Each task reads its partition from S3, applies your filter (e.g. amount > 10000), and holds the result in memory.",
+      detail: "Task = partition + transformation logic. The Driver serializes the closure (your filter function) and ships it to each Executor. Data never goes through the Driver — Executors pull directly from S3.",
+      diag: () => `
+      <div class="wt-row" style="align-items:flex-start">
+        ${[
+          {w:'Worker 1', tasks:['T1','T2','T3','T4','T5','T6','T7','T8']},
+          {w:'Worker 2', tasks:['T9','T10','T11','T12','T13','T14','T15','T16']},
+          {w:'Worker 3', tasks:['T17','T18','T19','T20','T21','T22','T23','T24']},
+        ].map(w=>`
+          <div class="wt-col" style="flex:1;min-width:120px">
+            <div class="wt-label">${w.w}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${w.tasks.map(t=>`<div class="node-box" style="padding:4px 7px;font-size:11px"><span class="wt-badge b-coral" style="margin:0">${t}</span></div>`).join('')}
+            </div>
+            <div class="mono" style="margin-top:4px">8 concurrent tasks</div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#a0a09a">round 1 of ~40 · each task: read partition from S3 → filter rows → keep in memory</div>`
+    },
+    {
+      label: "shuffle",
+      title: "Stage boundary: the shuffle",
+      desc: "You call groupBy('customer_id').sum('amount'). Rows for the same customer_id are scattered across all 960 partitions on all 3 workers. Before Stage 2 can aggregate, every row must travel to the same worker as its customer_id. This is the shuffle.",
+      detail: "Spark hashes each customer_id modulo the number of output partitions (default 200). All rows with the same hash go to the same Executor. This produces network traffic proportional to your data size — on 120 GB that is significant.",
+      diag: () => `
+      <div class="wt-row" style="align-items:flex-start;gap:12px">
+        <div class="wt-col" style="flex:1">
+          <div class="wt-label">Before shuffle (stage 1 output)</div>
+          ${[1,2,3].map(w=>`
+            <div class="node-box" style="margin-bottom:4px">
+              <span class="wt-badge b-coral">Worker ${w}</span>
+              <span class="mono"> cust_A, cust_C, cust_B, cust_A, cust_D …</span>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8px;gap:4px">
+          <div style="font-size:18px;color:#a0a09a">⇄</div>
+          <div style="font-size:11px;color:#dc2626;font-weight:500">shuffle</div>
+          <div style="font-size:11px;color:#a0a09a">network</div>
+        </div>
+        <div class="wt-col" style="flex:1">
+          <div class="wt-label">After shuffle (stage 2 input)</div>
+          <div class="node-box" style="margin-bottom:4px"><span class="wt-badge b-teal">Worker 1</span><span class="mono"> all cust_A, all cust_D …</span></div>
+          <div class="node-box" style="margin-bottom:4px"><span class="wt-badge b-teal">Worker 2</span><span class="mono"> all cust_B, all cust_E …</span></div>
+          <div class="node-box"><span class="wt-badge b-teal">Worker 3</span><span class="mono"> all cust_C, all cust_F …</span></div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#dc2626">stage 1 must fully complete before stage 2 starts — this is the stage boundary</div>`
+    },
+    {
+      label: "stage2",
+      title: "Stage 2: aggregate — one task per output partition",
+      desc: "Spark creates 200 output partitions by default (spark.sql.shuffle.partitions). Stage 2 has 200 tasks. Each task reads its slice of the shuffled data from disk/memory and sums the amounts per customer_id. Results are small — one row per customer.",
+      detail: "200 tasks across 24 concurrent slots = ~9 rounds. The output is much smaller than the input — aggregation is a massive reduction. This result can then be collected to the Driver or written back to S3.",
+      diag: () => `
+      <div style="margin-bottom:8px;font-size:12px;color:#a0a09a">200 output partitions, 24 concurrent tasks</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;max-width:500px">
+        ${Array.from({length:24},(_,i)=>`<div class="node-box highlight" style="padding:4px 8px;font-size:11px">T${i+1}</div>`).join('')}
+        <div style="font-size:12px;align-self:center;color:#a0a09a;padding:4px">… +176 more</div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="wt-label">each task produces</div>
+        <div class="node-box" style="display:inline-block;margin-top:4px">
+          <span class="mono">customer_id | total_amount</span><br>
+          <span class="mono">cust_A &nbsp;&nbsp;&nbsp; | 284,500.00</span><br>
+          <span class="mono">cust_D &nbsp;&nbsp;&nbsp; | 91,200.00</span><br>
+          <span class="mono">… (slice of customers)</span>
+        </div>
+      </div>`
+    },
+    {
+      label: "result",
+      title: "Job complete — result back to Driver or S3",
+      desc: "The 200 output partitions are either written to S3 as Parquet (df.write) — staying on the workers — or collected to the Driver (df.collect()) where they're assembled into a Python list. For 800M rows of transactions, you almost never collect — you write.",
+      detail: "collect() sends all data over the network to the Driver JVM and then to your Python process. On 800M rows that kills the Driver. write() keeps data distributed and streams it straight from Executors to S3 in parallel — much faster and safer.",
+      diag: () => `
+      <div class="wt-row" style="gap:16px;align-items:flex-start">
+        <div class="wt-col" style="flex:1">
+          <div class="wt-label" style="color:#16a34a">✓ write() — recommended</div>
+          <div class="node-box" style="border-color:#16a34a">
+            <div class="mono">df.write.parquet("s3://results/")</div>
+            <div style="margin-top:6px;font-size:12px;color:#73726c">Workers stream directly to S3<br>Driver not involved<br>Parallelism preserved</div>
+          </div>
+        </div>
+        <div class="wt-col" style="flex:1">
+          <div class="wt-label" style="color:#dc2626">✗ collect() — dangerous at scale</div>
+          <div class="node-box" style="border-color:#dc2626">
+            <div class="mono">df.collect()</div>
+            <div style="margin-top:6px;font-size:12px;color:#73726c">All data → Driver JVM → Python<br>Driver OOM on large tables<br>Kills the job</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:8px 12px;border-radius:6px;background:#f5f4ed;font-size:12px;color:#73726c">
+        Full job: 1 action → 1 job → 2 stages → 1160 tasks total (960 + 200)
+      </div>`
+    }
+  ];
+
+  let cur = 0;
+
+  function renderDots() {
+    const el = document.getElementById('step-dots');
+    const dots = Array.from(el.children).filter(c => c.classList.contains('step-dot'));
+    if (dots.length === 0) {
+      steps.forEach((_,i) => {
+        const d = document.createElement('div');
+        d.className = 'step-dot' + (i===cur?' active':'');
+        el.appendChild(d);
+      });
+      const total = document.createElement('span');
+      total.id = 'dot-label';
+      total.style.cssText = 'font-size:12px;color:#a0a09a;margin-left:6px';
+      el.appendChild(total);
+    } else {
+      dots.forEach((d,i) => d.classList.toggle('active', i===cur));
+    }
+    const lbl = document.getElementById('dot-label');
+    if (lbl) lbl.textContent = (cur+1) + ' / ' + steps.length;
+  }
+
+  function render() {
+    const s = steps[cur];
+    document.getElementById('stage-label').textContent = s.label;
+    document.getElementById('stage-title').textContent = s.title;
+    document.getElementById('stage-desc').textContent = s.desc;
+    document.getElementById('diagram').innerHTML = s.diag();
+    const db = document.getElementById('detail-box');
+    if (s.detail) { db.style.display='block'; db.textContent = s.detail; }
+    else db.style.display='none';
+    document.getElementById('btn-prev').disabled = cur===0;
+    document.getElementById('btn-next').disabled = cur===steps.length-1;
+    renderDots();
+  }
+
+  function go(dir) { cur = Math.max(0, Math.min(steps.length-1, cur+dir)); render(); }
+  render();
 
   // Initial iframe resize
   if (window.frameElement) {

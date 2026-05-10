@@ -36,6 +36,7 @@
     --color-text-success: #16a34a;
     --color-border-success: #16a34a;
     --color-border-danger: #dc2626;
+    --color-background-success: #f0fdf4;
     --border-radius-md: 6px;
     --font-mono: 'Fira Code', 'Cascadia Code', Menlo, monospace;
   }
@@ -315,6 +316,15 @@
   #panel-k8s .wt-col{display:flex;flex-direction:column;gap:6px}
   #panel-k8s .wt-label{font-size:11px;color:#a0a09a;margin-bottom:2px}
   #panel-k8s .mono{font-family:'Fira Code','Cascadia Code',Menlo,monospace;font-size:11px;color:#73726c}
+  /* v2 aliases — let original class names work inside the panel */
+  #panel-k8s .badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;margin-right:4px}
+  #panel-k8s .row{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+  #panel-k8s .col{display:flex;flex-direction:column;gap:6px}
+  #panel-k8s .label{font-size:11px;color:#a0a09a;margin-bottom:2px}
+  #panel-k8s .b-blue{background:#E6F1FB;color:#0C447C}
+  #panel-k8s .highlight-success{border-color:#16a34a!important;background:#f0fdf4!important}
+  #panel-k8s .phase-box{border:0.5px solid #d4d2ca;border-radius:6px;padding:8px 12px;font-size:12px;background:#fff;flex:1;min-width:110px}
+  #panel-k8s .arrow-down{text-align:center;font-size:16px;color:#a0a09a;line-height:1.2}
 </style>
 </head>
 <body>
@@ -1055,7 +1065,7 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
 ═══════════════════════════════════════════════════════════ -->
 <section class="tab-panel" id="panel-k8s">
   <h2>End-to-End Walkthrough: Spark on Kubernetes</h2>
-  <p style="margin-bottom:20px;color:var(--muted);font-size:0.9rem">120 GB bank transactions table — groupBy customer_id, 4-node K8s cluster. Step through each phase of execution.</p>
+  <p style="margin-bottom:20px;color:var(--muted);font-size:0.9rem">120 GB bank transactions table — groupBy customer_id, 4-node K8s cluster. 9 steps: code → Catalyst DAG → optimise → physical plan → stages → tasks → result.</p>
 
   <div style="padding:1rem 0;max-width:760px">
 
@@ -1102,27 +1112,147 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
       desc: "Kubernetes schedules 4 pods. One pod runs the Spark Driver (your SparkSession). The other three are Worker pods — each gets a slice of CPU and RAM as Executors. Your bank transaction table is a Parquet file on S3: 120 GB, ~800 million rows.",
       detail: "In Kubernetes mode the Driver itself runs as a pod. The Cluster Manager is Kubernetes — it launches Executor pods on request and restarts them if they crash.",
       diag: () => `
-      <div class="wt-row" style="align-items:stretch">
-        <div class="wt-col" style="min-width:130px">
-          <div class="wt-label">Driver pod</div>
+      <div class="row" style="align-items:stretch">
+        <div class="col" style="min-width:130px">
+          <div class="label">Driver pod</div>
           <div class="node-box highlight" style="flex:1">
-            <div class="wt-badge b-purple">Driver</div>
+            <div class="badge b-purple">Driver</div>
             <div style="margin-top:6px;font-size:12px;color:#73726c">SparkSession<br>DAG builder<br>Task scheduler</div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;justify-content:center;padding:0 6px;color:#a0a09a;font-size:18px">→</div>
-        <div class="wt-col" style="flex:1">
-          <div class="wt-label">Worker pods (Executors)</div>
-          <div class="wt-row" style="flex:1">
-            ${[1,2,3].map(i=>`<div class="node-box" style="flex:1;min-width:100px">
-              <div class="wt-badge b-coral">Worker ${i}</div>
-              <div style="margin-top:6px" class="mono">8 cores<br>32 GB RAM</div>
-            </div>`).join('')}
+        <div class="col" style="flex:1">
+          <div class="label">Worker pods (Executors)</div>
+          <div class="row" style="flex:1">
+            ${[1,2,3].map(i=>`<div class="node-box" style="flex:1;min-width:100px"><div class="badge b-coral">Worker ${i}</div><div style="margin-top:6px" class="mono">8 cores<br>32 GB RAM</div></div>`).join('')}
           </div>
         </div>
       </div>
-      <div style="margin-top:10px;font-size:12px;color:#a0a09a">
-        <span class="wt-badge b-gray">S3</span> transactions.parquet — 120 GB, ~800M rows
+      <div style="margin-top:10px;font-size:12px;color:#a0a09a"><span class="badge b-gray">S3</span> transactions.parquet — 120 GB, ~800M rows</div>`
+    },
+    {
+      label: "catalyst phase 1-2",
+      title: "Catalyst: you write code — it builds a DAG",
+      desc: "Before any data moves, Catalyst intercepts your Python code and builds a DAG — a graph of steps. Phase 1 (Unresolved): nodes exist but column names are just strings, not yet verified. Phase 2 (Resolved): Catalyst reads the Parquet footer from S3, confirms customer_id and amount exist with the right types. The DAG is now fully described.",
+      detail: "The DAG = Directed Acyclic Graph. Directed means arrows go one way only — data flows forward. Acyclic means no loops. It is just a picture of your query as a tree of steps. Nothing has executed yet.",
+      diag: () => `
+      <div class="row" style="gap:16px;align-items:flex-start">
+        <div class="col" style="flex:1;min-width:160px">
+          <div class="label">your code</div>
+          <div class="node-box">
+            <div class="mono">df = spark.read.parquet(...)</div>
+            <div class="mono">.filter(col("amount") > 10000)</div>
+            <div class="mono">.groupBy("customer_id")</div>
+            <div class="mono">.sum("amount")</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8px;gap:2px">
+          <div style="font-size:18px;color:#a0a09a">→</div>
+          <div class="badge b-purple" style="margin:0">Catalyst</div>
+        </div>
+        <div class="col" style="flex:1;min-width:140px">
+          <div class="label">unresolved DAG (phase 1)</div>
+          <div class="col" style="gap:4px">
+            <div class="node-box" style="text-align:center"><span class="badge b-gray">sum(?)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-gray">groupBy(?)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-gray">filter(?)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-gray">scan(?)</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8px;gap:2px">
+          <div style="font-size:18px;color:#a0a09a">→</div>
+          <div style="font-size:11px;color:#a0a09a">check schema</div>
+        </div>
+        <div class="col" style="flex:1;min-width:140px">
+          <div class="label">resolved DAG (phase 2)</div>
+          <div class="col" style="gap:4px">
+            <div class="node-box" style="text-align:center"><span class="badge b-teal">sum(decimal)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-teal">groupBy(string)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-teal">filter(decimal)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-teal">scan parquet</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#a0a09a">read DAGs bottom to top — bottom is where execution starts</div>`
+    },
+    {
+      label: "catalyst phase 3-4",
+      title: "Catalyst: optimise then produce physical plan",
+      desc: "Phase 3 (Optimised): Catalyst rewrites the DAG without changing the result. It pushes the filter down to the S3 read, prunes unused columns, and folds constants. Phase 4 (Physical): Catalyst decides how to execute on your actual Kubernetes cluster — chooses join strategy, places the shuffle boundary, produces the final Physical Plan.",
+      detail: "The Physical Plan is the final DAG. It is what explain() prints. It maps directly to stages and tasks — every Exchange node in the plan is a shuffle, every shuffle is a stage boundary.",
+      diag: () => `
+      <div class="row" style="gap:12px;align-items:flex-start">
+        <div class="col" style="flex:1;min-width:140px">
+          <div class="label">optimised DAG (phase 3)</div>
+          <div class="col" style="gap:4px">
+            <div class="node-box" style="text-align:center"><span class="badge b-teal">sum(amount)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box" style="text-align:center"><span class="badge b-teal">groupBy(customer_id)</span></div>
+            <div class="arrow-down">↑</div>
+            <div class="node-box highlight-success" style="text-align:center"><span class="badge b-teal">scan + filter pushed in</span></div>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#a0a09a">✓ filter pushed to S3 read<br>✓ only 2 cols fetched<br>✓ constants folded</div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8px;gap:2px;margin-top:40px">
+          <div style="font-size:18px;color:#a0a09a">→</div>
+          <div style="font-size:11px;color:#a0a09a">phase 4</div>
+        </div>
+        <div class="col" style="flex:1;min-width:200px">
+          <div class="label">physical plan — what explain() shows</div>
+          <div class="node-box" style="font-family:'Fira Code','Cascadia Code',Menlo,monospace;font-size:11px;line-height:1.8;color:#73726c">
+            <div>HashAggregate (final)</div>
+            <div style="color:#dc2626">+- Exchange &lt;— shuffle</div>
+            <div style="padding-left:12px">+- HashAggregate (partial)</div>
+            <div style="padding-left:24px">+- Filter amount &gt; 10000</div>
+            <div style="padding-left:36px">+- FileScan parquet</div>
+            <div style="padding-left:48px">[customer_id, amount]</div>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#a0a09a">read bottom to top ↑<br>Exchange = stage boundary</div>
+        </div>
+      </div>`
+    },
+    {
+      label: "dag → stages",
+      title: "The physical plan becomes stages and tasks",
+      desc: "The Driver reads the Physical Plan DAG and splits it at every Exchange node. Everything below the Exchange is Stage 1. Everything above is Stage 2. Stage 1 = 960 tasks (one per partition). Stage 2 = 200 tasks (one per shuffle bucket). This is the moment the DAG becomes an execution plan on your actual Kubernetes pods.",
+      detail: "The DAG never changes after this point. It is fixed for the life of the job. AQE can adjust partition counts at runtime but the overall shape — two stages separated by one shuffle — is set by the Physical Plan.",
+      diag: () => `
+      <div class="col" style="gap:6px;max-width:520px">
+        <div class="label">physical plan → stage split</div>
+        <div class="row" style="gap:0;align-items:stretch">
+          <div style="display:flex;flex-direction:column;align-items:center;margin-right:8px;padding-top:4px">
+            <div class="badge b-teal" style="writing-mode:horizontal-tb;white-space:nowrap">stage 2</div>
+            <div style="flex:1;width:2px;background:#d4d2ca;margin:4px 0"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#dc2626"></div>
+            <div style="flex:1;width:2px;background:#d4d2ca;margin:4px 0"></div>
+            <div class="badge b-coral" style="writing-mode:horizontal-tb;white-space:nowrap">stage 1</div>
+          </div>
+          <div class="col" style="flex:1;gap:4px">
+            <div class="node-box highlight" style="text-align:center">
+              <div class="mono">HashAggregate (final sum)</div>
+              <div style="font-size:11px;color:#a0a09a;margin-top:2px">200 tasks · 1 per bucket</div>
+            </div>
+            <div class="node-box" style="text-align:center;border-color:#dc2626">
+              <div class="mono" style="color:#dc2626">Exchange hashpartitioning(customer_id, 200)</div>
+              <div style="font-size:11px;color:#dc2626;margin-top:2px">← shuffle boundary · data moves between workers here</div>
+            </div>
+            <div class="node-box" style="text-align:center">
+              <div class="mono">HashAggregate (partial) + Filter</div>
+              <div style="font-size:11px;color:#a0a09a;margin-top:2px">960 tasks · 1 per partition</div>
+            </div>
+            <div class="node-box" style="text-align:center">
+              <div class="mono">FileScan parquet [customer_id, amount]</div>
+              <div style="font-size:11px;color:#a0a09a;margin-top:2px">reads directly from S3 · 2 columns only</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#a0a09a;margin-top:4px">1 job · 2 stages · 1160 tasks total (960 + 200)</div>
       </div>`
     },
     {
@@ -1136,64 +1266,64 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
         ${Array.from({length:40},(_,i)=>`<div style="width:22px;height:22px;border-radius:4px;background:${i<10?'#E1F5EE':'#F1EFE8'};border:0.5px solid ${i<10?'#0F6E56':'#D3D1C7'};font-size:9px;display:flex;align-items:center;justify-content:center;color:${i<10?'#085041':'#888780'}">${i+1}</div>`).join('')}
         <div style="width:22px;height:22px;border-radius:4px;background:#F1EFE8;border:0.5px solid #D3D1C7;font-size:9px;display:flex;align-items:center;justify-content:center;color:#888780">…</div>
       </div>
-      <div style="margin-top:8px;font-size:12px;color:#a0a09a">showing 40 of 960 &nbsp;·&nbsp; each = ~128 MB = ~800K rows</div>`
+      <div style="margin-top:8px;font-size:12px;color:#a0a09a">showing 40 of 960 · each = ~128 MB = ~800K rows</div>`
     },
     {
-      label: "stage1",
+      label: "stage 1",
       title: "Stage 1: tasks run in parallel across workers",
-      desc: "The Driver sends tasks to the 3 Executors. Each Executor has 8 cores → 8 concurrent tasks. All 3 workers together run 24 tasks at a time. 960 tasks ÷ 24 concurrent = ~40 rounds. Each task reads its partition from S3, applies your filter (e.g. amount > 10000), and holds the result in memory.",
+      desc: "The Driver sends tasks to the 3 Executors. Each Executor has 8 cores → 8 concurrent tasks. All 3 workers run 24 tasks at a time. 960 tasks ÷ 24 concurrent = ~40 rounds. Each task reads its partition from S3, applies the filter (amount > 10000), and pre-aggregates partially before the shuffle.",
       detail: "Task = partition + transformation logic. The Driver serializes the closure (your filter function) and ships it to each Executor. Data never goes through the Driver — Executors pull directly from S3.",
       diag: () => `
-      <div class="wt-row" style="align-items:flex-start">
+      <div class="row" style="align-items:flex-start">
         ${[
           {w:'Worker 1', tasks:['T1','T2','T3','T4','T5','T6','T7','T8']},
           {w:'Worker 2', tasks:['T9','T10','T11','T12','T13','T14','T15','T16']},
           {w:'Worker 3', tasks:['T17','T18','T19','T20','T21','T22','T23','T24']},
         ].map(w=>`
-          <div class="wt-col" style="flex:1;min-width:120px">
-            <div class="wt-label">${w.w}</div>
+          <div class="col" style="flex:1;min-width:120px">
+            <div class="label">${w.w}</div>
             <div style="display:flex;flex-wrap:wrap;gap:4px">
-              ${w.tasks.map(t=>`<div class="node-box" style="padding:4px 7px;font-size:11px"><span class="wt-badge b-coral" style="margin:0">${t}</span></div>`).join('')}
+              ${w.tasks.map(t=>`<div class="node-box" style="padding:4px 7px;font-size:11px"><span class="badge b-coral" style="margin:0">${t}</span></div>`).join('')}
             </div>
             <div class="mono" style="margin-top:4px">8 concurrent tasks</div>
           </div>`).join('')}
       </div>
-      <div style="margin-top:10px;font-size:12px;color:#a0a09a">round 1 of ~40 · each task: read partition from S3 → filter rows → keep in memory</div>`
+      <div style="margin-top:10px;font-size:12px;color:#a0a09a">round 1 of ~40 · each task: read partition from S3 → filter → partial aggregate → write shuffle file</div>`
     },
     {
       label: "shuffle",
       title: "Stage boundary: the shuffle",
-      desc: "You call groupBy('customer_id').sum('amount'). Rows for the same customer_id are scattered across all 960 partitions on all 3 workers. Before Stage 2 can aggregate, every row must travel to the same worker as its customer_id. This is the shuffle.",
+      desc: "groupBy('customer_id') triggers the Exchange node from the Physical Plan. Rows for the same customer_id are scattered across all 960 partitions on all 3 workers. Each worker hashes customer_id % 200, writes shuffle files to local disk, then Stage 2 tasks fetch their bucket from all 3 workers over the network.",
       detail: "Spark hashes each customer_id modulo the number of output partitions (default 200). All rows with the same hash go to the same Executor. This produces network traffic proportional to your data size — on 120 GB that is significant.",
       diag: () => `
-      <div class="wt-row" style="align-items:flex-start;gap:12px">
-        <div class="wt-col" style="flex:1">
-          <div class="wt-label">Before shuffle (stage 1 output)</div>
+      <div class="row" style="align-items:flex-start;gap:12px">
+        <div class="col" style="flex:1">
+          <div class="label">Before shuffle (stage 1 output)</div>
           ${[1,2,3].map(w=>`
             <div class="node-box" style="margin-bottom:4px">
-              <span class="wt-badge b-coral">Worker ${w}</span>
+              <span class="badge b-coral">Worker ${w}</span>
               <span class="mono"> cust_A, cust_C, cust_B, cust_A, cust_D …</span>
             </div>`).join('')}
         </div>
         <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8px;gap:4px">
           <div style="font-size:18px;color:#a0a09a">⇄</div>
           <div style="font-size:11px;color:#dc2626;font-weight:500">shuffle</div>
-          <div style="font-size:11px;color:#a0a09a">network</div>
+          <div style="font-size:11px;color:#a0a09a">hash(id) % 200</div>
         </div>
-        <div class="wt-col" style="flex:1">
-          <div class="wt-label">After shuffle (stage 2 input)</div>
-          <div class="node-box" style="margin-bottom:4px"><span class="wt-badge b-teal">Worker 1</span><span class="mono"> all cust_A, all cust_D …</span></div>
-          <div class="node-box" style="margin-bottom:4px"><span class="wt-badge b-teal">Worker 2</span><span class="mono"> all cust_B, all cust_E …</span></div>
-          <div class="node-box"><span class="wt-badge b-teal">Worker 3</span><span class="mono"> all cust_C, all cust_F …</span></div>
+        <div class="col" style="flex:1">
+          <div class="label">After shuffle (stage 2 input)</div>
+          <div class="node-box" style="margin-bottom:4px"><span class="badge b-teal">Worker 1</span><span class="mono"> all cust_A, all cust_D …</span></div>
+          <div class="node-box" style="margin-bottom:4px"><span class="badge b-teal">Worker 2</span><span class="mono"> all cust_B, all cust_E …</span></div>
+          <div class="node-box"><span class="badge b-teal">Worker 3</span><span class="mono"> all cust_C, all cust_F …</span></div>
         </div>
       </div>
-      <div style="margin-top:10px;font-size:12px;color:#dc2626">stage 1 must fully complete before stage 2 starts — this is the stage boundary</div>`
+      <div style="margin-top:10px;font-size:12px;color:#dc2626">stage 1 must fully complete before stage 2 starts — this is the Exchange node from the physical plan becoming real</div>`
     },
     {
-      label: "stage2",
+      label: "stage 2",
       title: "Stage 2: aggregate — one task per output partition",
-      desc: "Spark creates 200 output partitions by default (spark.sql.shuffle.partitions). Stage 2 has 200 tasks. Each task reads its slice of the shuffled data from disk/memory and sums the amounts per customer_id. Results are small — one row per customer.",
-      detail: "200 tasks across 24 concurrent slots = ~9 rounds. The output is much smaller than the input — aggregation is a massive reduction. This result can then be collected to the Driver or written back to S3.",
+      desc: "Spark creates 200 output partitions (spark.sql.shuffle.partitions). Stage 2 has 200 tasks. Each task reads its shuffle bucket from all 3 workers, merges the partial aggregates from Stage 1, and produces one final row per customer_id. AQE may reduce the 200 down if buckets are small.",
+      detail: "200 tasks across 24 concurrent slots = ~9 rounds. The output is much smaller than the input — aggregation is a massive reduction. AQE inspects actual shuffle output size here and coalesces small partitions automatically.",
       diag: () => `
       <div style="margin-bottom:8px;font-size:12px;color:#a0a09a">200 output partitions, 24 concurrent tasks</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;max-width:500px">
@@ -1201,7 +1331,7 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
         <div style="font-size:12px;align-self:center;color:#a0a09a;padding:4px">… +176 more</div>
       </div>
       <div style="margin-top:12px">
-        <div class="wt-label">each task produces</div>
+        <div class="label">each task produces</div>
         <div class="node-box" style="display:inline-block;margin-top:4px">
           <span class="mono">customer_id | total_amount</span><br>
           <span class="mono">cust_A &nbsp;&nbsp;&nbsp; | 284,500.00</span><br>
@@ -1213,19 +1343,19 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
     {
       label: "result",
       title: "Job complete — result back to Driver or S3",
-      desc: "The 200 output partitions are either written to S3 as Parquet (df.write) — staying on the workers — or collected to the Driver (df.collect()) where they're assembled into a Python list. For 800M rows of transactions, you almost never collect — you write.",
+      desc: "The 200 output partitions are either written to S3 as Parquet (df.write) — staying on the workers — or collected to the Driver (df.collect()) where they are assembled into a Python list. For 800M rows of transactions, you almost never collect — you write.",
       detail: "collect() sends all data over the network to the Driver JVM and then to your Python process. On 800M rows that kills the Driver. write() keeps data distributed and streams it straight from Executors to S3 in parallel — much faster and safer.",
       diag: () => `
-      <div class="wt-row" style="gap:16px;align-items:flex-start">
-        <div class="wt-col" style="flex:1">
-          <div class="wt-label" style="color:#16a34a">✓ write() — recommended</div>
+      <div class="row" style="gap:16px;align-items:flex-start">
+        <div class="col" style="flex:1">
+          <div class="label" style="color:#16a34a">✓ write() — recommended</div>
           <div class="node-box" style="border-color:#16a34a">
             <div class="mono">df.write.parquet("s3://results/")</div>
             <div style="margin-top:6px;font-size:12px;color:#73726c">Workers stream directly to S3<br>Driver not involved<br>Parallelism preserved</div>
           </div>
         </div>
-        <div class="wt-col" style="flex:1">
-          <div class="wt-label" style="color:#dc2626">✗ collect() — dangerous at scale</div>
+        <div class="col" style="flex:1">
+          <div class="label" style="color:#dc2626">✗ collect() — dangerous at scale</div>
           <div class="node-box" style="border-color:#dc2626">
             <div class="mono">df.collect()</div>
             <div style="margin-top:6px;font-size:12px;color:#73726c">All data → Driver JVM → Python<br>Driver OOM on large tables<br>Kills the job</div>
@@ -1233,11 +1363,10 @@ DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"target/"</s
         </div>
       </div>
       <div style="margin-top:12px;padding:8px 12px;border-radius:6px;background:#f5f4ed;font-size:12px;color:#73726c">
-        Full job: 1 action → 1 job → 2 stages → 1160 tasks total (960 + 200)
+        Full picture: you write code → Catalyst builds DAG → optimises → physical plan → Driver splits into stages → tasks run on Kubernetes pods → result to S3
       </div>`
     }
   ];
-
   let cur = 0;
 
   function renderDots() {

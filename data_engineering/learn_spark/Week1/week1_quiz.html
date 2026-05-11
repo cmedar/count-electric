@@ -86,7 +86,7 @@
       <span class="deck-icon">⚡</span>
       <span>
         <span class="deck-name">Daily Quick Checks</span>
-        <span class="deck-sub">57 questions · Day 2–6 · conceptual checks</span>
+        <span class="deck-sub">69 questions · Day 2–7 · conceptual checks</span>
       </span>
     </button>
   </div>
@@ -253,7 +253,7 @@ const decks = {
   },
 
   daily: {
-    headerSub: "57 questions · Day 2–6 quick checks · conceptual understanding",
+    headerSub: "69 questions · Day 2–7 quick checks · conceptual understanding",
     passScore: null,
     topics: [
       // ── Day 2 ──────────────────────────────────────────────
@@ -736,6 +736,126 @@ const decks = {
             ],
             ans:1,
             exp:"<code>spark.sql()</code> always returns a standard DataFrame. You can chain any DataFrame operation on it — filter, join, withColumn, write. Mixing SQL and DataFrame API in the same job is completely normal and very common in production." }
+        ]
+      },
+      // ── Day 7 ──────────────────────────────────────────────
+      {
+        id:"d7-schema", label:"Day 7 · Schema & Reading", day:"Day 7",
+        questions:[
+          { q:"Why should you avoid inferSchema=true in a production pipeline reading a 120 GB file?",
+            opts:[
+              "It only works on CSV, not Parquet or JSON",
+              "It requires a full extra scan of the data to guess types — doubles read cost",
+              "It always infers everything as StringType",
+              "It is not supported in Spark 3.x"
+            ],
+            ans:1,
+            exp:"inferSchema does a full pass over the data before reading it — effectively reading the file twice. On large files this is expensive. Always define schema explicitly with StructType in production. inferSchema is fine for exploration in notebooks." },
+          { q:"What is the Spark equivalent of Oracle's CREATE TABLE with column definitions?",
+            opts:[
+              "df.printSchema()",
+              "spark.catalog.createTable()",
+              "StructType with StructField entries",
+              "spark.read.schema()"
+            ],
+            ans:2,
+            exp:"StructType + StructField is how you define column names, types, and nullability upfront — exactly like a CREATE TABLE DDL in Oracle. <code>printSchema()</code> is the equivalent of Oracle's DESC — it shows the structure, it doesn't define it." },
+          { q:"What is the Spark equivalent of Oracle's NOT NULL constraint?",
+            pre:`StructField("customer_id", StringType(), nullable=?)`,
+            opts:[
+              "nullable=True",
+              "nullable=False",
+              "nullable=None",
+              "There is no equivalent — Spark doesn't enforce nullability"
+            ],
+            ans:1,
+            exp:"nullable=False is the direct equivalent of NOT NULL in Oracle. nullable=True (the default) means the column accepts nulls. Important caveat: Spark does not enforce nullability at runtime — it is metadata only. Oracle would reject a null insert; Spark just records the intent." },
+          { q:"You read a CSV with mode PERMISSIVE (default). A row has the wrong number of columns. What happens?",
+            opts:[
+              "Spark throws an exception and stops",
+              "The row is silently dropped",
+              "The row is kept and the raw content is placed in a _corrupt_record column",
+              "The row is filled with nulls for missing columns"
+            ],
+            ans:2,
+            exp:"PERMISSIVE keeps bad rows and puts the raw string in a special <code>_corrupt_record</code> column. DROPMALFORMED silently drops them. FAILFAST throws immediately. In banking pipelines FAILFAST or DROPMALFORMED with logging is safer — PERMISSIVE can hide data quality problems." }
+        ]
+      },
+      {
+        id:"d7-write", label:"Day 7 · Write Modes & partitionBy", day:"Day 7",
+        questions:[
+          { q:"You run df.write.parquet('s3://output/') twice without specifying a mode. What happens on the second run?",
+            opts:[
+              "The data is appended to the existing files",
+              "The existing data is overwritten",
+              "Spark throws an error — the default mode is error",
+              "Spark skips the write silently"
+            ],
+            ans:2,
+            exp:"The default write mode is <code>error</code> (also called errorifexists). If the path already has data, Spark throws AnalysisException. This is a deliberate fail-safe. Always specify <code>.mode('overwrite')</code> or <code>.mode('append')</code> explicitly in production." },
+          { q:"You want to add new daily transactions to an existing Parquet dataset without touching historical data. Which mode?",
+            opts:["overwrite","append","ignore","error"],
+            ans:1,
+            exp:"<code>append</code> adds new files alongside existing ones — no existing data is touched or read. <code>overwrite</code> would delete the entire historical dataset first. This is the standard pattern for incremental loads in data pipelines." },
+          { q:"You use mode ignore and the output path already exists. What happens?",
+            opts:[
+              "Existing data is deleted and replaced",
+              "New data is appended",
+              "Nothing happens — the write is skipped silently and Spark reports success",
+              "Spark throws a warning but writes anyway"
+            ],
+            ans:2,
+            exp:"<code>ignore</code> is idempotent — if the path exists, do nothing and succeed. Useful for first-time initialisation jobs where you never want to overwrite if data already landed. Dangerous if you expect the write to always happen — it will silently skip." },
+          { q:"You write a 120 GB transactions table with partitionBy('txn_date'). A future query filters WHERE txn_date = '2024-03-15'. What does Spark do?",
+            opts:[
+              "Reads the full 120 GB then filters in memory",
+              "Uses partition pruning — reads only the txn_date=2024-03-15 directory",
+              "Throws an error — partitioned columns cannot be used in WHERE",
+              "Reads two adjacent partitions for safety"
+            ],
+            ans:1,
+            exp:"Partition pruning — Spark reads the S3 directory listing, sees <code>txn_date=2024-03-15/</code>, and fetches only that directory. All other dates are never touched. On a year of daily data that means reading 1/365th of the total. This is one of the biggest performance wins in data engineering." }
+        ]
+      },
+      {
+        id:"d7-partitions", label:"Day 7 · coalesce, repartition & cardinality", day:"Day 7",
+        questions:[
+          { q:"You have 200 partitions after a groupBy and want to write 8 output files to S3 as cheaply as possible. Which do you use?",
+            opts:[
+              "repartition(8) — always produces balanced output",
+              "coalesce(8) — merges local partitions with no shuffle",
+              "partitionBy(8) — controls output file count",
+              "repartition(8, col('origin')) — routes by key"
+            ],
+            ans:1,
+            exp:"<code>coalesce(8)</code> merges existing partitions on the same Executor with no network movement — much cheaper than repartition. The output may be slightly uneven in size but that rarely matters for S3 writes. Use repartition only when you need perfectly balanced partitions." },
+          { q:"You currently have 4 partitions and call coalesce(10). How many partitions do you get?",
+            opts:[
+              "10 — coalesce always sets the exact count",
+              "4 — coalesce cannot increase partitions",
+              "8 — coalesce doubles the count",
+              "Throws an error"
+            ],
+            ans:1,
+            exp:"coalesce can only reduce partitions — it works by merging, not splitting. To increase partitions you must use repartition(), which does a full shuffle and can go up or down. This is a classic exam trap." },
+          { q:"What does repartition(4, col('origin')) guarantee that repartition(4) does not?",
+            opts:[
+              "Exactly 4 output files on S3",
+              "All rows with the same origin value land in the same partition",
+              "Partitions are sorted by origin",
+              "No shuffle is performed"
+            ],
+            ans:1,
+            exp:"repartition by column uses hash partitioning on that column — same key, same partition, every time. This is the manual equivalent of what groupBy does automatically. repartition(4) without a column distributes rows randomly (round-robin). Both do a full shuffle." },
+          { q:"You write a customer transactions table with partitionBy('customer_id'). There are 5 million unique customers. What is the problem?",
+            opts:[
+              "Spark cannot partition by string columns",
+              "5 million tiny directories on S3 — listing overhead kills read performance",
+              "partitionBy only supports up to 1000 unique values",
+              "The data will not be evenly distributed"
+            ],
+            ans:1,
+            exp:"partitionBy on a high-cardinality column creates one directory per unique value. 5 million S3 directories means massive overhead just listing them before reading anything. partitionBy works best on low-cardinality columns: date, country, status, category — things with tens or hundreds of distinct values, not millions." }
         ]
       }
     ]

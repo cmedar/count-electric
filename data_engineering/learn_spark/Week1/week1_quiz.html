@@ -91,6 +91,9 @@
     </button>
   </div>
 
+  <div id="check-results-wrap" style="display:none;margin-bottom:1rem;text-align:right">
+    <button class="nav-btn" onclick="showScore(true)">Check Results</button>
+  </div>
   <div class="topic-bar" id="topic-bar"></div>
   <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
   <div id="quiz-area"><p class="placeholder">Select a topic above to begin.</p></div>
@@ -886,6 +889,7 @@ function switchDeck(id) {
   document.getElementById('header-sub').textContent = decks[id].headerSub;
   document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('deck-' + id).classList.add('active');
+  document.getElementById('check-results-wrap').style.display = id === 'daily' ? 'block' : 'none';
   renderAll();
 }
 
@@ -1007,35 +1011,49 @@ function handleAnswer(chosen) {
     });
     nav.appendChild(rb);
 
-    if (totalAnswered() === totalQuestions()) setTimeout(showFinalScore, 600);
+    if (totalAnswered() === totalQuestions()) setTimeout(() => showScore(false), 600);
   }
   updateProgress();
   renderTopicBar();
 }
 
-// ── Final score ─────────────────────────────────────────────────────────────
-function showFinalScore() {
-  const totalCorrect = Object.values(totals).reduce((s,t) => s + t.correct, 0);
-  const total = totalQuestions();
-  const pct = Math.round((totalCorrect / total) * 100);
-  const passScore = decks[activeDeck].passScore;
-  const pass = passScore !== null ? totalCorrect >= passScore : pct >= 80;
-  const passLabel = decks[activeDeck].passLabel || (pass ? '✓ Great work!' : 'Review and retry');
+// ── Score screen ─────────────────────────────────────────────────────────────
+function showScore(partial) {
+  const topics = decks[activeDeck].topics;
+  const shown = partial ? topics.filter(t => totals[t.id].seen > 0) : topics;
 
-  const topicBreakdown = decks[activeDeck].topics.map(t => {
+  if (partial && shown.length === 0) return; // nothing answered yet
+
+  const totalCorrect = shown.reduce((s,t) => s + totals[t.id].correct, 0);
+  const totalSeen    = shown.reduce((s,t) => s + (partial ? totals[t.id].seen : totals[t.id].total), 0);
+  const pct = totalSeen > 0 ? Math.round((totalCorrect / totalSeen) * 100) : 0;
+
+  let passClass = '', verdict;
+  if (partial) {
+    verdict = `${totalSeen} of ${totalQuestions()} questions answered &nbsp;·&nbsp; ${pct}% correct so far`;
+  } else {
+    const passScore = decks[activeDeck].passScore;
+    const pass = passScore !== null ? totalCorrect >= passScore : pct >= 80;
+    passClass = pass ? 'pass' : 'fail';
+    const passLabel = decks[activeDeck].passLabel || (pass ? 'Great work!' : 'Review and retry');
+    verdict = `${pct}% &nbsp;·&nbsp; ${pass ? '✓ ' + passLabel : passLabel}`;
+  }
+
+  const topicBreakdown = shown.map(t => {
     const s = totals[t.id];
-    const p = s.total > 0 ? Math.round((s.correct/s.total)*100) : 0;
+    const denom = partial ? s.seen : s.total;
+    const p = denom > 0 ? Math.round((s.correct / denom) * 100) : 0;
     return `<div class="result-row">
       <div class="r-label">${t.label}</div>
-      <div class="r-nums">${s.correct}/${s.total}</div>
+      <div class="r-nums">${s.correct}/${denom}</div>
       <div style="font-size:12px;color:${p>=80?'#065f46':'#991b1b'}">${p}%</div>
     </div>`;
   }).join('');
 
   document.getElementById('quiz-area').innerHTML = `
     <div class="card all-done">
-      <div class="score-big ${pass ? 'pass' : 'fail'}">${totalCorrect}/${total}</div>
-      <div class="score-label">${pct}% &nbsp;·&nbsp; ${pass ? '✓ ' + passLabel : passLabel}</div>
+      <div class="score-big ${passClass}">${totalCorrect}/${totalSeen}</div>
+      <div class="score-label">${verdict}</div>
       <div class="result-grid" style="margin-top:1.5rem">${topicBreakdown}</div>
       <button class="nav-btn" style="margin-top:1rem" onclick="resetAll()">Start over</button>
     </div>`;

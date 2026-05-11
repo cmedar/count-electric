@@ -48,20 +48,21 @@ jobs:
             CONFLICTING=$(echo "$BODY" | python3 -c "
           import sys, json, re
           data = json.load(sys.stdin)
-          match = re.search(r'Conflicting files: ([^.\\n]+)', data.get('message',''))
+          match = re.search(r'Conflicting files: ([^\n]+)', data.get('message',''))
           if match:
-              for f in match.group(1).split(','):
+              for f in match.group(1).rstrip('.').split(','):
                   print(f.strip())
           ")
 
             for FILE in $CONFLICTING; do
               FULL_PATH="${REPO_PATH}/${FILE}"
               echo "Discarding: $FULL_PATH"
-              curl -s -X POST \
+              DEL_RESP=$(curl -s -w "\n%{http_code}" -X POST \
                 -H "$AUTH" \
                 -H "Content-Type: application/json" \
                 -d "{\"path\": \"$FULL_PATH\", \"recursive\": false}" \
-                "$DELETE_URL"
+                "$DELETE_URL")
+              echo "Delete response: $DEL_RESP"
             done
 
             echo "Retrying sync..."

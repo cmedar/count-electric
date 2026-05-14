@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 2 Quiz — Advanced Transformations &amp; Delta Lake</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f9fb;color:#1a1a1a;min-height:100vh}
+  .header{background:#fff;border-bottom:1px solid #e8e8e4;padding:1.25rem 1.5rem}
+  .header h1{font-size:18px;font-weight:600;color:#1a1a1a}
+  .header p{font-size:13px;color:#666;margin-top:3px}
+  .container{max-width:780px;margin:0 auto;padding:1.5rem}
+  .deck-bar{display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap}
+  .deck-btn{flex:1;min-width:200px;display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid #e8e8e4;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s}
+  .deck-btn:hover{border-color:#93b4f8}
+  .deck-btn.active{border-color:#1a56db;background:#f0f4ff}
+  .deck-icon{font-size:22px;flex-shrink:0}
+  .deck-name{font-size:14px;font-weight:600;color:#1a1a1a;display:block}
+  .deck-sub{font-size:11px;color:#888;display:block;margin-top:1px}
+  .day-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#aaa;align-self:center;padding:0 4px;white-space:nowrap}
+  .day-divider{width:1px;background:#e8e8e4;align-self:stretch;margin:2px 0}
+  .topic-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.5rem;align-items:center}
+  .topic-btn{padding:7px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#555;cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+  .topic-btn:hover{border-color:#93b4f8;color:#1a56db}
+  .topic-btn.active{background:#1a56db;color:#fff;border-color:#1a56db}
+  .topic-btn .badge{display:inline-block;background:rgba(255,255,255,.25);border-radius:10px;padding:1px 6px;font-size:11px;margin-left:5px}
+  .topic-btn:not(.active) .badge{background:#f0f0ec;color:#888}
+  .card{background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+  .q-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+  .q-meta .topic-tag{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;background:#f5f4f0;padding:3px 8px;border-radius:4px}
+  .q-meta .q-num{font-size:13px;color:#aaa}
+  .question{font-size:15px;font-weight:500;line-height:1.6;margin-bottom:1.25rem}
+  .opt-btn{width:100%;text-align:left;padding:10px 14px;margin:5px 0;border:1px solid #e0e0dc;border-radius:8px;background:#fafaf8;color:#1a1a1a;cursor:pointer;font-size:13px;font-family:inherit;line-height:1.5;transition:all .12s}
+  .opt-btn:hover:not(.locked){background:#f0f0ec;border-color:#ccc}
+  .opt-btn.correct{background:#ecfdf5!important;border-color:#6ee7b7!important;color:#065f46!important}
+  .opt-btn.wrong{background:#fef2f2!important;border-color:#fca5a5!important;color:#991b1b!important}
+  .opt-btn.locked{pointer-events:none}
+  .opt-btn code{font-family:'Cascadia Code','Fira Code','Courier New',monospace;font-size:12px;background:rgba(0,0,0,.04);padding:1px 4px;border-radius:3px}
+  .explanation{margin-top:1rem;padding:12px 16px;border-left:3px solid #93b4f8;background:#f8faff;border-radius:0 8px 8px 0;font-size:13px;color:#444;line-height:1.7}
+  .explanation strong{color:#1a56db}
+  .nav{display:flex;gap:10px;margin-top:1.25rem;align-items:center}
+  .nav-btn{padding:8px 18px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;font-size:13px;font-family:inherit;transition:all .12s}
+  .nav-btn:hover{background:#f5f4f0}
+  .nav-btn.primary{background:#1a56db;color:#fff;border-color:#1a56db}
+  .nav-btn.primary:hover{background:#1649c0}
+  .score-pill{margin-left:auto;font-size:13px;color:#555}
+  .score-pill strong{color:#1a1a1a}
+  .placeholder{color:#999;font-size:15px;padding:2rem 0;text-align:center}
+  .progress-bar{height:3px;background:#e8e8e4;border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
+  .progress-fill{height:100%;background:#1a56db;border-radius:2px;transition:width .3s}
+  .all-done{text-align:center;padding:2rem}
+  .score-big{font-size:48px;font-weight:700;color:#1a56db;line-height:1}
+  .score-label{font-size:14px;color:#888;margin-top:.25rem}
+  .result-row{background:#f8f9fb;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+  .result-row .r-label{font-size:12px;color:#888;margin-bottom:.5rem}
+  .result-row .r-nums{font-size:28px;font-weight:600;color:#1a1a1a}
+  .result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:1rem 0}
+  .pass{color:#065f46} .fail{color:#991b1b}
+  .code-block{background:#f5f4ed;border-radius:6px;padding:10px 14px;font-size:12px;font-family:'Cascadia Code','Fira Code','Courier New',monospace;margin:0.75rem 0;overflow-x:auto;line-height:1.6;color:#222;white-space:pre}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Week 2 Quiz — Advanced Transformations &amp; Delta Lake</h1>
+  <p id="header-sub">18 questions &nbsp;·&nbsp; Target: 15 / 18 (80%) before moving to Week 3</p>
+</div>
+
+<div class="container">
+
+  <div class="deck-bar">
+    <button class="deck-btn active" id="deck-cert" onclick="switchDeck('cert')">
+      <span class="deck-icon">🎓</span>
+      <span>
+        <span class="deck-name">Certification Practice</span>
+        <span class="deck-sub">18 questions · exam-style · 80% to pass</span>
+      </span>
+    </button>
+    <button class="deck-btn" id="deck-daily" onclick="switchDeck('daily')">
+      <span class="deck-icon">⚡</span>
+      <span>
+        <span class="deck-name">Daily Quick Checks</span>
+        <span class="deck-sub">0 questions · added as days progress</span>
+      </span>
+    </button>
+  </div>
+
+  <div id="check-results-wrap" style="display:none;margin-bottom:1rem;text-align:right">
+    <button class="nav-btn" onclick="showScore(true)">Check Results</button>
+  </div>
+  <div class="topic-bar" id="topic-bar"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+  <div id="quiz-area"><p class="placeholder">Select a topic above to begin.</p></div>
+
+</div>
+
+<script>
+const decks = {
+
+  cert: {
+    headerSub: "18 questions · Target: 15 / 18 (80%) before moving to Week 3",
+    passScore: 15,
+    passLabel: "Ready for Week 3",
+    topics: [
+      {
+        id:"agg", label:"Aggregations",
+        questions:[
+          { q:"You call df.groupBy('dept').agg(collect_list('name'), collect_set('name')). Both columns contain the same source data. What is the difference in the results?",
+            opts:[
+              "collect_list and collect_set are identical — both deduplicate values",
+              "collect_list preserves duplicates and order; collect_set deduplicates (order not guaranteed)",
+              "collect_set preserves order; collect_list does not",
+              "collect_list returns a sorted array; collect_set returns an unsorted array"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> <code>collect_list</code> gathers all values including duplicates, preserving insertion order. <code>collect_set</code> deduplicates and the resulting order is undefined. Use <code>collect_set</code> when you need unique values; <code>collect_list</code> when duplicates matter." },
+          { q:"What is the output of rollup('region', 'dept') compared to groupBy('region', 'dept')?",
+            opts:[
+              "They produce identical output",
+              "rollup adds subtotal rows for each region and a grand total row with nulls in the grouped columns",
+              "rollup produces all possible combinations including dept-only subtotals",
+              "rollup is faster but skips null handling"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> <code>rollup</code> produces hierarchical subtotals: (region, dept) + (region, null) subtotals per region + (null, null) grand total. <code>groupBy</code> only produces the leaf-level rows. <code>cube</code> goes further — it produces all combinations including dept-only subtotals." },
+          { q:"You call pivot('country') without specifying a values list on a DataFrame with 10 million rows and 50 distinct countries. What is the performance concern?",
+            opts:[
+              "pivot() cannot handle more than 100 distinct values",
+              "Spark must scan the entire column to discover all distinct values before pivoting — expensive on large data",
+              "pivot() requires a sort, adding a wide transformation",
+              "pivot() with no values list defaults to alphabetical order, causing a shuffle"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> Without a values list, Spark performs a full scan of the pivot column to discover distinct values before executing the pivot. On large data this is expensive. Pass the list explicitly: <code>pivot('country', ['NL','DE','RO'])</code> to skip the scan." }
+        ]
+      },
+      {
+        id:"win", label:"Window Functions",
+        questions:[
+          { q:"Three transactions all have amount = 5000. A window is ordered by amount DESC. What does each function return for these tied rows?",
+            opts:[
+              "rank=1,1,1 · dense_rank=1,1,1 · row_number=1,1,1",
+              "rank=1,1,3 · dense_rank=1,1,2 · row_number=1,2,3",
+              "rank=1,2,3 · dense_rank=1,1,2 · row_number=1,1,1",
+              "rank=1,1,3 · dense_rank=1,1,1 · row_number=1,2,3"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> For three tied rows: <code>rank()</code> assigns 1,1,3 — tied rows share the same rank but the next rank skips. <code>dense_rank()</code> assigns 1,1,2 — no gaps. <code>row_number()</code> assigns 1,2,3 — always unique, arbitrary tiebreak." },
+          { q:"You write SUM(amount) OVER (PARTITION BY customer_id ORDER BY txn_date). What does adding ORDER BY change compared to omitting it?",
+            opts:[
+              "Nothing — ORDER BY inside OVER is ignored for aggregates",
+              "With ORDER BY: running cumulative sum up to the current row. Without ORDER BY: total sum for the whole partition on every row",
+              "With ORDER BY: Spark sorts the output DataFrame. Without ORDER BY: output is unsorted",
+              "ORDER BY inside OVER is only valid for ranking functions, not aggregates"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> With <code>ORDER BY</code> the default window frame is RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW — giving a running total. Without <code>ORDER BY</code> the frame expands to the whole partition — every row gets the same total. This is one of the most common window function exam traps." },
+          { q:"Which window function returns the value from 2 rows ahead of the current row within a partition?",
+            opts:["lag(col, 2)","lead(col, 2)","first_value(col, 2)","nth_value(col, 2)"],
+            ans:1,
+            exp:"<strong>B.</strong> <code>lead(col, n)</code> looks <em>forward</em> n rows. <code>lag(col, n)</code> looks <em>backward</em> n rows. <code>first_value</code> returns the first value in the window frame. <code>nth_value</code> returns the nth value — but lead/lag are the go-to for row-offset navigation." }
+        ]
+      },
+      {
+        id:"joins", label:"Joins",
+        questions:[
+          { q:"You LEFT SEMI JOIN transactions to a VIP customers list. What does the result contain?",
+            opts:[
+              "All columns from both tables, for matching rows only",
+              "Only left-table columns, for rows that have a match in the right table",
+              "Only left-table columns, for rows that do NOT have a match in the right table",
+              "All rows from the left table, with null-filled right columns for non-matches"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> A LEFT SEMI JOIN is the SQL equivalent of EXISTS — it filters the left table to only rows that have a match, but returns <em>only the left-table columns</em>. The right table contributes no columns to the output. This is different from an INNER JOIN which returns columns from both sides." },
+          { q:"You LEFT ANTI JOIN transactions to a blacklist table. What does the result contain?",
+            opts:[
+              "Rows from transactions that appear in the blacklist",
+              "Rows from transactions that do NOT appear in the blacklist",
+              "All rows from both tables with a flag column",
+              "Rows from the blacklist that have no match in transactions"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> LEFT ANTI JOIN is the SQL equivalent of NOT EXISTS — it keeps only rows from the left table that have <em>no</em> match in the right table. Use it to find orphaned records, unprocessed items, or rows missing from a reference set." },
+          { q:"Two DataFrames share a column named 'id'. Which join syntax avoids creating a duplicate 'id' column in the result?",
+            opts:[
+              "df1.join(df2, df1.id == df2.id)",
+              "df1.join(df2, \"id\")",
+              "df1.join(df2, [\"id\"])",
+              "Both B and C avoid duplication"
+            ],
+            ans:3,
+            exp:"<strong>D.</strong> Passing the join column as a string (<code>\"id\"</code>) or a list (<code>[\"id\"]</code>) tells Spark to treat it as a shared key — the result contains only one 'id' column. Passing a condition (<code>df1.id == df2.id</code>) treats them as independent columns — both are kept, causing ambiguity on downstream references." },
+          { q:"A null key in the left table never matches any row in the right table during a join. Which join type would you use to explicitly include those null-key rows in the result?",
+            opts:[
+              "INNER JOIN with a null check in the WHERE clause",
+              "LEFT JOIN — unmatched left rows including null-key rows are kept with nulls in right columns",
+              "FULL OUTER JOIN — null keys are placed in a special null partition",
+              "Use eqNullSafe (<=>) in the join condition to match nulls"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> In a LEFT JOIN, all left rows are kept regardless of whether they match — including rows where the key is null. The right columns are null for unmatched rows. Option D (<code>eqNullSafe</code>) would actually match null-to-null, which is usually not desired in joins." }
+        ]
+      },
+      {
+        id:"delta", label:"Delta Lake",
+        questions:[
+          { q:"A Delta table is at version 15. A colleague accidentally overwrites it. How do you restore it?",
+            opts:[
+              "Delta tables cannot be restored once overwritten",
+              "RESTORE TABLE my_table TO VERSION AS OF 14",
+              "SELECT * FROM my_table VERSION AS OF 14 then rewrite",
+              "You must restore from an S3 backup"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> <code>RESTORE TABLE my_table TO VERSION AS OF 14</code> rolls the table back to a previous version in one command — no manual rewrite needed. This is one of Delta Lake's core capabilities. Time travel also works with <code>TIMESTAMP AS OF '2024-03-15'</code>." },
+          { q:"What is the difference between OPTIMIZE and VACUUM on a Delta table?",
+            opts:[
+              "OPTIMIZE removes old file versions; VACUUM compacts small files",
+              "OPTIMIZE compacts small files into larger ones; VACUUM deletes old data files beyond the retention period",
+              "They are equivalent — both compact and clean up",
+              "OPTIMIZE is for managed tables; VACUUM is for external tables"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> <code>OPTIMIZE</code> compacts many small Parquet files into fewer larger files — reduces S3 listing overhead and improves scan performance. <code>VACUUM</code> physically deletes data files that are no longer referenced by the transaction log and are older than the retention threshold (default 7 days)." },
+          { q:"You run VACUUM my_table RETAIN 0 HOURS. What is required before this command will execute?",
+            opts:[
+              "The table must be empty",
+              "You must be the table owner",
+              "You must disable the safety check: SET spark.databricks.delta.retentionDurationCheck.enabled = false",
+              "VACUUM RETAIN 0 HOURS always runs without any precondition"
+            ],
+            ans:2,
+            exp:"<strong>C.</strong> Delta prevents accidental data loss by blocking VACUUM with retention below 7 days unless you explicitly disable the safety check. After disabling: <code>VACUUM my_table RETAIN 0 HOURS</code> removes all old file versions, making time travel to any previous version impossible." },
+          { q:"You run OPTIMIZE my_table ZORDER BY (country). A query filters WHERE country = 'NL'. What benefit does Z-ordering provide?",
+            opts:[
+              "It sorts the table rows alphabetically by country",
+              "It co-locates rows with the same country value in the same files, enabling data skipping — fewer files are read",
+              "It creates an index on country that Spark uses like a B-tree",
+              "It partitions the data by country, creating separate directories"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> Z-ordering co-locates data with similar values in the same files. Combined with Delta's file statistics, the query planner can skip files that don't contain 'NL' without reading them. This is <em>data skipping</em> — not a traditional index and not the same as <code>partitionBy</code>." },
+          { q:"Which command shows the full change history of a Delta table including who ran each operation and when?",
+            opts:[
+              "SELECT * FROM my_table HISTORY",
+              "DESCRIBE HISTORY my_table",
+              "SHOW CHANGELOG my_table",
+              "spark.table('my_table').history()"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> <code>DESCRIBE HISTORY my_table</code> returns each version's timestamp, operation (WRITE, MERGE, DELETE, OPTIMIZE), user, notebook, and cluster. In Python: <code>deltaTable.history().show()</code> via the DeltaTable API. <code>SELECT * FROM my_table HISTORY</code> is not valid SQL." }
+        ]
+      },
+      {
+        id:"udf", label:"UDFs & Caching",
+        questions:[
+          { q:"Why does a Python UDF typically run slower than an equivalent built-in Spark function?",
+            opts:[
+              "Python UDFs execute on the Driver, not on Executors",
+              "Spark must serialize each row from the JVM to a Python process and back, bypassing Catalyst optimization",
+              "Python UDFs are single-threaded and cannot use multiple cores",
+              "Python UDFs cannot be used on DataFrames — only on RDDs"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> Every row must cross the JVM↔Python boundary twice (serialize out, deserialize back). This serialization overhead is significant at scale. Additionally, Catalyst cannot optimize inside a UDF — it treats it as a black box. Pandas UDFs (vectorized) solve this by batching rows as Arrow-serialized columns." },
+          { q:"You call df.cache() and then immediately check the Spark UI Storage tab. No data appears. Why?",
+            opts:[
+              "cache() requires a subsequent persist() call to activate",
+              "cache() is lazy — it marks the DataFrame for caching but data is only cached when the first action is executed",
+              "The Spark UI only shows cache after 30 seconds",
+              "cache() only works on Delta tables"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> <code>cache()</code> (and <code>persist()</code>) are lazy — they add a caching instruction to the plan but nothing is materialized until an action triggers execution. Call <code>df.cache().count()</code> to force immediate materialization. This is the most common cache-related exam trap." },
+          { q:"Which storage level should you use when your cached DataFrame is too large to fit in Executor memory but you still need reasonable performance?",
+            opts:[
+              "MEMORY_ONLY — spill to disk is handled automatically",
+              "DISK_ONLY — always use disk for large DataFrames",
+              "MEMORY_AND_DISK — stores in memory, spills to disk when memory is insufficient",
+              "OFF_HEAP — uses off-heap memory which is always larger"
+            ],
+            ans:2,
+            exp:"<strong>C.</strong> <code>MEMORY_AND_DISK</code> (the default for <code>df.cache()</code>) stores partitions in Executor JVM heap memory. When memory fills up, it spills excess partitions to disk rather than dropping them. <code>MEMORY_ONLY</code> drops partitions that don't fit — they're recomputed on access, which can be expensive." }
+        ]
+      }
+    ]
+  },
+
+  daily: {
+    headerSub: "0 questions · added day by day as the week progresses",
+    passScore: null,
+    topics: []
+  }
+
+};
+
+// ── State ───────────────────────────────────────────────────────────────────
+let activeDeck = 'cert';
+let totals = {};
+let activeTopic = null;
+let activeQ = 0;
+let answered = false;
+
+function initTotals() {
+  totals = {};
+  decks[activeDeck].topics.forEach(t => {
+    totals[t.id] = {correct:0, seen:0, total:t.questions.length};
+  });
+}
+initTotals();
+
+// ── Deck switching ──────────────────────────────────────────────────────────
+function switchDeck(id) {
+  activeDeck = id;
+  activeTopic = null; activeQ = 0; answered = false;
+  initTotals();
+  document.getElementById('progress').style.width = '0%';
+  document.getElementById('header-sub').textContent = decks[id].headerSub;
+  document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('deck-' + id).classList.add('active');
+  document.getElementById('check-results-wrap').style.display = id === 'daily' ? 'block' : 'none';
+  renderAll();
+}
+
+// ── Progress ────────────────────────────────────────────────────────────────
+function totalAnswered() {
+  return Object.values(totals).reduce((s,t) => s + t.seen, 0);
+}
+function totalQuestions() {
+  return decks[activeDeck].topics.reduce((s,t) => s + t.questions.length, 0);
+}
+function updateProgress() {
+  const pct = (totalAnswered() / totalQuestions()) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+// ── Topic bar ───────────────────────────────────────────────────────────────
+function renderTopicBar() {
+  const bar = document.getElementById('topic-bar');
+  bar.innerHTML = '';
+  const topics = decks[activeDeck].topics;
+  if (topics.length === 0) {
+    bar.innerHTML = '<span style="font-size:13px;color:#aaa">Daily questions will appear here as days are added.</span>';
+    return;
+  }
+  let lastDay = null;
+  topics.forEach(t => {
+    if (t.day && t.day !== lastDay) {
+      if (lastDay !== null) {
+        const div = document.createElement('span');
+        div.className = 'day-divider';
+        bar.appendChild(div);
+      }
+      const lbl = document.createElement('span');
+      lbl.className = 'day-label';
+      lbl.textContent = t.day;
+      bar.appendChild(lbl);
+      lastDay = t.day;
+    }
+    const st = totals[t.id];
+    const btn = document.createElement('button');
+    btn.className = 'topic-btn' + (activeTopic === t.id ? ' active' : '');
+    const score = st.seen > 0 ? `<span class="badge">${st.correct}/${st.total}</span>` : '';
+    btn.innerHTML = t.label + score;
+    btn.addEventListener('click', () => {
+      activeTopic = t.id; activeQ = 0; answered = false; renderAll();
+    });
+    bar.appendChild(btn);
+  });
+}
+
+// ── Question ────────────────────────────────────────────────────────────────
+function renderQuestion() {
+  const area = document.getElementById('quiz-area');
+  if (!activeTopic) {
+    area.innerHTML = decks[activeDeck].topics.length === 0
+      ? '<p class="placeholder">No daily questions yet — check back after Day 9.</p>'
+      : '<p class="placeholder">Select a topic above to begin.</p>';
+    return;
+  }
+  const topic = decks[activeDeck].topics.find(t => t.id === activeTopic);
+  const q = topic.questions[activeQ];
+
+  area.innerHTML = `
+    <div class="card">
+      <div class="q-meta">
+        <span class="topic-tag">${topic.label}</span>
+        <span class="q-num">${activeQ + 1} / ${topic.questions.length}</span>
+      </div>
+      <p class="question">${q.q.replace(/\n/g,'<br>')}</p>
+      ${q.pre ? `<pre class="code-block">${q.pre}</pre>` : ''}
+      <div id="opts-wrap"></div>
+      <div id="exp-wrap"></div>
+      <div id="nav-wrap" class="nav"></div>
+    </div>`;
+
+  const wrap = document.getElementById('opts-wrap');
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    const label = String.fromCharCode(65 + i);
+    const text = q.code ? `<code>${opt}</code>` : opt;
+    btn.innerHTML = `<strong>${label}.</strong>&nbsp; ${text}`;
+    btn.addEventListener('click', () => handleAnswer(i));
+    wrap.appendChild(btn);
+  });
+}
+
+// ── Answer handling ─────────────────────────────────────────────────────────
+function handleAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+  const topic = decks[activeDeck].topics.find(t => t.id === activeTopic);
+  const q = topic.questions[activeQ];
+  const st = totals[activeTopic];
+  st.seen++;
+  if (chosen === q.ans) st.correct++;
+
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.classList.add('locked');
+    if (i === q.ans) b.classList.add('correct');
+    else if (i === chosen) b.classList.add('wrong');
+  });
+
+  document.getElementById('exp-wrap').innerHTML =
+    `<div class="explanation">${q.exp}</div>`;
+
+  const nav = document.getElementById('nav-wrap');
+  if (activeQ < topic.questions.length - 1) {
+    const nb = document.createElement('button');
+    nb.className = 'nav-btn primary'; nb.textContent = 'Next question';
+    nb.addEventListener('click', () => { activeQ++; answered = false; renderAll(); });
+    nav.appendChild(nb);
+  } else {
+    const s = totals[activeTopic];
+    const pct = Math.round((s.correct / s.total) * 100);
+    nav.innerHTML = `<span class="score-pill">Topic score: <strong>${s.correct}/${s.total} (${pct}%)</strong></span>`;
+    const rb = document.createElement('button');
+    rb.className = 'nav-btn'; rb.textContent = 'Retry topic';
+    rb.addEventListener('click', () => {
+      totals[activeTopic] = {correct:0, seen:0, total:topic.questions.length};
+      activeQ = 0; answered = false; renderAll();
+    });
+    nav.appendChild(rb);
+    if (totalAnswered() === totalQuestions()) setTimeout(() => showScore(false), 600);
+  }
+  updateProgress();
+  renderTopicBar();
+}
+
+// ── Score screen ─────────────────────────────────────────────────────────────
+function showScore(partial) {
+  const topics = decks[activeDeck].topics;
+  const shown = partial ? topics.filter(t => totals[t.id].seen > 0) : topics;
+  if (partial && shown.length === 0) return;
+
+  const totalCorrect = shown.reduce((s,t) => s + totals[t.id].correct, 0);
+  const totalSeen    = shown.reduce((s,t) => s + (partial ? totals[t.id].seen : totals[t.id].total), 0);
+  const pct = totalSeen > 0 ? Math.round((totalCorrect / totalSeen) * 100) : 0;
+
+  let passClass = '', verdict;
+  if (partial) {
+    verdict = `${totalSeen} of ${totalQuestions()} questions answered · ${pct}% correct so far`;
+  } else {
+    const passScore = decks[activeDeck].passScore;
+    const pass = passScore !== null ? totalCorrect >= passScore : pct >= 80;
+    passClass = pass ? 'pass' : 'fail';
+    const passLabel = decks[activeDeck].passLabel || (pass ? 'Great work!' : 'Review and retry');
+    verdict = `${pct}% · ${pass ? '✓ ' + passLabel : passLabel}`;
+  }
+
+  const topicBreakdown = shown.map(t => {
+    const s = totals[t.id];
+    const denom = partial ? s.seen : s.total;
+    const p = denom > 0 ? Math.round((s.correct / denom) * 100) : 0;
+    return `<div class="result-row">
+      <div class="r-label">${t.label}</div>
+      <div class="r-nums">${s.correct}/${denom}</div>
+      <div style="font-size:12px;color:${p>=80?'#065f46':'#991b1b'}">${p}%</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="card all-done">
+      <div class="score-big ${passClass}">${totalCorrect}/${totalSeen}</div>
+      <div class="score-label">${verdict}</div>
+      <div class="result-grid" style="margin-top:1.5rem">${topicBreakdown}</div>
+      <button class="nav-btn" style="margin-top:1rem" onclick="resetAll()">Start over</button>
+    </div>`;
+}
+
+function resetAll() {
+  initTotals();
+  activeTopic = null; activeQ = 0; answered = false;
+  document.getElementById('progress').style.width = '0%';
+  renderAll();
+}
+
+function renderAll() { renderTopicBar(); renderQuestion(); }
+renderAll();
+</script>
+</body>
+</html>

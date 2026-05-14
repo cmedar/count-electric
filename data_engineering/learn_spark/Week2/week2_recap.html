@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 2 Cheatsheet — Advanced Transformations &amp; Delta Lake</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4ed;
+    --bg2: #eae9e2;
+    --ink: #3d3d3a;
+    --muted: #73726c;
+    --accent: #e06c2b;
+    --blue: #2563eb;
+    --green: #16a34a;
+    --red: #dc2626;
+    --purple: #7c3aed;
+    --teal: #0891b2;
+    --border: #d4d2ca;
+    --code-bg: #282c34;
+    --code-fg: #abb2bf;
+    --tab-active: #e06c2b;
+    --color-border-secondary: #d4d2ca;
+    --color-text-info: #0891b2;
+    --color-border-info: #0891b2;
+    --color-background-info: #e0f7fa;
+    --color-background-primary: #fff;
+    --color-background-secondary: #f5f4ed;
+    --color-text-primary: #3d3d3a;
+    --color-text-secondary: #73726c;
+    --color-text-tertiary: #a0a09a;
+    --color-text-danger: #dc2626;
+    --color-text-success: #16a34a;
+    --color-border-success: #16a34a;
+    --color-border-danger: #dc2626;
+    --color-background-success: #f0fdf4;
+    --border-radius-md: 6px;
+    --font-mono: 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--ink);
+    color: #f5f4ed;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+  header p  { font-size: 0.82rem; color: #aaa; }
+  .badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Tab bar ───────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: var(--bg2);
+    border-bottom: 2px solid var(--border);
+    padding: 0 24px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--tab-active); border-bottom-color: var(--tab-active); }
+
+  /* ── Content ────────────────────────────────────────────── */
+  .tab-panel { display: none; padding: 28px 32px 48px; max-width: 960px; }
+  .tab-panel.active { display: block; }
+
+  h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--ink); }
+  h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 10px; color: var(--ink); }
+  p  { margin-bottom: 10px; color: var(--ink); font-size: 0.93rem; }
+
+  /* ── Cards ──────────────────────────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .card-body { font-size: 0.9rem; }
+  .card.accent { border-left: 4px solid var(--accent); }
+  .card.blue   { border-left: 4px solid var(--blue); }
+  .card.green  { border-left: 4px solid var(--green); }
+  .card.purple { border-left: 4px solid var(--purple); }
+  .card.teal   { border-left: 4px solid var(--teal); }
+  .card.red    { border-left: 4px solid var(--red); }
+
+  /* ── Comparison tables ──────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin-bottom: 24px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th {
+    background: var(--bg2);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--ink);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td { padding: 9px 14px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #fafaf7; }
+  .tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .tag-green  { background: #dcfce7; color: #15803d; }
+  .tag-red    { background: #fee2e2; color: #b91c1c; }
+  .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+  .tag-orange { background: #ffedd5; color: #c2410c; }
+  .tag-purple { background: #ede9fe; color: #6d28d9; }
+
+  /* ── Code blocks ────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+  .kw   { color: #c678dd; }
+  .fn   { color: #61afef; }
+  .str  { color: #98c379; }
+  .num  { color: #d19a66; }
+  .cm   { color: #5c6370; font-style: italic; }
+  .op   { color: #56b6c2; }
+  .cls  { color: #e5c07b; }
+
+  /* ── Callout boxes ──────────────────────────────────────── */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff7f0;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+  }
+  .callout.info  { border-color: var(--blue);   background: #eff6ff; }
+  .callout.warn  { border-color: #f59e0b;        background: #fffbeb; }
+  .callout.tip   { border-color: var(--green);   background: #f0fdf4; }
+  .callout strong { font-weight: 700; }
+
+  /* ── Exam tip pills ─────────────────────────────────────── */
+  .tip-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .tip-list li {
+    display: block;
+    position: relative;
+    padding: 10px 14px 10px 32px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .tip-list li::before {
+    content: "→";
+    position: absolute;
+    left: 12px;
+    top: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  /* ── Section quick-links ────────────────────────────────── */
+  .section-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+  .section-links a {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    transition: background 0.12s;
+  }
+  .section-links a:hover { background: #e0dfda; color: var(--ink); }
+
+  /* ── Memory anchor offset ───────────────────────────────── */
+  [id] { scroll-margin-top: 16px; }
+
+  /* ── Decision tree ──────────────────────────────────────── */
+  .dtree {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 16px 0 24px;
+    font-size: 0.88rem;
+  }
+  .dtree-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-left: 3px solid var(--border);
+    margin-left: 16px;
+  }
+  .dtree-row:first-child { border-left-color: var(--accent); margin-left: 0; }
+  .dtree-q {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-weight: 600;
+  }
+  .dtree-a {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+  }
+  .dtree-arrow { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Week 2 Cheatsheet — Advanced Transformations &amp; Delta Lake</h1>
+    <p>Aggregations · Window Functions · Joins · Delta Lake · UDFs &amp; Caching · Exam Tips</p>
+  </div>
+  <span class="badge">Databricks Certified DE Associate</span>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab-btn active" role="tab" onclick="switchTab('agg')">Aggregations</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('win')">Window Functions</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('join')">Joins</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('delta')">Delta Lake</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('udf')">UDFs &amp; Caching</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('tips')">Exam Tips</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 1: Aggregations
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel active" id="panel-agg">
+  <div class="section-links">
+    <a href="#agg-groupby">groupBy &amp; agg</a>
+    <a href="#agg-collect">collect_list / collect_set</a>
+    <a href="#agg-pivot">pivot</a>
+    <a href="#agg-rollup">rollup &amp; cube</a>
+    <a href="#agg-compare">Comparison table</a>
+  </div>
+
+  <h2>Aggregations</h2>
+
+  <h3 id="agg-groupby">groupBy().agg() — Core Functions</h3>
+  <pre><span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+
+df.<span class="fn">groupBy</span>(<span class="str">"dept"</span>, <span class="str">"region"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">count</span>(<span class="str">"*"</span>).<span class="fn">alias</span>(<span class="str">"row_count"</span>),
+    F.<span class="fn">sum</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"total_sal"</span>),
+    F.<span class="fn">avg</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"avg_sal"</span>),
+    F.<span class="fn">min</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"min_sal"</span>),
+    F.<span class="fn">max</span>(<span class="str">"salary"</span>).<span class="fn">alias</span>(<span class="str">"max_sal"</span>),
+    F.<span class="fn">countDistinct</span>(<span class="str">"role"</span>).<span class="fn">alias</span>(<span class="str">"unique_roles"</span>),
+)</pre>
+
+  <h3 id="agg-collect">collect_list and collect_set</h3>
+  <pre><span class="cm"># collect_list — preserves order of insertion, KEEPS duplicates</span>
+df.<span class="fn">groupBy</span>(<span class="str">"dept"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">collect_list</span>(<span class="str">"name"</span>).<span class="fn">alias</span>(<span class="str">"all_names"</span>)   <span class="cm"># ["Alice","Alice","Bob"]</span>
+)
+
+<span class="cm"># collect_set — DEDUPLICATES values, result order is NOT guaranteed</span>
+df.<span class="fn">groupBy</span>(<span class="str">"dept"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">collect_set</span>(<span class="str">"name"</span>).<span class="fn">alias</span>(<span class="str">"unique_names"</span>)  <span class="cm"># ["Alice","Bob"] — unordered</span>
+)</pre>
+
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>collect_list</code> preserves duplicates and retains insertion order. <code>collect_set</code> removes duplicates and returns an <em>unordered</em> set. Do not assume sorted output.
+  </div>
+
+  <h3 id="agg-pivot">pivot() — Rows to Columns</h3>
+  <pre><span class="cm"># Pivot: make category values into column headers</span>
+df.<span class="fn">groupBy</span>(<span class="str">"dept"</span>).<span class="fn">pivot</span>(<span class="str">"quarter"</span>).<span class="fn">sum</span>(<span class="str">"revenue"</span>)
+<span class="cm"># → columns: dept, Q1, Q2, Q3, Q4</span>
+
+<span class="cm"># Provide an explicit values list for better performance</span>
+<span class="cm"># (avoids a full scan to discover distinct values)</span>
+df.<span class="fn">groupBy</span>(<span class="str">"dept"</span>).<span class="fn">pivot</span>(<span class="str">"quarter"</span>, [<span class="str">"Q1"</span>,<span class="str">"Q2"</span>,<span class="str">"Q3"</span>,<span class="str">"Q4"</span>]).<span class="fn">sum</span>(<span class="str">"revenue"</span>)</pre>
+
+  <div class="callout warn">
+    <strong>Exam trap:</strong> Calling <code>pivot()</code> without specifying the values list forces Spark to do an extra pass over the entire column to find distinct values — expensive on large datasets. Always supply the list when you know it.
+  </div>
+
+  <h3 id="agg-rollup">rollup() and cube()</h3>
+  <pre><span class="cm"># rollup — left-to-right hierarchical subtotals</span>
+<span class="cm"># groupings: (year, quarter, region), (year, quarter), (year), ()</span>
+df.<span class="fn">rollup</span>(<span class="str">"year"</span>, <span class="str">"quarter"</span>, <span class="str">"region"</span>).<span class="fn">agg</span>(F.<span class="fn">sum</span>(<span class="str">"sales"</span>))
+
+<span class="cm"># cube — ALL possible grouping combinations</span>
+<span class="cm"># groupings: every subset of (year, quarter, region) including ()</span>
+df.<span class="fn">cube</span>(<span class="str">"year"</span>, <span class="str">"quarter"</span>, <span class="str">"region"</span>).<span class="fn">agg</span>(F.<span class="fn">sum</span>(<span class="str">"sales"</span>))
+
+<span class="cm"># NULL in result = "all values" for that dimension (the rollup/cube row)</span>
+<span class="cm"># Use grouping() to distinguish NULL-key rows from actual NULL data</span>
+df.<span class="fn">rollup</span>(<span class="str">"dept"</span>, <span class="str">"region"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">sum</span>(<span class="str">"salary"</span>),
+    F.<span class="fn">grouping</span>(<span class="str">"dept"</span>).<span class="fn">alias</span>(<span class="str">"is_total_dept"</span>)  <span class="cm"># 1 = subtotal row</span>
+)</pre>
+
+  <h3 id="agg-compare">groupBy vs rollup vs cube</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Function</th>
+          <th>What it produces</th>
+          <th>Grouping combinations (3 cols)</th>
+          <th>Use case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>groupBy(a,b,c)</code></td>
+          <td>One row per unique (a, b, c) combination</td>
+          <td><span class="tag tag-blue">1</span> — only (a,b,c)</td>
+          <td>Standard aggregation</td>
+        </tr>
+        <tr>
+          <td><code>rollup(a,b,c)</code></td>
+          <td>Subtotals from left: (a,b,c), (a,b), (a), ()</td>
+          <td><span class="tag tag-orange">4</span> — n+1 combos</td>
+          <td>Hierarchical drill-down (year → quarter → month)</td>
+        </tr>
+        <tr>
+          <td><code>cube(a,b,c)</code></td>
+          <td>Every subset including grand total</td>
+          <td><span class="tag tag-purple">8</span> — 2ⁿ combos</td>
+          <td>OLAP-style cross-tab reports</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout info">
+    <strong>Remember:</strong> In rollup/cube results, a <code>NULL</code> in a grouping column means "all values" (the subtotal). It does NOT mean the underlying data had a null key.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 2: Window Functions
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-win">
+  <div class="section-links">
+    <a href="#win-spec">WindowSpec</a>
+    <a href="#win-rank">Ranking</a>
+    <a href="#win-nav">Navigation</a>
+    <a href="#win-agg">Running Aggregates</a>
+    <a href="#win-ntile">ntile &amp; QUALIFY</a>
+    <a href="#win-frame">Default Frame</a>
+  </div>
+
+  <h2>Window Functions</h2>
+
+  <h3 id="win-spec">Defining a WindowSpec</h3>
+  <pre><span class="kw">from</span> pyspark.sql <span class="kw">import</span> Window
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+
+<span class="cm"># Basic spec: partition + order</span>
+w = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>).<span class="fn">orderBy</span>(F.<span class="fn">col</span>(<span class="str">"salary"</span>).<span class="fn">desc</span>())
+
+<span class="cm"># With explicit row frame</span>
+w_rows = (Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>)
+                .<span class="fn">orderBy</span>(<span class="str">"date"</span>)
+                .<span class="fn">rowsBetween</span>(Window.unboundedPreceding, Window.currentRow))
+
+<span class="cm"># With range frame (uses value-based bounds, not row counts)</span>
+w_range = (Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>)
+                 .<span class="fn">orderBy</span>(<span class="str">"salary"</span>)
+                 .<span class="fn">rangeBetween</span>(<span class="op">-</span><span class="num">1000</span>, <span class="num">1000</span>))
+
+df.<span class="fn">withColumn</span>(<span class="str">"rank"</span>, F.<span class="fn">rank</span>().<span class="fn">over</span>(w))</pre>
+
+  <h3 id="win-rank">Ranking Functions</h3>
+  <div class="card-grid">
+    <div class="card accent">
+      <div class="card-title">rank()</div>
+      <div class="card-body">Leaves gaps after ties.<br><strong>Ties at 1st → next is 3rd.</strong><br>Example: 1, 1, 3, 4, 4, 6</div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">dense_rank()</div>
+      <div class="card-body">No gaps after ties.<br><strong>Ties at 1st → next is 2nd.</strong><br>Example: 1, 1, 2, 3, 3, 4</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">row_number()</div>
+      <div class="card-body">Always unique, sequential.<br><strong>Ties broken arbitrarily.</strong><br>Example: 1, 2, 3, 4, 5, 6</div>
+    </div>
+    <div class="card purple">
+      <div class="card-title">percent_rank()</div>
+      <div class="card-body">Relative rank as a fraction 0.0–1.0.<br>Formula: (rank - 1) / (total rows - 1)</div>
+    </div>
+  </div>
+
+  <pre><span class="cm"># All three ranking functions — classic exam comparison</span>
+w = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>).<span class="fn">orderBy</span>(<span class="str">"salary"</span>)
+
+df.<span class="fn">withColumn</span>(<span class="str">"rnk"</span>,        F.<span class="fn">rank</span>().<span class="fn">over</span>(w)) \
+  .<span class="fn">withColumn</span>(<span class="str">"dense_rnk"</span>,  F.<span class="fn">dense_rank</span>().<span class="fn">over</span>(w)) \
+  .<span class="fn">withColumn</span>(<span class="str">"row_num"</span>,     F.<span class="fn">row_number</span>().<span class="fn">over</span>(w))</pre>
+
+  <h3 id="win-nav">Navigation Functions</h3>
+  <pre><span class="cm"># lead — look FORWARD n rows (default 1); null if no row exists</span>
+df.<span class="fn">withColumn</span>(<span class="str">"next_salary"</span>,  F.<span class="fn">lead</span>(<span class="str">"salary"</span>, <span class="num">1</span>).<span class="fn">over</span>(w))
+df.<span class="fn">withColumn</span>(<span class="str">"next2_salary"</span>, F.<span class="fn">lead</span>(<span class="str">"salary"</span>, <span class="num">2</span>, <span class="num">0</span>).<span class="fn">over</span>(w))  <span class="cm"># default=0</span>
+
+<span class="cm"># lag — look BACKWARD n rows (default 1); null if no row exists</span>
+df.<span class="fn">withColumn</span>(<span class="str">"prev_salary"</span>, F.<span class="fn">lag</span>(<span class="str">"salary"</span>, <span class="num">1</span>).<span class="fn">over</span>(w))
+
+<span class="cm"># first_value / last_value over window</span>
+df.<span class="fn">withColumn</span>(<span class="str">"first_sal"</span>, F.<span class="fn">first</span>(<span class="str">"salary"</span>).<span class="fn">over</span>(w))
+df.<span class="fn">withColumn</span>(<span class="str">"last_sal"</span>,  F.<span class="fn">last</span>(<span class="str">"salary"</span>).<span class="fn">over</span>(w_rows))</pre>
+
+  <div class="callout warn">
+    <strong>Watch out:</strong> <code>last_value</code> / <code>F.last()</code> with the default frame (RANGE up to current row) often gives unexpected results. Use an explicit <code>rowsBetween(unboundedPreceding, unboundedFollowing)</code> frame to get the true last value in the partition.
+  </div>
+
+  <h3 id="win-agg">Aggregate Functions Over a Window</h3>
+  <pre><span class="cm"># Running total (cumulative sum) — ORDER BY triggers default RANGE frame</span>
+w_cum = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>).<span class="fn">orderBy</span>(<span class="str">"date"</span>)
+df.<span class="fn">withColumn</span>(<span class="str">"running_total"</span>, F.<span class="fn">sum</span>(<span class="str">"sales"</span>).<span class="fn">over</span>(w_cum))
+
+<span class="cm"># Full partition sum (no ORDER BY = whole partition as frame)</span>
+w_full = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>)
+df.<span class="fn">withColumn</span>(<span class="str">"dept_total"</span>, F.<span class="fn">sum</span>(<span class="str">"sales"</span>).<span class="fn">over</span>(w_full))
+
+<span class="cm"># Running avg, count</span>
+df.<span class="fn">withColumn</span>(<span class="str">"running_avg"</span>, F.<span class="fn">avg</span>(<span class="str">"sales"</span>).<span class="fn">over</span>(w_cum))
+df.<span class="fn">withColumn</span>(<span class="str">"running_cnt"</span>, F.<span class="fn">count</span>(<span class="str">"*"</span>).<span class="fn">over</span>(w_cum))</pre>
+
+  <h3 id="win-ntile">ntile and QUALIFY</h3>
+  <pre><span class="cm"># ntile(n) — divides partition into n equal buckets (1-based)</span>
+w = Window.<span class="fn">partitionBy</span>(<span class="str">"dept"</span>).<span class="fn">orderBy</span>(<span class="str">"salary"</span>)
+df.<span class="fn">withColumn</span>(<span class="str">"quartile"</span>, F.<span class="fn">ntile</span>(<span class="num">4</span>).<span class="fn">over</span>(w))   <span class="cm"># 1, 2, 3, or 4</span>
+
+<span class="cm"># QUALIFY in Spark SQL — filter on window result without subquery</span>
+spark.<span class="fn">sql</span>(<span class="str">"""
+    SELECT dept, name, salary,
+           RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS rnk
+    FROM employees
+    QUALIFY rnk &lt;= 3
+"""</span>)</pre>
+
+  <h3 id="win-frame">Default Frame Rules</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>WindowSpec has ORDER BY?</th><th>Default frame</th><th>Effect</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-green">Yes</span></td>
+          <td><code>RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code></td>
+          <td>Running/cumulative calculation. Ties included in the "current row" range.</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-red">No</span></td>
+          <td><code>RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</code></td>
+          <td>Whole partition — every row sees the same aggregate value.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout info">
+    <strong>Key insight:</strong> Adding <code>ORDER BY</code> to a window spec changes the frame from "whole partition" to "up to current row". This is why <code>SUM OVER</code> without ORDER BY gives the total, but with ORDER BY gives a running total.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 3: Joins
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-join">
+  <div class="section-links">
+    <a href="#join-types">Join Types</a>
+    <a href="#join-semi-anti">Semi &amp; Anti</a>
+    <a href="#join-null">Null Keys</a>
+    <a href="#join-string-cond">String vs Condition</a>
+    <a href="#join-broadcast">Broadcast</a>
+    <a href="#join-skew">Skew &amp; AQE</a>
+  </div>
+
+  <h2>Joins</h2>
+
+  <h3 id="join-types">All Join Types</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Join type</th><th>how= value</th><th>What rows are kept</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Inner</td><td><code>"inner"</code></td><td>Rows with a match in both sides</td></tr>
+        <tr><td>Left (outer)</td><td><code>"left"</code> / <code>"left_outer"</code></td><td>All left rows; nulls for unmatched right columns</td></tr>
+        <tr><td>Right (outer)</td><td><code>"right"</code> / <code>"right_outer"</code></td><td>All right rows; nulls for unmatched left columns</td></tr>
+        <tr><td>Full outer</td><td><code>"full"</code> / <code>"outer"</code></td><td>All rows from both sides; nulls for missing matches</td></tr>
+        <tr><td>Left semi</td><td><code>"left_semi"</code></td><td>Left rows that <em>have</em> a match — <strong>only left columns returned</strong></td></tr>
+        <tr><td>Left anti</td><td><code>"left_anti"</code></td><td>Left rows that <em>do NOT</em> have a match — <strong>only left columns returned</strong></td></tr>
+        <tr><td>Cross</td><td><code>"cross"</code></td><td>Cartesian product — every combination of left × right rows</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="join-semi-anti">Semi and Anti Joins — SQL Equivalents</h3>
+  <pre><span class="cm"># LEFT SEMI — equivalent to EXISTS / IN</span>
+orders.<span class="fn">join</span>(customers, on=<span class="str">"customer_id"</span>, how=<span class="str">"left_semi"</span>)
+<span class="cm"># Returns only orders where a matching customer exists</span>
+<span class="cm"># Result has ONLY orders columns — no customer columns are added</span>
+
+<span class="cm"># LEFT ANTI — equivalent to NOT EXISTS / NOT IN</span>
+orders.<span class="fn">join</span>(customers, on=<span class="str">"customer_id"</span>, how=<span class="str">"left_anti"</span>)
+<span class="cm"># Returns orders with NO matching customer — orphaned records</span>
+<span class="cm"># Result has ONLY orders columns</span></pre>
+
+  <div class="card-grid">
+    <div class="card blue">
+      <div class="card-title">Left Semi = EXISTS</div>
+      <div class="card-body">Filters left side to rows that <em>have</em> a match. Only left-side columns in output. Like a filter, not a join — no column duplication.</div>
+    </div>
+    <div class="card red">
+      <div class="card-title">Left Anti = NOT EXISTS</div>
+      <div class="card-body">Keeps left rows that have <em>no</em> match. Perfect for finding orphaned records, unprocessed events, or data quality gaps.</div>
+    </div>
+  </div>
+
+  <h3 id="join-null">Null Key Behaviour</h3>
+  <div class="callout warn">
+    <strong>Critical:</strong> <code>null != null</code> in joins. Two rows with <code>null</code> in the join key will <em>never</em> match each other. This applies to all standard join types. If you need null-safe equality, use <code>df1.col.eqNullSafe(df2.col)</code> as the join condition.
+  </div>
+  <pre><span class="cm"># Null-safe join — nulls match nulls</span>
+df1.<span class="fn">join</span>(df2, df1[<span class="str">"key"</span>].<span class="fn">eqNullSafe</span>(df2[<span class="str">"key"</span>]), <span class="str">"inner"</span>)</pre>
+
+  <h3 id="join-string-cond">String Join vs Condition Join — Column Deduplication</h3>
+  <pre><span class="cm"># String join — keeps ONE "id" column (deduplicates)</span>
+result = df.<span class="fn">join</span>(other, <span class="str">"id"</span>)               <span class="cm"># or on=["id","dept"]</span>
+<span class="cm"># result.columns → [..., "id", ...]  — single id column</span>
+
+<span class="cm"># Condition join — keeps BOTH "id" columns, must drop manually</span>
+result = df.<span class="fn">join</span>(other, df[<span class="str">"id"</span>] <span class="op">==</span> other[<span class="str">"id"</span>])
+<span class="cm"># result.columns → [..., "id", ..., "id", ...]  — duplicate!</span>
+result = result.<span class="fn">drop</span>(other[<span class="str">"id"</span>])            <span class="cm"># must disambiguate</span></pre>
+
+  <div class="callout tip">
+    <strong>Best practice:</strong> Prefer string-column join syntax when both DataFrames share the same column name. Use condition syntax when you need to join on expressions or columns with different names.
+  </div>
+
+  <h3 id="join-broadcast">Broadcast Join</h3>
+  <pre><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> broadcast
+
+<span class="cm"># Force broadcast of a small DataFrame</span>
+large_df.<span class="fn">join</span>(<span class="fn">broadcast</span>(small_df), <span class="str">"id"</span>)
+
+<span class="cm"># Spark auto-broadcasts when table is below threshold</span>
+spark.conf.<span class="fn">get</span>(<span class="str">"spark.sql.autoBroadcastJoinThreshold"</span>)  <span class="cm"># default 10MB</span>
+
+<span class="cm"># Disable auto-broadcast</span>
+spark.conf.<span class="fn">set</span>(<span class="str">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="op">-</span><span class="num">1</span>)</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Strategy</th><th>When used</th><th>Shuffle?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Broadcast Hash Join</strong></td>
+          <td>One table fits in memory (&lt;10 MB by default)</td>
+          <td><span class="tag tag-green">No shuffle</span> — fastest</td>
+        </tr>
+        <tr>
+          <td><strong>Sort-Merge Join</strong></td>
+          <td>Both tables are large</td>
+          <td><span class="tag tag-red">Shuffle + sort</span> — expensive</td>
+        </tr>
+        <tr>
+          <td><strong>Shuffle Hash Join</strong></td>
+          <td>One side fits in memory but above broadcast threshold</td>
+          <td><span class="tag tag-orange">Shuffle, no sort</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="join-skew">Skewed Joins and AQE</h3>
+  <div class="callout info">
+    <strong>Adaptive Query Execution (AQE) — Spark 3.x:</strong> AQE automatically detects skewed partitions during a sort-merge join and splits the large partition into smaller pieces, then replicates the matching data from the other side. No manual repartition needed.
+  </div>
+  <pre><span class="cm"># AQE enabled by default in Databricks / Spark 3.x</span>
+spark.conf.<span class="fn">get</span>(<span class="str">"spark.sql.adaptive.enabled"</span>)            <span class="cm"># true</span>
+spark.conf.<span class="fn">get</span>(<span class="str">"spark.sql.adaptive.skewJoin.enabled"</span>)    <span class="cm"># true</span></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 4: Delta Lake
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-delta">
+  <div class="section-links">
+    <a href="#delta-props">Properties</a>
+    <a href="#delta-history">DESCRIBE HISTORY</a>
+    <a href="#delta-travel">Time Travel</a>
+    <a href="#delta-optimize">OPTIMIZE &amp; ZORDER</a>
+    <a href="#delta-vacuum">VACUUM</a>
+    <a href="#delta-merge">MERGE INTO</a>
+    <a href="#delta-vs">Delta vs Parquet</a>
+  </div>
+
+  <h2>Delta Lake</h2>
+
+  <h3 id="delta-props">Core Properties</h3>
+  <div class="card-grid">
+    <div class="card accent">
+      <div class="card-title">ACID Transactions</div>
+      <div class="card-body">Atomicity, Consistency, Isolation, Durability. Concurrent reads and writes are safe. No partial writes — either the whole operation commits or nothing changes.</div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">Time Travel</div>
+      <div class="card-body">Every write creates a new version in the transaction log. You can query any past version by version number or timestamp. Default retention: 30 days.</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">Schema Enforcement</div>
+      <div class="card-body">Delta rejects writes that don't match the table schema (schema-on-write). Use <code>mergeSchema</code> or <code>overwriteSchema</code> for intentional schema evolution.</div>
+    </div>
+    <div class="card purple">
+      <div class="card-title">Change Data Feed (CDF)</div>
+      <div class="card-body">Tracks row-level changes (inserts, updates, deletes) — enables incremental processing pipelines. Must be enabled: <code>delta.enableChangeDataFeed = true</code>.</div>
+    </div>
+  </div>
+
+  <h3 id="delta-history">DESCRIBE HISTORY</h3>
+  <pre><span class="cm">-- View full version history</span>
+<span class="kw">DESCRIBE HISTORY</span> employees;
+
+<span class="cm">-- Columns: version, timestamp, operation, operationParameters, userMetadata</span>
+<span class="cm">-- Example operations: WRITE, UPDATE, DELETE, MERGE, OPTIMIZE, VACUUM END</span></pre>
+
+  <h3 id="delta-travel">Time Travel — Querying Past Versions</h3>
+  <pre><span class="cm">-- SQL: by version number</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> employees <span class="kw">VERSION AS OF</span> <span class="num">3</span>;
+
+<span class="cm">-- SQL: by timestamp</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> employees <span class="kw">TIMESTAMP AS OF</span> <span class="str">'2024-01-15'</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> employees <span class="kw">TIMESTAMP AS OF</span> <span class="str">'2024-01-15 08:30:00'</span>;</pre>
+
+  <pre><span class="cm"># Python: by version</span>
+df = spark.read.<span class="fn">format</span>(<span class="str">"delta"</span>).<span class="fn">option</span>(<span class="str">"versionAsOf"</span>, <span class="num">3</span>).<span class="fn">load</span>(path)
+
+<span class="cm"># Python: by timestamp</span>
+df = spark.read.<span class="fn">format</span>(<span class="str">"delta"</span>).<span class="fn">option</span>(<span class="str">"timestampAsOf"</span>, <span class="str">"2024-01-15"</span>).<span class="fn">load</span>(path)</pre>
+
+  <div class="callout warn">
+    <strong>Exam trap:</strong> Time travel only works <em>within</em> the data retention window. After running VACUUM, old data files are deleted and older versions become inaccessible even though the transaction log still references them.
+  </div>
+
+  <h3 id="delta-optimize">OPTIMIZE and ZORDER BY</h3>
+  <pre><span class="cm">-- Compact small files into larger ones (reduces S3 list overhead)</span>
+<span class="kw">OPTIMIZE</span> employees;
+
+<span class="cm">-- ZORDER: co-locate related data for data skipping on filter queries</span>
+<span class="kw">OPTIMIZE</span> employees <span class="kw">ZORDER BY</span> (dept, hire_date);
+
+<span class="cm">-- After optimize, query: "WHERE dept = 'Eng'" skips most files entirely</span></pre>
+
+  <div class="card-grid">
+    <div class="card blue">
+      <div class="card-title">OPTIMIZE</div>
+      <div class="card-body">Compacts many small files (from frequent small writes) into larger Parquet files. Improves read performance. Does <em>not</em> delete old files — use VACUUM for that.</div>
+    </div>
+    <div class="card teal">
+      <div class="card-title">ZORDER BY</div>
+      <div class="card-body">Re-orders data within files by the specified column(s) to maximise data skipping. Only helps queries that <em>filter</em> on the Z-ordered column(s). Best for high-cardinality filter columns.</div>
+    </div>
+  </div>
+
+  <h3 id="delta-vacuum">VACUUM</h3>
+  <pre><span class="cm">-- Delete data files older than retention period (default 7 days / 168 hours)</span>
+<span class="kw">VACUUM</span> employees;
+
+<span class="cm">-- Specify a custom retention</span>
+<span class="kw">VACUUM</span> employees <span class="kw">RETAIN</span> <span class="num">30</span> <span class="kw">HOURS</span>;
+
+<span class="cm">-- DANGEROUS: delete everything except the current version</span>
+<span class="cm">-- Disables the safety check first</span>
+spark.conf.<span class="fn">set</span>(<span class="str">"spark.databricks.delta.retentionDurationCheck.enabled"</span>, <span class="str">"false"</span>)
+<span class="kw">VACUUM</span> employees <span class="kw">RETAIN</span> <span class="num">0</span> <span class="kw">HOURS</span>;</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Command</th><th>What it does to old files</th><th>Affects time travel?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>OPTIMIZE</code></td>
+          <td>Creates new compacted files; marks old small files as removed in log</td>
+          <td><span class="tag tag-orange">Old files kept</span> until VACUUM runs</td>
+        </tr>
+        <tr>
+          <td><code>VACUUM</code></td>
+          <td>Physically deletes data files beyond retention period from storage</td>
+          <td><span class="tag tag-red">Breaks time travel</span> for deleted versions</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="delta-merge">MERGE INTO (Upsert)</h3>
+  <pre><span class="kw">MERGE INTO</span> target t
+<span class="kw">USING</span> source s <span class="kw">ON</span> t.id <span class="op">=</span> s.id
+<span class="kw">WHEN MATCHED THEN</span>
+  <span class="kw">UPDATE SET</span> t.name <span class="op">=</span> s.name, t.salary <span class="op">=</span> s.salary
+<span class="kw">WHEN NOT MATCHED THEN</span>
+  <span class="kw">INSERT</span> (id, name, salary) <span class="kw">VALUES</span> (s.id, s.name, s.salary)
+<span class="kw">WHEN NOT MATCHED BY SOURCE THEN</span>   <span class="cm">-- Spark 3.4+ / Databricks</span>
+  <span class="kw">DELETE</span>;</pre>
+
+  <pre><span class="cm"># Python equivalent using DeltaTable</span>
+<span class="kw">from</span> delta.tables <span class="kw">import</span> DeltaTable
+
+target = DeltaTable.<span class="fn">forPath</span>(spark, <span class="str">"/path/to/target"</span>)
+target.<span class="fn">alias</span>(<span class="str">"t"</span>).<span class="fn">merge</span>(
+    source.<span class="fn">alias</span>(<span class="str">"s"</span>), <span class="str">"t.id = s.id"</span>
+).<span class="fn">whenMatchedUpdateAll</span>() \
+ .<span class="fn">whenNotMatchedInsertAll</span>() \
+ .<span class="fn">execute</span>()</pre>
+
+  <h3 id="delta-vs">Delta Lake vs Plain Parquet</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Feature</th><th>Parquet</th><th>Delta Lake</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ACID transactions</td><td><span class="tag tag-red">No</span></td><td><span class="tag tag-green">Yes</span> — via <code>_delta_log/</code></td></tr>
+        <tr><td>DML (UPDATE/DELETE/MERGE)</td><td><span class="tag tag-red">No</span></td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td>Time travel</td><td><span class="tag tag-red">No</span></td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td>Schema enforcement</td><td><span class="tag tag-red">No</span></td><td><span class="tag tag-green">Yes</span></td></tr>
+        <tr><td>Schema evolution</td><td>Manual</td><td><span class="tag tag-green">Yes</span> — mergeSchema/overwriteSchema</td></tr>
+        <tr><td>Transaction log</td><td>None</td><td><code>_delta_log/</code> directory of JSON + checkpoint files</td></tr>
+        <tr><td>Data skipping</td><td>Column stats in footer</td><td>Min/max stats per file in transaction log</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 5: UDFs & Caching
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-udf">
+  <div class="section-links">
+    <a href="#udf-basic">Python UDFs</a>
+    <a href="#udf-pitfalls">UDF Pitfalls</a>
+    <a href="#udf-pandas">Pandas UDFs</a>
+    <a href="#udf-cache">Caching &amp; Persist</a>
+  </div>
+
+  <h2>UDFs &amp; Caching</h2>
+
+  <h3 id="udf-basic">Defining and Using a Python UDF</h3>
+  <pre><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> udf
+<span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> StringType, IntegerType
+
+<span class="cm"># Method 1: decorator</span>
+<span class="op">@</span><span class="fn">udf</span>(returnType=StringType())
+<span class="kw">def</span> <span class="fn">clean_name</span>(name):
+    <span class="kw">if</span> name <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">return</span> <span class="kw">None</span>
+    <span class="kw">return</span> name.<span class="fn">strip</span>().<span class="fn">title</span>()
+
+df.<span class="fn">withColumn</span>(<span class="str">"clean"</span>, <span class="fn">clean_name</span>(F.<span class="fn">col</span>(<span class="str">"name"</span>)))
+
+<span class="cm"># Method 2: wrap an existing function</span>
+<span class="kw">def</span> <span class="fn">multiply</span>(x, y): <span class="kw">return</span> x * y
+mul_udf = <span class="fn">udf</span>(multiply, IntegerType())
+
+<span class="cm"># Method 3: register for use in spark.sql() strings</span>
+spark.udf.<span class="fn">register</span>(<span class="str">"clean_name"</span>, clean_name, StringType())
+spark.<span class="fn">sql</span>(<span class="str">"SELECT clean_name(name) FROM employees"</span>)</pre>
+
+  <h3 id="udf-pitfalls">UDF Pitfalls</h3>
+  <div class="card-grid">
+    <div class="card red">
+      <div class="card-title">Serialization overhead</div>
+      <div class="card-body">Each row is serialized from JVM (Java) to Python and back. For large DataFrames, this is a significant bottleneck. Prefer built-in functions (<code>F.*</code>) whenever possible.</div>
+    </div>
+    <div class="card red">
+      <div class="card-title">No Catalyst optimization</div>
+      <div class="card-body">Spark treats UDFs as black boxes — it cannot push predicates through or reorder them. The optimizer sees a UDF call and stops optimizing around it.</div>
+    </div>
+    <div class="card accent">
+      <div class="card-title">Null handling</div>
+      <div class="card-body">UDFs receive <code>None</code> for null values by default. If your function doesn't handle <code>None</code>, it will raise an exception at runtime. Always add null checks.</div>
+    </div>
+    <div class="card accent">
+      <div class="card-title">Return type required</div>
+      <div class="card-body">You <em>must</em> declare the return type. Without it Spark defaults to <code>StringType()</code> which may cause runtime errors or silent type coercions.</div>
+    </div>
+  </div>
+
+  <h3 id="udf-pandas">Pandas UDFs (Vectorized UDFs)</h3>
+  <pre><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> pandas_udf
+<span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> DoubleType
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="cm"># SCALAR — Series in, Series out (most common)</span>
+<span class="op">@</span><span class="fn">pandas_udf</span>(returnType=DoubleType())
+<span class="kw">def</span> <span class="fn">normalize</span>(s: pd.Series) -> pd.Series:
+    <span class="kw">return</span> (s - s.<span class="fn">mean</span>()) / s.<span class="fn">std</span>()
+
+df.<span class="fn">withColumn</span>(<span class="str">"norm_salary"</span>, <span class="fn">normalize</span>(F.<span class="fn">col</span>(<span class="str">"salary"</span>)))</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Pandas UDF type</th><th>Input → Output</th><th>Use case</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>SCALAR</strong></td>
+          <td>Series → Series</td>
+          <td>Column-level transformation (default type for <code>@pandas_udf</code>)</td>
+        </tr>
+        <tr>
+          <td><strong>GROUPED_MAP</strong></td>
+          <td>DataFrame → DataFrame</td>
+          <td>Complex group-level computation, arbitrary output schema per group</td>
+        </tr>
+        <tr>
+          <td><strong>GROUPED_AGG</strong></td>
+          <td>Series → scalar</td>
+          <td>Custom aggregation function over a group</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <strong>Why Pandas UDFs are faster:</strong> They use Apache Arrow to transfer data between JVM and Python in batches (columnar format), instead of row-by-row Python object serialization. Typically 10–100x faster than row-at-a-time Python UDFs. Requires <code>pyarrow</code> to be installed.
+  </div>
+
+  <h3 id="udf-cache">Caching and Persist</h3>
+  <pre><span class="cm"># cache() = persist(StorageLevel.MEMORY_AND_DISK)</span>
+df.<span class="fn">cache</span>()
+
+<span class="cm"># IMPORTANT: cache() is lazy — not materialized until first action</span>
+df.<span class="fn">cache</span>()
+df.<span class="fn">count</span>()  <span class="cm"># ← this triggers the actual caching</span>
+
+<span class="cm"># Explicit persist with storage level</span>
+<span class="kw">from</span> pyspark <span class="kw">import</span> StorageLevel
+df.<span class="fn">persist</span>(StorageLevel.MEMORY_ONLY)
+df.<span class="fn">persist</span>(StorageLevel.DISK_ONLY)
+df.<span class="fn">persist</span>(StorageLevel.OFF_HEAP)
+
+<span class="cm"># Release cache</span>
+df.<span class="fn">unpersist</span>()</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Storage Level</th><th>Memory</th><th>Disk</th><th>Serialized?</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>MEMORY_ONLY</code></td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-red">No</span></td><td>No</td><td>Fastest; drops partitions if OOM</td></tr>
+        <tr><td><code>MEMORY_AND_DISK</code></td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-green">Yes</span></td><td>No</td><td>Default for <code>cache()</code>; spills to disk</td></tr>
+        <tr><td><code>DISK_ONLY</code></td><td><span class="tag tag-red">No</span></td><td><span class="tag tag-green">Yes</span></td><td>Yes</td><td>Slowest; useful for very large DataFrames</td></tr>
+        <tr><td><code>MEMORY_ONLY_SER</code></td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-red">No</span></td><td>Yes</td><td>Smaller memory footprint; CPU cost to deserialize</td></tr>
+        <tr><td><code>OFF_HEAP</code></td><td>Off-heap</td><td><span class="tag tag-red">No</span></td><td>Yes</td><td>Avoids GC; requires off-heap config</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <strong>Exam trap:</strong> Calling <code>df.cache()</code> alone does <em>not</em> materialize the cache. It just marks the DataFrame to be cached. The cache is populated on the <em>first action</em> (e.g. <code>count()</code>, <code>collect()</code>, <code>show()</code>) that triggers computation.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 6: Exam Tips
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-tips">
+  <h2>Exam Tips — Week 2 Quick Reference</h2>
+
+  <h3>Ranking Functions — Classic Exam Question</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Function</th><th>Ties handled how</th><th>Next value after tie</th><th>Always unique?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>rank()</code></td>
+          <td>Same rank for ties</td>
+          <td><span class="tag tag-red">Skips (gap)</span> — 1, 1, 3</td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <td><code>dense_rank()</code></td>
+          <td>Same rank for ties</td>
+          <td><span class="tag tag-green">No gap</span> — 1, 1, 2</td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <td><code>row_number()</code></td>
+          <td>Arbitrary tiebreak</td>
+          <td><span class="tag tag-blue">Always sequential</span> — 1, 2, 3</td>
+          <td>Yes</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Decision Tree: Which Ranking Function?</h3>
+  <div class="dtree">
+    <div class="dtree-row" style="border-left:none;margin-left:0">
+      <div class="dtree-q">Need ranking with gaps on ties?</div>
+      <div class="dtree-arrow">→</div>
+      <div class="dtree-a"><code>rank()</code></div>
+    </div>
+    <div class="dtree-row">
+      <div class="dtree-q">Need ranking, no gaps, ties share rank?</div>
+      <div class="dtree-arrow">→</div>
+      <div class="dtree-a"><code>dense_rank()</code></div>
+    </div>
+    <div class="dtree-row">
+      <div class="dtree-q">Need unique sequential number always?</div>
+      <div class="dtree-arrow">→</div>
+      <div class="dtree-a"><code>row_number()</code></div>
+    </div>
+    <div class="dtree-row">
+      <div class="dtree-q">Need to assign bucket/percentile groups?</div>
+      <div class="dtree-arrow">→</div>
+      <div class="dtree-a"><code>ntile(n)</code></div>
+    </div>
+  </div>
+
+  <h3>Top Exam Traps</h3>
+  <ul class="tip-list">
+    <li><strong>Semi join keeps ONLY left columns.</strong> It acts like a filter, not a merge — you never get columns from the right-side DataFrame in a semi or anti join result.</li>
+    <li><strong>Anti join = "no match" rows.</strong> Use left_anti to find orphaned records, unprocessed events, or data quality violations (rows in table A with no corresponding row in table B).</li>
+    <li><strong>String join deduplicates the join key column.</strong> <code>df.join(other, "id")</code> → one "id" column. Condition join <code>df.id == other.id</code> → two "id" columns, must drop manually.</li>
+    <li><strong>VACUUM default retention = 7 days (168 hours).</strong> Time travel only works for versions whose underlying data files have not been vacuumed away.</li>
+    <li><strong>OPTIMIZE compacts files; it does NOT delete them.</strong> VACUUM physically deletes old data files. These are two separate operations — OPTIMIZE alone does not free storage.</li>
+    <li><strong>ZORDER only helps queries that filter on the Z-ordered column(s).</strong> It does nothing for queries that scan all rows or filter on unrelated columns.</li>
+    <li><strong>collect_list preserves duplicates; collect_set deduplicates.</strong> collect_set output order is non-deterministic.</li>
+    <li><strong>pivot() without a values list does an extra full scan.</strong> Always provide the values list when you know the distinct values upfront.</li>
+    <li><strong>cache() is lazy — first action triggers materialization.</strong> Calling cache() alone does nothing until an action (count, show, write) is triggered.</li>
+    <li><strong>Pandas UDF requires pyarrow.</strong> It's vectorized (batch), not row-by-row, so it's significantly faster than a regular Python UDF.</li>
+    <li><strong>AQE handles skewed joins automatically in Spark 3.x.</strong> No manual repartition needed for skewed sort-merge joins when AQE is enabled (default in Databricks).</li>
+    <li><strong>null != null in join conditions.</strong> Null keys never match. Use eqNullSafe() if you need null-safe equality in a join.</li>
+    <li><strong>Delta time travel: integer → VERSION AS OF; date string → TIMESTAMP AS OF.</strong></li>
+    <li><strong>Window ORDER BY changes the default frame.</strong> Without ORDER BY: whole partition. With ORDER BY: running (unbounded preceding to current row). This is why SUM OVER behaves differently with vs without ORDER BY.</li>
+    <li><strong>rollup() is hierarchical left-to-right.</strong> rollup(a, b, c) produces n+1 = 4 grouping combinations. cube() produces 2ⁿ = 8.</li>
+  </ul>
+
+  <h3>Delta Lake Quick Reference</h3>
+  <div class="card-grid">
+    <div class="card blue">
+      <div class="card-title">Table history retention</div>
+      <div class="card-body">Default <strong>30 days</strong> of transaction log history. Configurable via <code>delta.logRetentionDuration</code>.</div>
+    </div>
+    <div class="card accent">
+      <div class="card-title">VACUUM retention</div>
+      <div class="card-body">Default <strong>7 days (168 hours)</strong>. Cannot go below 7 days unless you disable the safety check.</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">Auto-broadcast threshold</div>
+      <div class="card-body">Default <strong>10 MB</strong>. Set to <code>-1</code> to disable auto-broadcast. Force with <code>broadcast(df)</code> hint.</div>
+    </div>
+    <div class="card purple">
+      <div class="card-title">_delta_log/</div>
+      <div class="card-body">Directory of JSON commit files + periodic checkpoint files. The source of truth for all Delta operations — what makes Parquet a Delta table.</div>
+    </div>
+  </div>
+
+  <h3>collect_list vs collect_set</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>collect_list</th><th>collect_set</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Duplicates</td><td><span class="tag tag-orange">Preserved</span></td><td><span class="tag tag-green">Removed</span></td></tr>
+        <tr><td>Order</td><td>Insertion order (within partition)</td><td><span class="tag tag-red">Non-deterministic</span></td></tr>
+        <tr><td>SQL equivalent</td><td><code>ARRAY_AGG</code></td><td><code>ARRAY_AGG(DISTINCT ...)</code></td></tr>
+        <tr><td>Result type</td><td>ArrayType</td><td>ArrayType (distinct values)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  function switchTab(id) {
+    const ids = ['agg','win','join','delta','udf','tips'];
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', ids[i] === id);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('active', p.id === 'panel-' + id);
+    });
+    if (window.frameElement) {
+      setTimeout(() => {
+        window.frameElement.style.height = (document.body.scrollHeight + 30) + 'px';
+      }, 50);
+    }
+  }
+</script>
+</body>
+</html>

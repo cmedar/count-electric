@@ -64,7 +64,7 @@
 
 <div class="header">
   <h1>Week 2 Quiz — Advanced Transformations &amp; Delta Lake</h1>
-  <p id="header-sub">18 questions &nbsp;·&nbsp; Target: 15 / 18 (80%) before moving to Week 3</p>
+  <p id="header-sub">24 questions &nbsp;·&nbsp; Target: 20 / 24 (80%) before moving to Week 3</p>
 </div>
 
 <div class="container">
@@ -74,7 +74,7 @@
       <span class="deck-icon">🎓</span>
       <span>
         <span class="deck-name">Certification Practice</span>
-        <span class="deck-sub">18 questions · exam-style · 80% to pass</span>
+        <span class="deck-sub">24 questions · exam-style · 80% to pass</span>
       </span>
     </button>
     <button class="deck-btn" id="deck-daily" onclick="switchDeck('daily')">
@@ -99,8 +99,8 @@
 const decks = {
 
   cert: {
-    headerSub: "18 questions · Target: 15 / 18 (80%) before moving to Week 3",
-    passScore: 15,
+    headerSub: "24 questions · Target: 20 / 24 (80%) before moving to Week 3",
+    passScore: 20,
     passLabel: "Ready for Week 3",
     topics: [
       {
@@ -132,7 +132,31 @@ const decks = {
               "pivot() with no values list defaults to alphabetical order, causing a shuffle"
             ],
             ans:1,
-            exp:"<strong>B.</strong> Without a values list, Spark performs a full scan of the pivot column to discover distinct values before executing the pivot. On large data this is expensive. Pass the list explicitly: <code>pivot('country', ['NL','DE','RO'])</code> to skip the scan." }
+            exp:"<strong>B.</strong> Without a values list, Spark performs a full scan of the pivot column to discover distinct values before executing the pivot. On large data this is expensive. Pass the list explicitly: <code>pivot('country', ['NL','DE','RO'])</code> to skip the scan." },
+          { q:"Which SQL keyword converts a table from long format (many rows, few columns) to wide format (fewer rows, many columns)?",
+            opts:["PIVOT","CONVERT","WHERE","TRANSFORM","SUM"],
+            ans:0,
+            exp:"<strong>A.</strong> The <code>PIVOT</code> clause rotates rows into columns: distinct values in one column become new column headers, with an aggregate (e.g. SUM) filling each cell. This is the standard long-to-wide transformation. CONVERT changes data types; WHERE filters rows; TRANSFORM applies a function to array elements; SUM is an aggregate, not a reshaping keyword." },
+          { q:"You need to count distinct values across a billion-row column. An exact count is not required — a close approximation is acceptable. Which function provides the best performance?",
+            opts:["count(distinct col(\'id\'))","countDistinct(col(\'id\'))","approx_count_distinct(col(\'id\'))","size(collect_set(col(\'id\')))"],
+            code:true,
+            ans:2,
+            exp:"<strong>C.</strong> <code>approx_count_distinct()</code> uses the HyperLogLog++ algorithm to estimate distinct counts with configurable relative error (default ~5%). It processes data in a single pass without shuffling all values to one partition. <code>countDistinct()</code> requires a full shuffle. <code>collect_set()</code> collects all values to the driver — dangerous on large datasets." },
+          { q:"A DataFrame has columns 'product' and 'revenue'. Which code correctly computes each product's total revenue, average revenue, and transaction count (with pyspark.sql.functions imported as F)?",
+            opts:[
+              "df.select(\'product\',\'revenue\').groupby(\'product\').agg(F.sum(\'revenue\'), F.alias(\'total_revenue\'), F.mean(\'revenue\').alias(\'transaction_count\'))",
+              "df.groupby(\'product\').agg(sum(\'revenue\'), avg(\'revenue\'), count(\'revenue\'))",
+              "df.select(\'product\',\'revenue\').groupby(\'product\').agg(F.sum(\'revenue\'), F.mean(\'revenue\'), F.count(\'revenue\'))",
+              "df.groupby(\'product\').agg(F.sum(\'revenue\'), F.mean(\'revenue\'), F.count(\'count\'))"
+            ],
+            code:true,
+            ans:2,
+            exp:"<strong>C.</strong> Option C correctly chains <code>groupby('product').agg()</code> with <code>F.sum</code>, <code>F.mean</code>, and <code>F.count</code> all applied to 'revenue'. Option A calls <code>F.alias()</code> on the module (not on a column). Option B uses <code>sum/avg/count</code> without importing them from F. Option D calls <code>F.count('count')</code> referencing a non-existent column." },
+          { q:"A DataFrame has an array column 'skills'. Some rows have empty arrays [] and some have null. You want to flatten arrays into individual rows but must keep rows with empty/null arrays as a single null row. Which function should you use?",
+            opts:["explode(col(\'skills\'))","array_contains(col(\'skills\'), \'sql\')","flatten(col(\'skills\'))","explode_outer(col(\'skills\'))"],
+            code:true,
+            ans:3,
+            exp:"<strong>D.</strong> <code>explode()</code> drops rows where the array is empty or null. <code>explode_outer()</code> preserves such rows, emitting a single row with null — the LEFT OUTER equivalent of explode. Critical when auditing records with missing array data. <code>array_contains</code> checks membership; <code>flatten</code> merges nested arrays without exploding." }
         ]
       },
       {
@@ -200,7 +224,16 @@ const decks = {
               "Use eqNullSafe (<=>) in the join condition to match nulls"
             ],
             ans:1,
-            exp:"<strong>B.</strong> In a LEFT JOIN, all left rows are kept regardless of whether they match — including rows where the key is null. The right columns are null for unmatched rows. Option D (<code>eqNullSafe</code>) would actually match null-to-null, which is usually not desired in joins." }
+            exp:"<strong>B.</strong> In a LEFT JOIN, all left rows are kept regardless of whether they match — including rows where the key is null. The right columns are null for unmatched rows. Option D (<code>eqNullSafe</code>) would actually match null-to-null, which is usually not desired in joins." },
+          { q:"A LEFT JOIN is run between a sales table (left) and favorite_stores table (right) on customer_id. Sales has rows for IDs 44, 23, 42. favorite_stores has matches for 44 → s1 and 42 → s2, but no row for ID 23. What does the result contain?",
+            opts:[
+              "Only the 2 matching rows (customers 44 and 42) are returned",
+              "All columns from both tables for every row combination",
+              "All 3 sales rows are returned; stores_id for customer 23 is NULL",
+              "Each sales row is repeated for every matching stores row"
+            ],
+            ans:2,
+            exp:"<strong>C.</strong> A LEFT JOIN returns ALL rows from the left table regardless of whether there is a match in the right table. For customer 23, which has no entry in favorite_stores, stores_id is NULL. Result: 3 rows — (44, s1), (23, NULL), (42, s2). Option A describes an INNER JOIN. Option D describes CROSS JOIN behavior." }
         ]
       },
       {
@@ -282,7 +315,16 @@ const decks = {
               "OFF_HEAP — uses off-heap memory which is always larger"
             ],
             ans:2,
-            exp:"<strong>C.</strong> <code>MEMORY_AND_DISK</code> (the default for <code>df.cache()</code>) stores partitions in Executor JVM heap memory. When memory fills up, it spills excess partitions to disk rather than dropping them. <code>MEMORY_ONLY</code> drops partitions that don't fit — they're recomputed on access, which can be expensive." }
+            exp:"<strong>C.</strong> <code>MEMORY_AND_DISK</code> (the default for <code>df.cache()</code>) stores partitions in Executor JVM heap memory. When memory fills up, it spills excess partitions to disk rather than dropping them. <code>MEMORY_ONLY</code> drops partitions that don't fit — they're recomputed on access, which can be expensive." },
+          { q:"A data engineer wrote a PySpark UDF that reads from a global list to look up values. A colleague warns this approach is problematic. Which statement best describes the best practice for UDFs in Spark?",
+            opts:[
+              "UDFs can safely read and write to global mutable state shared across tasks",
+              "UDFs should always return complex types such as structs or maps",
+              "Pandas UDFs have higher per-row overhead than row-at-a-time UDFs",
+              "UDFs should be stateless and free of side effects to ensure correct and reproducible results"
+            ],
+            ans:3,
+            exp:"<strong>D.</strong> UDFs run inside tasks distributed across multiple executors. Mutable global state is NOT shared between tasks — each Python worker gets its own process, so writes are lost and reads can be stale. Stateless, side-effect-free UDFs guarantee deterministic results regardless of task retries or partition ordering." }
         ]
       }
     ]

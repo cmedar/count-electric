@@ -433,7 +433,15 @@ const decks = {
           { q:"Which statement about collect_list and collect_set is true?",
             opts:["collect_list deduplicates; collect_set preserves duplicates","Both guarantee the order of collected elements","collect_set deduplicates; neither guarantees element order","collect_list guarantees insertion order; collect_set does not"],
             ans:2,
-            exp:"<strong>C.</strong> <code>collect_set</code> deduplicates values; <code>collect_list</code> preserves duplicates. Neither guarantees element order. Apply <code>array_sort()</code> on the result if order matters." }
+            exp:"<strong>C.</strong> <code>collect_set</code> deduplicates values; <code>collect_list</code> preserves duplicates. Neither guarantees element order. Apply <code>array_sort()</code> on the result if order matters." },
+          { q:"You want a boolean column: true if ANY element in the 'scores' Array<Integer> column is greater than 90, without exploding. Which is correct?",
+            opts:["F.array_contains(F.col('scores'), 90)","F.exists(F.col('scores'), lambda x: x > 90)","F.filter(F.col('scores'), lambda x: x > 90)","F.array_position(F.col('scores'), 90) > 0"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>exists()</code> returns a boolean — true if any element matches the condition. <code>array_contains</code> only tests for exact equality, not conditions like <code>&gt; 90</code>. <code>filter()</code> returns the filtered array, not a boolean. <code>array_position</code> tests for an exact value match." },
+          { q:"F.array_position(F.col('tags'), 'python') — what does it return when 'python' is NOT in the array?",
+            opts:["null","0","-1","False"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>array_position</code> returns <strong>0</strong> (not null) when the value is not found. Filter with <code>&gt; 0</code> to identify rows containing the value. Checking <code>.isNull()</code> will never match — a common trap." }
         ]
       },
       { id:"d11-json", label:"Day 11 · Maps & JSON", day:"Day 11",

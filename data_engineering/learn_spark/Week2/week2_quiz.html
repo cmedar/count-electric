@@ -81,7 +81,7 @@
       <span class="deck-icon">⚡</span>
       <span>
         <span class="deck-name">Daily Quick Checks</span>
-        <span class="deck-sub">0 questions · added as days progress</span>
+        <span class="deck-sub">22 questions · Days 8 – 11</span>
       </span>
     </button>
   </div>
@@ -331,9 +331,128 @@ const decks = {
   },
 
   daily: {
-    headerSub: "0 questions · added day by day as the week progresses",
+    headerSub: "22 questions · Days 8 – 11 · added as the week progresses",
     passScore: null,
-    topics: []
+    topics: [
+      { id:"d8-agg", label:"Day 8 · Aggregations", day:"Day 8",
+        questions:[
+          { q:"Which syntax correctly counts distinct customers in PySpark?",
+            opts:["F.count(F.col('customer_id').distinct())","F.countDistinct('customer_id')","F.count('customer_id').distinct()","F.distinct(F.count('customer_id'))"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>F.countDistinct('customer_id')</code> is correct. <code>F.count(F.col('x').distinct())</code> does NOT work — <code>.distinct()</code> is a DataFrame method, not a Column method. This is a very common exam trap." },
+          { q:"You need to keep only regions where total revenue > 100,000 after a groupBy. Which code is correct?",
+            opts:[
+              "df.filter(F.col('revenue') > 100_000).groupBy('region').agg(F.sum('revenue').alias('total'))",
+              "df.groupBy('region').agg(F.sum('revenue').alias('total')).filter(F.col('total') > 100_000)",
+              "df.groupBy('region').having(F.col('total') > 100_000)",
+              "df.groupBy('region').agg(F.sum('revenue').alias('total'), F.col('total') > 100_000)"
+            ],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> In the DataFrame API, SQL HAVING is expressed as <code>.filter()</code> applied <em>after</em> <code>.agg()</code>. Option A filters rows before grouping — that is a WHERE, not a HAVING. <code>.having()</code> does not exist as a DataFrame method." },
+          { q:"You add 5 more aggregate functions to an existing .agg() call. How many extra shuffles does this add?",
+            opts:["5 — one per function","1 — groupBy always triggers one","0 — all expressions in a single .agg() run in the same shuffle pass","Depends on whether AQE is enabled"],
+            ans:2,
+            exp:"<strong>C.</strong> All expressions inside a single <code>.agg()</code> call are computed in one shuffle pass. Adding more aggregate functions has essentially no performance cost. The exception is <code>countDistinct</code>, which may internally require a separate pass." },
+          { q:"You call df.groupBy('region').pivot('quarter').agg(F.sum('revenue')) on 100M rows. What is the performance concern and fix?",
+            opts:[
+              "No concern — pivot always scans distinct values efficiently",
+              "Spark runs an extra full scan of the quarter column to discover distinct values. Fix: pivot('quarter', ['Q1','Q2','Q3','Q4'])",
+              "pivot() only works on String columns — cast quarter to Integer first",
+              "The fix is to call distinct() on the pivot column before groupBy"
+            ],
+            ans:1,
+            exp:"<strong>B.</strong> Without the value list, Spark runs an extra full-scan job to discover distinct pivot values before executing the pivot. Providing the list explicitly eliminates this extra scan. Always supply the value list in production." }
+        ]
+      },
+      { id:"d9-joins", label:"Day 9 · Joins", day:"Day 9",
+        questions:[
+          { q:"df_a.join(df_b, df_a.id == df_b.id, 'inner').select('id') throws: AnalysisException: Reference 'id' is ambiguous. What is the simplest fix?",
+            opts:["Use .drop(df_b.id) after the join","Change to: df_a.join(df_b, on='id', how='inner')","Alias both DataFrames before joining","Switch to left_semi instead of inner"],
+            ans:1,
+            exp:"<strong>B.</strong> Using the string form <code>on='id'</code> is the simplest fix — Spark deduplicates the key column automatically in the result. Options A and C also work but require more code. <code>left_semi</code> changes the join semantics entirely." },
+          { q:"A job joins a 500GB fact table with a 2GB dimension table. autoBroadcastJoinThreshold is at the default 10MB. The job is slow. What is the most targeted fix?",
+            opts:["Increase spark.sql.shuffle.partitions to 800","Wrap the dimension table in broadcast(): df_fact.join(broadcast(df_dim), ...)","Switch to a left_semi join","Enable spark.sql.adaptive.enabled"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> The 2GB dimension is too large for auto-broadcast but small enough to broadcast manually. <code>broadcast()</code> eliminates the shuffle on the dimension side entirely. Increasing shuffle partitions does not help — the bottleneck is the shuffle itself, not partition count." },
+          { q:"Which join type can produce MORE output rows than either input table has?",
+            opts:["left_anti","left_semi","inner join on a non-unique key","full outer join on a unique key"],
+            ans:2,
+            exp:"<strong>C.</strong> An inner join on a non-unique key multiplies rows — if customer_id appears 5 times in orders and 3 times in events, you get 15 output rows for that customer. <code>left_anti</code> and <code>left_semi</code> never produce more rows than the left side." },
+          { q:"AQE is enabled. At runtime, Spark discovers the right side of a planned sort-merge join is only 8MB. What does AQE do?",
+            opts:["Nothing — the physical plan is fixed at compile time","Raises an AnalysisException asking for a broadcast hint","Dynamically switches the sort-merge join to a broadcast hash join","Coalesces shuffle partitions but keeps the sort-merge strategy"],
+            ans:2,
+            exp:"<strong>C.</strong> AQE re-optimizes the physical plan at runtime using actual partition statistics. If the right side falls below <code>autoBroadcastJoinThreshold</code> after pruning, AQE promotes the join to a broadcast hash join — even with no hint in your code." },
+          { q:"Which join physical strategy requires zero shuffle of either side?",
+            opts:["Sort-merge join","Shuffle hash join","Broadcast hash join","Shuffle replicate NL"],
+            ans:2,
+            exp:"<strong>C.</strong> Broadcast hash join sends the small table to every executor — no shuffling of either side. The large side streams through and probes the hash table. Sort-merge and shuffle hash both shuffle both sides. Shuffle replicate NL is the cross-join strategy." }
+        ]
+      },
+      { id:"d10-str", label:"Day 10 · Strings & Dates", day:"Day 10",
+        questions:[
+          { q:"F.regexp_extract(F.col('email'), r'@(.+)\\.', 1) returns what when there is no match?",
+            opts:["null","\"\" (empty string)","Throws a RuntimeException","Spark skips the row"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>regexp_extract</code> returns an empty string <code>''</code> on no match — not null. Filtering with <code>.isNull()</code> will not catch rows with no match. Filter with <code>.length() > 0</code> or <code>!= ''</code> instead." },
+          { q:"Which expression returns the first day of the current month?",
+            opts:["F.month(F.current_date())","F.date_trunc('month', F.current_date())","F.date_add(F.current_date(), -30)","F.dayofmonth(F.current_date())"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>date_trunc('month', d)</code> truncates to the first day of that month. <code>month()</code> returns just the integer month number. <code>date_add(d, -30)</code> is approximate and incorrect. <code>dayofmonth()</code> returns the day number within the month." },
+          { q:"F.datediff(F.lit('2024-03-01'), F.lit('2024-01-01')) returns what?",
+            opts:["-60","60","2","31"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>datediff(end, start)</code> = end − start in days. March 1 minus Jan 1 = 60 days. Argument order matters — <em>end comes first</em>. Reversing the arguments gives −60." },
+          { q:"F.dayofweek() on a date that is a Monday returns which integer?",
+            opts:["1","2","0","7"],
+            ans:1,
+            exp:"<strong>B.</strong> Spark's <code>dayofweek</code> uses 1=Sunday, 2=Monday … 7=Saturday. This is a common trap when porting from Oracle, where <code>TO_CHAR(d,'D')</code> is locale-dependent. Jan 1 2024 was a Monday → returns 2." },
+          { q:"F.split(F.col('path'), '/') on the string 'a/b/c' produces which column type?",
+            opts:["StringType with parts separated by commas","ArrayType(StringType): ['a', 'b', 'c']","Three separate columns","MapType with indices as keys"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>split()</code> returns an <code>ArrayType(StringType)</code> column. Access elements with <code>getItem(0)</code> (0-indexed) or <code>element_at(col, 1)</code> (1-indexed)." }
+        ]
+      },
+      { id:"d11-arr", label:"Day 11 · Arrays & Explode", day:"Day 11",
+        questions:[
+          { q:"F.element_at(F.col('scores'), 1) vs F.col('scores').getItem(0) — what is the difference?",
+            opts:["element_at is 1-indexed; getItem is 0-indexed — both return the first element","element_at is 0-indexed; getItem is 1-indexed — both return the first element","element_at returns the last element; getItem returns the first","They are completely identical — same result"],
+            code:true, ans:0,
+            exp:"<strong>A.</strong> Both return the first element but with different indexing conventions. <code>element_at</code> uses 1-based indexing (SQL convention); <code>getItem</code> uses 0-based (Python convention). <code>element_at(col, 2)</code> and <code>getItem(2)</code> return <em>different</em> elements — the most common indexing exam trap." },
+          { q:"A DataFrame has 100 rows. 5 rows have null for the array column 'tags'. After F.explode('tags'), how many of those 5 rows appear in the output?",
+            opts:["5 rows — each appears once with tag = null","0 rows — explode silently drops null/empty arrays","5 rows — each appears with an empty array []","Depends on spark.sql.ansi.enabled"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>explode()</code> drops rows where the array is null or empty entirely. Use <code>explode_outer()</code> to preserve them as a null row. This is the most tested explode behaviour — 0 rows remain from those 5." },
+          { q:"F.size(null_array_col) returns ___ . F.cardinality(null_array_col) returns ___.",
+            opts:["-1 and 0","0 and -1","null and null","Both return 0"],
+            code:true, ans:0,
+            exp:"<strong>A.</strong> <code>size(null)</code> = −1 and <code>cardinality(null)</code> = 0. Both exclude nulls correctly when filtering <code>> 0</code> (since −1 > 0 is false), but the actual return values differ — a favourite exam distractor." },
+          { q:"posexplode('tags') produces which output columns?",
+            opts:["One column: tag (the element only)","Two columns: pos (1-indexed) and tag","Two columns: pos (0-indexed) and tag","Three columns: id, pos, and tag"],
+            code:true, ans:2,
+            exp:"<strong>C.</strong> <code>posexplode</code> produces exactly two new columns: <code>pos</code> (0-indexed position) and the element. Other DataFrame columns do not appear automatically — bring them in via the surrounding <code>select()</code>." },
+          { q:"Which statement about collect_list and collect_set is true?",
+            opts:["collect_list deduplicates; collect_set preserves duplicates","Both guarantee the order of collected elements","collect_set deduplicates; neither guarantees element order","collect_list guarantees insertion order; collect_set does not"],
+            ans:2,
+            exp:"<strong>C.</strong> <code>collect_set</code> deduplicates values; <code>collect_list</code> preserves duplicates. Neither guarantees element order. Apply <code>array_sort()</code> on the result if order matters." }
+        ]
+      },
+      { id:"d11-json", label:"Day 11 · Maps & JSON", day:"Day 11",
+        questions:[
+          { q:"F.from_json(F.col('payload'), schema) — what happens when payload contains malformed JSON?",
+            opts:["Spark throws an AnalysisException at plan time","Spark throws a RuntimeException at execution time","The row is silently dropped from the output","The parsed column is set to null — no exception is thrown"],
+            code:true, ans:3,
+            exp:"<strong>D.</strong> <code>from_json</code> silently returns null for malformed input. The row is preserved; only the parsed column is null. Always filter <code>.isNotNull()</code> or route bad rows to a dead-letter table after parsing." },
+          { q:"You need to extract 2 fields ('user_id' and 'action') from a JSON string column in one pass. Which is most efficient?",
+            opts:["Two separate F.get_json_object() calls","F.json_tuple() in a single select","F.from_json() with a full StructType schema","F.schema_of_json() followed by F.from_json()"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>json_tuple()</code> extracts multiple named fields in a single pass without parsing the full document into a struct. For 2+ fields it beats multiple <code>get_json_object</code> calls and is cheaper than <code>from_json</code> with a full schema." },
+          { q:"F.map_concat(map1, map2) — both maps contain the key 'status'. Which value appears in the result?",
+            opts:["map1's value — left wins","map2's value — right wins","Both values are kept as an array","A DuplicateKeyException is thrown"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>map_concat</code> keeps the second (right) map's value on key conflict — right wins. Consistent with Python's <code>{**a, **b}</code> behavior. No exception is thrown." }
+        ]
+      }
+    ]
   }
 
 };

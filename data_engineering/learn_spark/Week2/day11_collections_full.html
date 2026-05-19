@@ -1,0 +1,340 @@
+
+<h2 class="sr-only">Day 11 reference and 10-question quiz covering Spark math functions, arrays, maps, structs, explode patterns, and JSON parsing. Click an answer to reveal the explanation immediately.</h2>
+<style>
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:transparent;color:var(--color-text-secondary);}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);}
+.panel{display:none;}.panel.active{display:block;}
+.cb{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin:8px 0;}
+.lbl{font-size:11px;color:var(--color-text-tertiary);margin:12px 0 3px;text-transform:uppercase;letter-spacing:0.05em;}
+.warn{background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;align-items:flex-start;}
+.tip{background:var(--color-background-info);color:var(--color-text-info);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;align-items:flex-start;}
+.ask-btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);margin-top:10px;margin-right:8px;}
+.ask-btn:hover{background:var(--color-background-secondary);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0;}
+.mc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;}
+.mc .lang{font-size:11px;color:var(--color-text-tertiary);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
+.frow{display:grid;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12.5px;align-items:start;}
+.prog-bar{height:4px;background:var(--color-border-tertiary);border-radius:2px;margin-bottom:1.5rem;}
+.prog-fill{height:4px;background:var(--color-text-info);border-radius:2px;transition:width 0.3s;}
+.qcard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;}
+.qnum{font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+.topic-pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-tertiary);margin-bottom:10px;margin-left:6px;}
+.qtxt{font-size:14px;font-weight:500;color:var(--color-text-primary);line-height:1.6;margin-bottom:14px;}
+.opt{padding:9px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:5px 0;font-size:13px;cursor:pointer;color:var(--color-text-secondary);line-height:1.5;transition:border-color 0.1s;}
+.opt:hover{background:var(--color-background-secondary);border-color:var(--color-border-secondary);}
+.opt.correct{border-color:var(--color-border-success)!important;background:var(--color-background-success)!important;color:var(--color-text-success)!important;cursor:default;}
+.opt.wrong{border-color:var(--color-border-danger)!important;background:var(--color-background-danger)!important;color:var(--color-text-danger)!important;cursor:default;}
+.opt.reveal{border-color:var(--color-border-success)!important;background:var(--color-background-success)!important;color:var(--color-text-success)!important;opacity:0.55;cursor:default;}
+.opt.done{cursor:default;}
+.expl{display:none;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:13px;color:var(--color-text-secondary);margin-top:12px;line-height:1.6;}
+.next-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.nbtn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 16px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);}
+.nbtn:hover{background:var(--color-background-secondary);}
+.sc{font-size:12px;color:var(--color-text-tertiary);}
+.final{text-align:center;padding:2rem 0;}
+.big{font-size:48px;font-weight:500;color:var(--color-text-primary);}
+.sub{font-size:14px;color:var(--color-text-secondary);margin-top:6px;}
+.brow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;}
+.btag{font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);white-space:nowrap;}
+</style>
+
+<div style="padding:1rem 0;">
+<div class="tabs">
+  <button class="tab active" onclick="show('arrays')">Arrays</button>
+  <button class="tab" onclick="show('explode')">Explode</button>
+  <button class="tab" onclick="show('maps')">Maps</button>
+  <button class="tab" onclick="show('json')">JSON</button>
+  <button class="tab" onclick="show('oracle')">Oracle mapping</button>
+  <button class="tab" onclick="show('quiz')">Quiz (10 q)</button>
+</div>
+
+<div id="arrays" class="panel active">
+  <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span><b>Indexing trap:</b> <code>getItem(0)</code> = first element (0-indexed). <code>element_at(col, 1)</code> = first element (1-indexed). <code>element_at(col, -1)</code> = last element.</span></div>
+  <div class="lbl">Key array functions</div>
+  <div id="arr-t"></div>
+  <div class="lbl">Set operations</div>
+  <div class="cb">F.array_distinct("tags")        # deduplicate
+F.array_union("a", "b")         # union, no duplicates
+F.array_intersect("a", "b")     # common elements
+F.array_except("a", "b")        # in a but not in b</div>
+  <div class="lbl">Math — quick reference</div>
+  <div class="cb">F.round("price", 2)   F.bround("price", 2)   # bround = banker's rounding
+F.ceil("x")          F.floor("x")          F.abs("x")
+F.greatest("a","b","c")   # max across columns (same row)
+F.least("a","b","c")      # min across columns (same row)</div>
+  <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span><code>F.round(2.5)</code> → 3. <code>F.bround(2.5)</code> → 2. Banker's rounding rounds to nearest even — use in financial pipelines.</span></div>
+  <button class="ask-btn" onclick="sendPrompt('Show me a worked Spark example combining array_contains, array_distinct, and collect_list in a real pipeline scenario')">Worked example ↗</button>
+</div>
+
+<div id="explode" class="panel">
+  <div class="lbl">Four variants — null behaviour is the exam question</div>
+  <div id="exp-t"></div>
+  <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span><code>explode</code> silently drops rows with null or empty arrays. <code>explode_outer</code> keeps them as a null row. If your row count is off after explode, this is why.</span></div>
+  <div class="lbl">posexplode — when you need the position index</div>
+  <div class="cb">df.select("id", F.posexplode("tags").alias("pos", "tag"))
+# pos is 0-indexed</div>
+  <div class="lbl">inline — explode an array of structs into columns</div>
+  <div class="cb">df.select(F.inline("events"))
+# events: Array&lt;Struct&lt;ts:timestamp, type:string&gt;&gt;
+# result: one row per struct → columns ts | type</div>
+  <div class="lbl">Inverse — re-collect rows back to array</div>
+  <div class="cb">df.groupBy("id").agg(
+  F.collect_list("tag"),   # keeps duplicates, order not guaranteed
+  F.collect_set("tag")     # deduplicates, order not guaranteed
+)</div>
+  <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Neither <code>collect_list</code> nor <code>collect_set</code> guarantees element order. Apply <code>F.array_sort()</code> afterwards if order matters.</span></div>
+  <button class="ask-btn" onclick="sendPrompt('When should I use explode vs higher-order functions like transform and filter? Give me a decision framework with examples.')">explode vs HOF ↗</button>
+</div>
+
+<div id="maps" class="panel">
+  <div class="lbl">Creation</div>
+  <div class="cb">F.create_map(F.lit("k1"), F.col("v1"), F.lit("k2"), F.col("v2"))
+F.map_from_arrays(F.col("keys_arr"), F.col("vals_arr"))
+F.map_from_entries(F.col("arr_of_structs"))  # [{key,value}] → map</div>
+  <div class="lbl">Access — three equivalent ways</div>
+  <div class="cb">F.col("meta")["status"]
+F.element_at(F.col("meta"), "status")
+F.col("meta").getItem("status")
+# All return null if key missing — no KeyError</div>
+  <div class="lbl">Inspection and manipulation</div>
+  <div id="map-t"></div>
+  <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i><span><code>map_concat(a, b)</code> merges two maps. On key conflict, the second map's value wins.</span></div>
+  <div class="lbl">Structs — creation and access</div>
+  <div class="cb">F.struct(F.col("lat"), F.col("lon")).alias("coordinates")
+F.col("coordinates.lat")           # dot notation
+F.col("address.city.district")     # nested access</div>
+</div>
+
+<div id="json" class="panel">
+  <div class="lbl">Which function to use?</div>
+  <div id="json-g"></div>
+  <div class="lbl">from_json — full parse into typed struct</div>
+  <div class="cb">schema = StructType([StructField("user_id", IntegerType()),
+                     StructField("action",  StringType())])
+df.withColumn("p", F.from_json("payload", schema)) \
+  .select("p.user_id", "p.action")</div>
+  <div class="lbl">get_json_object / json_tuple</div>
+  <div class="cb">F.get_json_object("payload", "$.address.city")   # one field, nested path
+df.select(F.json_tuple("payload", "user_id", "action")
+           .alias("uid", "act"))                   # multiple fields, one pass</div>
+  <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span><code>from_json</code> returns <b>null silently</b> on malformed JSON. Always filter nulls or route bad rows to a dead-letter table after parsing.</span></div>
+  <button class="ask-btn" onclick="sendPrompt('How do I handle malformed JSON in a Spark from_json pipeline — detect bad rows, route to dead-letter table, medallion architecture pattern')">Malformed JSON handling ↗</button>
+</div>
+
+<div id="oracle" class="panel">
+  <div class="lbl">Oracle / MSSQL → Spark collection mapping</div>
+  <div id="oracle-t"></div>
+</div>
+
+<div id="quiz" class="panel">
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:10%;"></div></div>
+  <div id="qbody"></div>
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const arrFns=[
+  ['F.size(c)','Count (-1 if null)'],
+  ['F.cardinality(c)','Count (0 if null)'],
+  ['F.array_contains(c,"x")','Boolean membership — equality only'],
+  ['F.array_position(c,"x")','1-indexed position; 0 if not found'],
+  ['F.array_sort(c)','Sort ascending, nulls last'],
+  ['F.flatten(c)','Array<Array<T>> → Array<T>'],
+  ['F.array_join(c,", ")','Array → delimited string'],
+  ['F.slice(c,1,3)','Sub-array: 1-indexed start, length'],
+  ['F.array_remove(c,"x")','Remove all occurrences of value'],
+  ['F.exists(c, lambda x:...)','True if any element matches condition'],
+  ['F.transform(c, lambda x:...)','Map function over every element'],
+  ['F.filter(c, lambda x:...)','Keep elements matching condition'],
+];
+const at=document.getElementById('arr-t');
+arrFns.forEach(r=>{at.innerHTML+=`<div class="frow" style="grid-template-columns:240px 1fr;"><code style="font-family:var(--font-mono);font-size:12px;">${r[0]}</code><span style="color:var(--color-text-secondary);">${r[1]}</span></div>`;});
+
+const expT=document.getElementById('exp-t');
+expT.innerHTML=`<div class="frow" style="grid-template-columns:160px 1fr 1fr;font-weight:500;color:var(--color-text-primary);border-bottom:0.5px solid var(--color-border-secondary);"><span>Function</span><span>Output</span><span>Null/empty array</span></div>`;
+[['explode(c)','One row per element','Row dropped'],
+ ['explode_outer(c)','One row per element','One null row kept'],
+ ['posexplode(c)','pos (0-idx) + element','Row dropped'],
+ ['inline(c)','Array&lt;Struct&gt; → columns','Row dropped'],
+].forEach(r=>{expT.innerHTML+=`<div class="frow" style="grid-template-columns:160px 1fr 1fr;"><code style="font-family:var(--font-mono);font-size:12px;">${r[0]}</code><span style="color:var(--color-text-secondary);">${r[1]}</span><span style="color:var(--color-text-tertiary);font-size:12px;">${r[2]}</span></div>`;});
+
+const mapFns=[
+  ['F.map_keys(c)','Array of all keys'],
+  ['F.map_values(c)','Array of all values'],
+  ['F.size(c)','Number of key-value pairs'],
+  ['F.map_contains_key(c,"k")','Boolean key existence (Spark 3.3+)'],
+  ['F.map_concat(a,b)','Merge maps — b wins on conflict'],
+  ['F.map_filter(c, lambda k,v:...)','Keep entries matching condition'],
+];
+const mt=document.getElementById('map-t');
+mapFns.forEach(r=>{mt.innerHTML+=`<div class="frow" style="grid-template-columns:240px 1fr;"><code style="font-family:var(--font-mono);font-size:12px;">${r[0]}</code><span style="color:var(--color-text-secondary);">${r[1]}</span></div>`;});
+
+const jg=document.getElementById('json-g');
+jg.innerHTML=`<div class="frow" style="grid-template-columns:1fr 140px 1fr;font-weight:500;color:var(--color-text-primary);border-bottom:0.5px solid var(--color-border-secondary);"><span>Need</span><span>Use</span><span>Note</span></div>`;
+[['1 field from JSON string','get_json_object','Fastest — no full parse'],
+ ['2+ fields from JSON string','json_tuple','One pass, multiple fields'],
+ ['Full typed struct','from_json','Explicit schema required'],
+ ['Struct/map/array → JSON string','to_json','Serialisation'],
+ ['Infer schema from sample','schema_of_json','Dev / exploration only'],
+].forEach(r=>{jg.innerHTML+=`<div class="frow" style="grid-template-columns:1fr 140px 1fr;"><span style="color:var(--color-text-secondary);">${r[0]}</span><code style="font-family:var(--font-mono);font-size:12px;">${r[1]}</code><span style="color:var(--color-text-tertiary);font-size:12px;">${r[2]}</span></div>`;});
+
+const oracleRows=[
+  ['TABLE with one row per item','explode() on Array column'],
+  ['NESTED TABLE / VARRAY','Array&lt;T&gt; column type'],
+  ['Associative array','Map&lt;K,V&gt; column type'],
+  ['Object type / row type','Struct&lt;field:type,...&gt;'],
+  ['LISTAGG(c, ",")', "F.array_join(F.collect_list(c), ',')"],
+  ['JSON_VALUE(doc, path)','F.get_json_object(col, "$.path")'],
+  ['JSON_TABLE(doc, ...)',"F.from_json(col, schema) + select fields"],
+  ['No direct equivalent','F.transform / F.filter / F.exists on arrays'],
+  ['No direct equivalent','F.map_from_arrays / F.map_keys / F.map_values'],
+];
+const ot=document.getElementById('oracle-t');
+ot.innerHTML=`<div class="frow" style="grid-template-columns:1fr 1fr;font-weight:500;color:var(--color-text-primary);border-bottom:0.5px solid var(--color-border-secondary);"><span>Oracle / MSSQL</span><span>Spark equivalent</span></div>`;
+oracleRows.forEach(r=>{ot.innerHTML+=`<div class="frow" style="grid-template-columns:1fr 1fr;"><code style="font-family:var(--font-mono);font-size:12px;color:var(--color-text-tertiary);">${r[0]}</code><code style="font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);">${r[1]}</code></div>`;});
+
+const Qs=[
+  {topic:'arrays',
+   q:'F.element_at(F.col("scores"), 1) vs F.col("scores").getItem(0) — what is the difference?',
+   opts:['element_at is 1-indexed; getItem is 0-indexed — both return the first element','element_at is 0-indexed; getItem is 1-indexed — both return the first element','element_at returns the last element; getItem returns the first','They are completely identical — same indexing, same result'],
+   ans:0,
+   ex:'Both return the first element but via different indexing conventions. element_at uses 1-based indexing (SQL convention); getItem uses 0-based (Python convention). The trap: element_at(col,2) and getItem(2) return DIFFERENT elements.'},
+  {topic:'explode',
+   q:'A DataFrame has 100 rows. 5 rows have null for the array column "tags". After F.explode("tags"), how many of those 5 rows appear in the output?',
+   opts:['5 rows — each appears once with tag = null','0 rows — explode silently drops them','5 rows — each appears with an empty array []','It depends on spark.sql.ansi.enabled'],
+   ans:1,
+   ex:'explode drops rows where the array is null or empty entirely. Use explode_outer to preserve them as null rows. This is the most common explode exam question — 0 rows remain.'},
+  {topic:'arrays',
+   q:'F.size(F.lit(None)) returns ___. F.cardinality(F.lit(None)) returns ___.',
+   opts:['-1 and 0','0 and -1','null and null','Both return 0'],
+   ans:0,
+   ex:'size(null) = -1. cardinality(null) = 0. Both correctly exclude nulls when you filter > 0 (since -1 > 0 is false), but the actual return values differ — a favourite exam distractor.'},
+  {topic:'arrays',
+   q:'You want a boolean column: true if ANY element in the "scores" Array<Integer> column is greater than 90, without exploding. Which is correct?',
+   opts:['F.array_contains(F.col("scores"), 90)','F.exists(F.col("scores"), lambda x: x > 90)','F.filter(F.col("scores"), lambda x: x > 90)','F.array_position(F.col("scores"), 90) > 0'],
+   ans:1,
+   ex:'exists() returns a boolean directly — true if any element matches the condition. array_contains only tests for exact equality, not conditions like > 90. filter() returns the filtered array, not a boolean. array_position tests for an exact value match.'},
+  {topic:'explode',
+   q:'posexplode("tags") produces which output columns?',
+   opts:['One column: tag (the element only)','Two columns: pos (1-indexed) and tag','Two columns: pos (0-indexed) and tag','Three columns: id, pos, and tag'],
+   ans:2,
+   ex:'posexplode produces exactly two columns: pos (0-indexed position) and the element. Other DataFrame columns do not appear automatically — you bring them in via the surrounding select() or withColumn().'},
+  {topic:'maps',
+   q:'F.map_concat(map1, map2) — both maps contain key "status". Which value is in the result?',
+   opts:['The value from map1 — left wins','The value from map2 — right wins','Both values are kept as an array','A DuplicateKeyException is thrown'],
+   ans:1,
+   ex:'map_concat keeps the second (right) map\'s value on key conflict — right wins. Consistent with Python\'s {**a, **b} behavior. No exception is thrown.'},
+  {topic:'json',
+   q:'F.from_json(F.col("payload"), schema) — what happens when payload contains malformed JSON?',
+   opts:['Spark throws an AnalysisException at plan time','Spark throws a RuntimeException at execution time','The row is silently dropped from the output','The column is set to null — no exception thrown'],
+   ans:3,
+   ex:'from_json silently returns null for malformed input. The row is preserved; only the parsed column is null. Always add .filter(F.col("parsed").isNotNull()) or route these rows to a dead-letter table.'},
+  {topic:'json',
+   q:'You need to extract 2 fields ("user_id" and "action") from a JSON string column. Which is most efficient?',
+   opts:['Two separate F.get_json_object() calls','F.json_tuple() in a single select','F.from_json() with a full StructType schema','F.schema_of_json() followed by F.from_json()'],
+   ans:1,
+   ex:'json_tuple extracts multiple named fields in a single pass without parsing the full document into a struct. For 2+ fields it beats multiple get_json_object calls and is cheaper than from_json with a full schema definition.'},
+  {topic:'arrays',
+   q:'F.array_position(F.col("tags"), "python") — what does it return when "python" is NOT in the array?',
+   opts:['null','0','-1','False'],
+   ans:1,
+   ex:'array_position returns 0 (not null) when the value is not found. This means filtering array_position > 0 correctly identifies rows containing the value. Checking isNull() will never match — another common trap.'},
+  {topic:'explode',
+   q:'Which statement about collect_list and collect_set is true?',
+   opts:['collect_list deduplicates; collect_set preserves duplicates','Both guarantee the order of collected elements','collect_set deduplicates; neither guarantees order','collect_list guarantees insertion order; collect_set does not'],
+   ans:2,
+   ex:'collect_set deduplicates values; collect_list preserves duplicates. Neither guarantees element order — this trips up many candidates. If order matters, apply array_sort() on the result.'},
+];
+
+let cur=0, score=0, answered=false, results=[];
+
+function renderQ(){
+  document.getElementById('prog').style.width=(((cur+1)/Qs.length)*100)+'%';
+  const q=Qs[cur];
+  let html=`<div class="qcard">
+    <div class="qnum">Question ${cur+1} of ${Qs.length} &nbsp;·&nbsp; <span style="text-transform:none;letter-spacing:0;">${q.topic}</span><span style="font-size:12px;color:var(--color-text-tertiary);"> · score: ${score}</span></div>
+    <div class="qtxt">${q.q}</div>
+    <div id="opts">`;
+  q.opts.forEach((o,i)=>{
+    html+=`<div class="opt" id="opt-${i}" onclick="pick(${i})">${o}</div>`;
+  });
+  html+=`</div><div class="expl" id="expl"></div><div class="next-row" id="nrow" style="display:none;">`;
+  if(cur<Qs.length-1){
+    html+=`<button class="nbtn" onclick="nextQ()">Next →</button>`;
+  } else {
+    html+=`<button class="nbtn" onclick="showFinal()">See results ↗</button>`;
+  }
+  html+=`</div></div>`;
+  document.getElementById('qbody').innerHTML=html;
+  answered=false;
+}
+
+function pick(i){
+  if(answered) return;
+  answered=true;
+  const q=Qs[cur];
+  const correct=i===q.ans;
+  if(correct) score++;
+  results.push({topic:q.topic, correct});
+  q.opts.forEach((_,j)=>{
+    const el=document.getElementById(`opt-${j}`);
+    el.classList.add('done');
+    if(j===q.ans && j===i) el.classList.add('correct');
+    else if(j===i && !correct) el.classList.add('wrong');
+    else if(j===q.ans) el.classList.add('reveal');
+  });
+  const ex=document.getElementById('expl');
+  ex.style.display='block';
+  ex.textContent=q.ex;
+  document.getElementById('nrow').style.display='flex';
+}
+
+function nextQ(){ cur++; renderQ(); }
+
+function showFinal(){
+  const pct=Math.round(score/Qs.length*100);
+  const verdict=pct===100?'Perfect — Day 12 awaits.':pct>=80?'Strong. Check any misses below.':pct>=60?'Decent — review the explode and array tabs.':'Revisit explode patterns and array access sections.';
+  const byTopic={};
+  results.forEach(r=>{
+    if(!byTopic[r.topic]) byTopic[r.topic]={c:0,t:0};
+    byTopic[r.topic].t++;
+    if(r.correct) byTopic[r.topic].c++;
+  });
+  let topicRows='';
+  Object.entries(byTopic).forEach(([t,v])=>{
+    const ok=v.c===v.t;
+    topicRows+=`<div class="brow">
+      <span style="flex:1;color:var(--color-text-secondary);">${t}</span>
+      <span class="btag" style="background:var(--color-background-${ok?'success':'warning'});color:var(--color-text-${ok?'success':'warning'});">${v.c}/${v.t}</span>
+    </div>`;
+  });
+  const breakdown=results.map((r,i)=>`<div class="brow">
+    <span style="font-size:12px;color:var(--color-text-tertiary);min-width:24px;">Q${i+1}</span>
+    <span style="flex:1;color:var(--color-text-secondary);font-size:13px;">${Qs[i].q.substring(0,60)}…</span>
+    <span class="btag" style="background:var(--color-background-${r.correct?'success':'danger'});color:var(--color-text-${r.correct?'success':'danger'});">${r.correct?'correct':'wrong'}</span>
+  </div>`).join('');
+  document.getElementById('qbody').innerHTML=`<div class="final">
+    <div class="big">${score}/${Qs.length}</div>
+    <div class="sub">${pct}% · ${verdict}</div>
+    <div style="margin:1.5rem 0 0.5rem;text-align:left;font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">By topic</div>
+    ${topicRows}
+    <div style="margin:1.5rem 0 0.5rem;text-align:left;font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">Question breakdown</div>
+    ${breakdown}
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:1.5rem;flex-wrap:wrap;">
+      <button class="nbtn" onclick="cur=0;score=0;answered=false;results=[];renderQ()">Retry ↗</button>
+      <button class="nbtn" onclick="sendPrompt('Teach me Day 12: Spark UDFs — Python UDFs, Pandas vectorized UDFs, SQL registration, Catalyst impact, when to avoid. Senior DE background.')">Day 12 ↗</button>
+    </div>
+  </div>`;
+  document.getElementById('prog').style.width='100%';
+}
+
+renderQ();
+</script>

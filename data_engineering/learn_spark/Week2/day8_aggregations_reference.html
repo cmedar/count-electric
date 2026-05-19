@@ -1,0 +1,206 @@
+
+<style>
+  body { font-family: var(--font-sans); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; font-size: 13px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); cursor: pointer; background: transparent; color: var(--color-text-secondary); }
+  .tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); border-color: var(--color-border-primary); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .code-block { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 14px 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--color-text-primary); white-space: pre; overflow-x: auto; margin: 12px 0; }
+  .label { font-size: 12px; color: var(--color-text-tertiary); margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .note { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; margin: 10px 0; }
+  .warn { background: var(--color-background-warning); color: var(--color-text-warning); font-size: 12px; padding: 8px 12px; border-radius: var(--border-radius-md); margin: 10px 0; display: flex; gap: 8px; align-items: flex-start; }
+  .tip { background: var(--color-background-info); color: var(--color-text-info); font-size: 12px; padding: 8px 12px; border-radius: var(--border-radius-md); margin: 10px 0; display: flex; gap: 8px; align-items: flex-start; }
+  .ask-btn { margin-top: 14px; background: transparent; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 7px 14px; font-size: 13px; cursor: pointer; color: var(--color-text-secondary); }
+  .ask-btn:hover { background: var(--color-background-secondary); }
+  .oracle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+  .mini-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; }
+  .mini-card .lang { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .shuffle-bar { height: 24px; border-radius: var(--border-radius-md); margin: 4px 0; display: flex; align-items: center; padding: 0 10px; font-size: 12px; transition: width 0.4s; }
+</style>
+<h2 class="sr-only">Interactive reference for Spark Day 8: aggregations, groupBy, countDistinct, pivot, HAVING equivalent, and shuffle cost</h2>
+<div style="padding: 1rem 0;">
+  <div class="tabs">
+    <button class="tab active" onclick="show('basic')">groupBy + agg</button>
+    <button class="tab" onclick="show('countd')">countDistinct</button>
+    <button class="tab" onclick="show('having')">HAVING / filter</button>
+    <button class="tab" onclick="show('pivot')">pivot</button>
+    <button class="tab" onclick="show('shuffle')">shuffle cost</button>
+  </div>
+
+  <div id="basic" class="panel active">
+    <div class="label">Oracle / MSSQL</div>
+    <div class="oracle-row">
+      <div class="mini-card"><div class="lang">Oracle SQL</div><div class="code-block">SELECT region, product,
+  SUM(revenue)  AS total_rev,
+  AVG(revenue)  AS avg_rev,
+  COUNT(*)      AS cnt,
+  MIN(revenue)  AS min_rev,
+  MAX(revenue)  AS max_rev
+FROM orders
+GROUP BY region, product</div></div>
+      <div class="mini-card"><div class="lang">Spark DataFrame API</div><div class="code-block">from pyspark.sql import functions as F
+
+df.groupBy("region", "product") \
+  .agg(
+    F.sum("revenue").alias("total_rev"),
+    F.avg("revenue").alias("avg_rev"),
+    F.count("*").alias("cnt"),
+    F.min("revenue").alias("min_rev"),
+    F.max("revenue").alias("max_rev")
+  )</div></div>
+    </div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i> All agg functions run in one shuffle pass — no performance penalty for adding more expressions to <code>.agg()</code>.</div>
+    <div class="label">Spark SQL (identical to Oracle)</div>
+    <div class="code-block">SELECT region, product,
+  SUM(revenue), AVG(revenue), COUNT(*), MIN(revenue), MAX(revenue)
+FROM orders
+GROUP BY region, product</div>
+    <button class="ask-btn" onclick="sendPrompt('Give me 3 practice exercises for Spark groupBy and agg — with answers')">Practice exercises ↗</button>
+  </div>
+
+  <div id="countd" class="panel">
+    <div class="label">Exact vs. approximate</div>
+    <div class="code-block">F.countDistinct("customer_id")
+F.approx_count_distinct("customer_id", rsd=0.05)</div>
+    <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i> <span>Exam trap: <code>F.count(F.col("x").distinct())</code> does NOT work. Always use <code>F.countDistinct()</code> in the DataFrame API.</span></div>
+    <div class="oracle-row">
+      <div class="mini-card"><div class="lang">Oracle</div><div class="code-block">COUNT(DISTINCT customer_id)</div></div>
+      <div class="mini-card"><div class="lang">Spark DataFrame</div><div class="code-block">F.countDistinct("customer_id")</div></div>
+    </div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i> <code>approx_count_distinct</code> uses HyperLogLog. ~2% error at rsd=0.05, much cheaper on large data — valid exam answer when precision isn't required.</div>
+    <div class="label">Multi-column distinct</div>
+    <div class="code-block">F.countDistinct("region", "product")
+</div>
+    <div class="note">Counts distinct (region, product) pairs — equivalent to <code>COUNT(DISTINCT region || product)</code> in Oracle.</div>
+    <button class="ask-btn" onclick="sendPrompt('Explain why countDistinct is expensive in Spark and how approx_count_distinct helps — exam depth answer')">Why is it expensive? ↗</button>
+  </div>
+
+  <div id="having" class="panel">
+    <div class="label">HAVING equivalent</div>
+    <div class="oracle-row">
+      <div class="mini-card"><div class="lang">Oracle SQL</div><div class="code-block">SELECT region,
+  SUM(revenue) AS total_rev
+FROM orders
+GROUP BY region
+HAVING SUM(revenue) > 100000</div></div>
+      <div class="mini-card"><div class="lang">Spark DataFrame API</div><div class="code-block">df.groupBy("region") \
+  .agg(
+    F.sum("revenue").alias("total_rev")
+  ) \
+  .filter(F.col("total_rev") > 100_000)</div></div>
+    </div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i> <code>.filter()</code> and <code>.where()</code> are identical in Spark — both compile to the same physical plan.</div>
+    <div class="label">Combined WHERE + HAVING pattern</div>
+    <div class="code-block">df.filter(F.col("status") == "completed") \
+  .groupBy("region") \
+  .agg(F.sum("revenue").alias("total_rev")) \
+  .filter(F.col("total_rev") > 100_000)</div>
+    <div class="note">Pre-filter before groupBy to reduce shuffle input. Catalyst pushes it down anyway, but being explicit is cleaner.</div>
+    <div class="label">Spark SQL — HAVING works natively</div>
+    <div class="code-block">SELECT region, SUM(revenue) AS total_rev
+FROM orders
+WHERE status = 'completed'
+GROUP BY region
+HAVING SUM(revenue) > 100000</div>
+    <button class="ask-btn" onclick="sendPrompt('When does Catalyst push down a filter vs require a post-agg filter in Spark? Exam-level explanation.')">Catalyst predicate pushdown ↗</button>
+  </div>
+
+  <div id="pivot" class="panel">
+    <div class="label">Basic pivot</div>
+    <div class="code-block">df.groupBy("region") \
+  .pivot("quarter", ["Q1", "Q2", "Q3", "Q4"]) \
+  .agg(F.sum("revenue"))</div>
+    <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i> <span>Omitting the value list forces Spark to scan all distinct values first (extra job). Always supply the list in production.</span></div>
+    <div class="label">Result schema</div>
+    <div class="code-block">region | Q1       | Q2       | Q3       | Q4
+-------+----------+----------+----------+--------
+EMEA   | 120000.0 | 95000.0  | 140000.0 | 180000.0</div>
+    <div class="label">Multi-agg pivot — auto-suffixed columns</div>
+    <div class="code-block">df.groupBy("region") \
+  .pivot("quarter", ["Q1", "Q2"]) \
+  .agg(
+    F.sum("revenue").alias("sum"),
+    F.avg("revenue").alias("avg")
+  )
+</div>
+    <div class="note">Produces columns: <code>Q1_sum</code>, <code>Q1_avg</code>, <code>Q2_sum</code>, <code>Q2_avg</code></div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i> To unpivot (reverse a pivot), use <code>stack()</code> function or <code>DataFrame.unpivot()</code> (Spark 3.4+).</div>
+    <button class="ask-btn" onclick="sendPrompt('Show me how to unpivot a Spark DataFrame with stack() and the unpivot() method — with examples')">Unpivot patterns ↗</button>
+  </div>
+
+  <div id="shuffle" class="panel">
+    <div class="label">What happens during a groupBy shuffle</div>
+    <div class="note">Stage 1 — local partial agg on each partition, then shuffle rows by key hash. Stage 2 — final merge per key on destination partitions.</div>
+    <div id="bars" style="margin: 14px 0;"></div>
+    <div style="display:flex; gap:8px; margin-bottom:14px; align-items:center;">
+      <label style="font-size:13px; color:var(--color-text-secondary);">Shuffle partitions</label>
+      <input type="range" min="1" max="5" value="3" step="1" id="parts-slider" style="flex:1;" oninput="updateBars(this.value)">
+      <span id="parts-val" style="font-size:13px; font-weight:500; min-width:20px;">200</span>
+    </div>
+    <div class="label">Key config</div>
+    <div class="code-block">spark.conf.set("spark.sql.shuffle.partitions", "200")
+spark.conf.set("spark.sql.adaptive.enabled", "true")</div>
+    <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i> <span>Default 200 shuffle partitions is too high for small data (creates tiny files), too low for large data. AQE coalesces empty/small partitions automatically when enabled.</span></div>
+    <div class="label">Cost ranking of common agg operations</div>
+    <div id="cost-bars" style="margin: 10px 0;"></div>
+    <button class="ask-btn" onclick="sendPrompt('Explain data skew in Spark groupBy — what causes it, how to detect it in the Spark UI, and how to fix it with salting or AQE')">Data skew deep dive ↗</button>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const partLabels = [50, 100, 200, 400, 800];
+function updateBars(v) {
+  document.getElementById('parts-val').textContent = partLabels[v-1];
+  renderPartBars(partLabels[v-1]);
+}
+
+function renderPartBars(n) {
+  const container = document.getElementById('bars');
+  const colors = ['#378ADD','#1D9E75','#D85A30','#7F77DD','#BA7517'];
+  const maxW = 300;
+  container.innerHTML = '';
+  const keys = ['key_A', 'key_B', 'key_C', 'key_D'];
+  const sizes = [60, 25, 10, 5];
+  keys.forEach((k, i) => {
+    const pct = sizes[i];
+    const w = Math.round((pct / 100) * maxW);
+    container.innerHTML += `<div style="display:flex;align-items:center;gap:8px;margin:4px 0;">
+      <span style="font-size:12px;color:var(--color-text-secondary);min-width:56px;">${k}</span>
+      <div style="height:20px;width:${w}px;background:${colors[i]};border-radius:4px;opacity:0.8;"></div>
+      <span style="font-size:12px;color:var(--color-text-tertiary);">${pct}%</span>
+    </div>`;
+  });
+  const skew = n <= 1 ? 'high skew risk' : n >= 4 ? 'many small partitions' : 'balanced';
+  container.innerHTML += `<div style="font-size:12px;color:var(--color-text-tertiary);margin-top:8px;">→ ${n} shuffle partitions — ${skew}</div>`;
+}
+
+const costs = [
+  { label: 'count(*)', cost: 1, color: '#1D9E75' },
+  { label: 'sum / avg / min / max', cost: 2, color: '#1D9E75' },
+  { label: 'collect_list', cost: 3, color: '#BA7517' },
+  { label: 'countDistinct', cost: 4, color: '#D85A30' },
+  { label: 'pivot (no value list)', cost: 5, color: '#E24B4A' },
+];
+function renderCostBars() {
+  const c = document.getElementById('cost-bars');
+  c.innerHTML = '';
+  costs.forEach(item => {
+    const w = Math.round((item.cost / 5) * 260);
+    c.innerHTML += `<div style="display:flex;align-items:center;gap:8px;margin:5px 0;">
+      <span style="font-size:12px;color:var(--color-text-secondary);min-width:160px;">${item.label}</span>
+      <div style="height:18px;width:${w}px;background:${item.color};border-radius:4px;opacity:0.85;"></div>
+    </div>`;
+  });
+}
+
+renderPartBars(200);
+renderCostBars();
+</script>

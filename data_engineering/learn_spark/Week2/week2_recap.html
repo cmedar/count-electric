@@ -295,6 +295,8 @@
   <button class="tab-btn active" role="tab" onclick="switchTab('agg')">Aggregations</button>
   <button class="tab-btn" role="tab" onclick="switchTab('win')">Window Functions</button>
   <button class="tab-btn" role="tab" onclick="switchTab('join')">Joins</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('str')">Strings &amp; Dates</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('col')">Collections</button>
   <button class="tab-btn" role="tab" onclick="switchTab('delta')">Delta Lake</button>
   <button class="tab-btn" role="tab" onclick="switchTab('udf')">UDFs &amp; Caching</button>
   <button class="tab-btn" role="tab" onclick="switchTab('tips')">Exam Tips</button>
@@ -663,6 +665,220 @@ spark.conf.<span class="fn">get</span>(<span class="str">"spark.sql.adaptive.ske
 <!-- ═══════════════════════════════════════════════════════════
      TAB 4: Delta Lake
 ═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-str">
+  <div class="section-links">
+    <a href="#str-fns">String functions</a>
+    <a href="#str-regex">Regex</a>
+    <a href="#str-dates">Date parsing</a>
+    <a href="#str-arith">Date arithmetic</a>
+    <a href="#str-extract">Extraction</a>
+    <a href="#str-hof">Higher-order</a>
+  </div>
+
+  <h2>Strings &amp; Dates</h2>
+
+  <h3 id="str-fns">Core String Functions</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Function</th><th>Effect</th><th>Oracle / MSSQL</th></tr></thead>
+      <tbody>
+        <tr><td><code>F.substring(c, 1, 3)</code></td><td>First 3 chars (1-indexed)</td><td><code>SUBSTR(c, 1, 3)</code></td></tr>
+        <tr><td><code>F.upper(c) / F.lower(c)</code></td><td>Case conversion</td><td><code>UPPER / LOWER</code></td></tr>
+        <tr><td><code>F.trim(c)</code></td><td>Strip whitespace both sides</td><td><code>TRIM(c)</code></td></tr>
+        <tr><td><code>F.lpad(c, 5, "0")</code></td><td>Left-pad to width 5 with "0"</td><td><code>LPAD(c, 5, '0')</code></td></tr>
+        <tr><td><code>F.split(c, " ")</code></td><td>Split on delimiter → <code>ArrayType(StringType)</code></td><td>No direct equivalent</td></tr>
+        <tr><td><code>F.concat_ws("-", a, b)</code></td><td>Join columns with separator; skips nulls</td><td><code>a || '-' || b</code></td></tr>
+        <tr><td><code>F.length(c)</code></td><td>Character count</td><td><code>LENGTH(c)</code></td></tr>
+        <tr><td><code>F.instr(c, "x")</code></td><td>Position of first occurrence (1-indexed; 0 if absent)</td><td><code>INSTR(c, 'x')</code></td></tr>
+        <tr><td><code>F.regexp_replace(c, pat, r)</code></td><td>Replace all regex matches with <code>r</code></td><td><code>REGEXP_REPLACE</code></td></tr>
+        <tr><td><code>F.regexp_extract(c, pat, 1)</code></td><td>Extract capture group 1 → string; <strong>""</strong> on no match</td><td><code>REGEXP_SUBSTR</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="str-regex">Regex — Key Traps</h3>
+  <pre>F.regexp_replace("phone", r"[^0-9]", "")   # remove non-digits
+F.regexp_extract("email", r"@(.+)\.", 1)    # capture group 1 → "spark" from "user@spark.io"</pre>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>regexp_extract</code> returns <code>""</code> (empty string) on no match — <em>not null</em>.
+    Filtering with <code>.isNull()</code> will not catch unmatched rows. Use <code>F.length(result) &gt; 0</code> or <code>result != ""</code> instead.
+  </div>
+
+  <h3 id="str-dates">Date Parsing and Formatting</h3>
+  <pre># String → date / timestamp
+F.to_date("col", "yyyy-MM-dd")
+F.to_timestamp("col", "yyyy-MM-dd HH:mm:ss")
+
+# Date / timestamp → string
+F.date_format("col", "dd/MM/yyyy")
+F.date_format("col", "yyyy-MM")          # year-month only</pre>
+
+  <h3 id="str-arith">Date Arithmetic</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Function</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>F.date_add(c, 7)</code></td><td>Add 7 days</td></tr>
+        <tr><td><code>F.date_sub(c, 7)</code></td><td>Subtract 7 days</td></tr>
+        <tr><td><code>F.datediff(end, start)</code></td><td>Days between — <strong>end comes first</strong></td></tr>
+        <tr><td><code>F.months_between(end, start)</code></td><td>Fractional months between</td></tr>
+        <tr><td><code>F.date_trunc("month", c)</code></td><td>First day of that month</td></tr>
+        <tr><td><code>F.last_day(c)</code></td><td>Last day of the month</td></tr>
+        <tr><td><code>F.add_months(c, 3)</code></td><td>Add 3 calendar months</td></tr>
+        <tr><td><code>F.next_day(c, "Mon")</code></td><td>Next Monday after the given date</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>datediff(end, start)</code> — <em>end argument comes first</em>. Reversing the arguments gives a negative number. Very commonly swapped on the exam.
+  </div>
+
+  <h3 id="str-extract">Date Extraction — dayofweek Numbering</h3>
+  <pre>F.year("d")        F.month("d")       F.dayofmonth("d")
+F.quarter("d")     F.weekofyear("d")
+F.dayofweek("d")   # 1 = Sunday, 2 = Monday, ..., 7 = Saturday</pre>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> Spark's <code>dayofweek</code> starts at <strong>1 = Sunday</strong> (not Monday). Jan 1 2024 was a Monday → returns <strong>2</strong>. Differs from many databases where Monday = 1.
+  </div>
+
+  <h3 id="str-hof">Higher-Order Functions on Arrays</h3>
+  <pre># Python API
+F.transform("prices", lambda x: x * 1.2)       # map: apply to every element
+F.filter("scores",   lambda x: x &gt; 50)         # keep elements where true
+F.exists("scores",   lambda x: x &gt; 90)         # boolean: any element matches?
+F.forall("scores",   lambda x: x &gt;= 0)         # boolean: all elements match?
+
+# Equivalent Spark SQL
+SELECT transform(prices, x -&gt; x * 1.2)   AS increased,
+       filter(scores,   x -&gt; x &gt; 50)    AS passing,
+       exists(scores,   x -&gt; x &gt; 90)    AS has_high
+FROM t</pre>
+  <div class="callout info">
+    Prefer higher-order functions over <code>explode → filter → collect_list</code> when transforming or filtering array elements in place — avoids a shuffle entirely.
+  </div>
+</section>
+
+<section class="tab-panel" id="panel-col">
+  <div class="section-links">
+    <a href="#col-arr">Array functions</a>
+    <a href="#col-explode">Explode variants</a>
+    <a href="#col-math">Math</a>
+    <a href="#col-maps">Maps</a>
+    <a href="#col-json">JSON</a>
+    <a href="#col-struct">Structs</a>
+  </div>
+
+  <h2>Collections &amp; Math</h2>
+
+  <h3 id="col-arr">Array Functions</h3>
+  <div class="callout warn">
+    <strong>Indexing trap:</strong> <code>element_at(col, 1)</code> = first element (<strong>1-indexed, SQL convention</strong>). <code>col.getItem(0)</code> = first element (<strong>0-indexed, Python convention</strong>). <code>element_at(col, -1)</code> = last element.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Function</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>F.size(c)</code></td><td>Count; returns <strong>-1 if null</strong></td></tr>
+        <tr><td><code>F.cardinality(c)</code></td><td>Count; returns <strong>0 if null</strong></td></tr>
+        <tr><td><code>F.array_contains(c, "x")</code></td><td>Boolean — exact equality only</td></tr>
+        <tr><td><code>F.array_position(c, "x")</code></td><td>1-indexed position; <strong>0 if not found</strong> (not null)</td></tr>
+        <tr><td><code>F.array_sort(c)</code></td><td>Sort ascending, nulls last</td></tr>
+        <tr><td><code>F.flatten(c)</code></td><td><code>Array[Array[T]]</code> → <code>Array[T]</code></td></tr>
+        <tr><td><code>F.slice(c, 1, 3)</code></td><td>Sub-array: 1-indexed start, length</td></tr>
+        <tr><td><code>F.array_join(c, ", ")</code></td><td>Array → delimited string</td></tr>
+        <tr><td><code>F.array_remove(c, "x")</code></td><td>Remove all occurrences of value</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <pre># Set operations
+F.array_distinct("tags")        # remove duplicates
+F.array_union("a", "b")         # union, no duplicates
+F.array_intersect("a", "b")     # common elements
+F.array_except("a", "b")        # in a but not in b</pre>
+
+  <h3 id="col-explode">Explode Variants — null behaviour is the exam question</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Function</th><th>Output</th><th>Null / empty array</th></tr></thead>
+      <tbody>
+        <tr><td><code>explode(c)</code></td><td>One row per element</td><td><span class="tag tag-red">Row dropped</span></td></tr>
+        <tr><td><code>explode_outer(c)</code></td><td>One row per element</td><td><span class="tag tag-green">One null row kept</span></td></tr>
+        <tr><td><code>posexplode(c)</code></td><td><code>pos</code> (0-indexed) + element</td><td><span class="tag tag-red">Row dropped</span></td></tr>
+        <tr><td><code>inline(c)</code></td><td><code>Array[Struct]</code> → flat columns</td><td><span class="tag tag-red">Row dropped</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>explode()</code> silently drops rows where the array is null or empty. Use <code>explode_outer()</code> to keep them as null rows. If your row count is off after explode, this is why.
+  </div>
+  <div class="callout info">
+    Neither <code>collect_list</code> nor <code>collect_set</code> guarantees element order. Apply <code>F.array_sort()</code> afterwards if order matters.
+  </div>
+
+  <h3 id="col-math">Math Functions</h3>
+  <pre>F.round("price", 2)    # standard: 2.5 → 3
+F.bround("price", 2)   # banker's rounding: 2.5 → 2  (rounds to nearest even)
+F.ceil("x")   F.floor("x")   F.abs("x")
+F.greatest("a", "b", "c")    # max across columns in the same row
+F.least("a",   "b", "c")     # min across columns in the same row</pre>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>F.bround(2.5)</code> → 2 (rounds to nearest even, not always up). Use in financial pipelines to avoid cumulative rounding bias.
+  </div>
+
+  <h3 id="col-maps">Map Functions</h3>
+  <pre># Creation
+F.create_map(F.lit("k1"), F.col("v1"), F.lit("k2"), F.col("v2"))
+F.map_from_arrays(F.col("keys_arr"), F.col("vals_arr"))
+
+# Access — all return null on missing key, never throw an error
+F.col("meta")["status"]
+F.element_at(F.col("meta"), "status")
+F.col("meta").getItem("status")
+
+# Inspection and manipulation
+F.map_keys(c)                           # Array of all keys
+F.map_values(c)                         # Array of all values
+F.map_concat(a, b)                      # Merge — right (b) wins on key conflict
+F.map_filter(c, lambda k, v: v &gt; 0)    # Keep entries where condition is true</pre>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>map_concat(a, b)</code> — the <em>right</em> map's value wins on key conflict. Consistent with Python's <code>{**a, **b}</code>.
+  </div>
+
+  <h3 id="col-json">JSON Parsing</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Need</th><th>Use</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>1 field from JSON string</td><td><code>get_json_object</code></td><td>Fastest — no full parse</td></tr>
+        <tr><td>2+ fields in one pass</td><td><code>json_tuple</code></td><td>More efficient than multiple <code>get_json_object</code> calls</td></tr>
+        <tr><td>Full typed struct</td><td><code>from_json</code></td><td>Schema required; <strong>malformed → null, not exception</strong></td></tr>
+        <tr><td>Struct / map → JSON string</td><td><code>to_json</code></td><td>Serialisation (reverse of from_json)</td></tr>
+        <tr><td>Infer schema from sample</td><td><code>schema_of_json</code></td><td>Dev / exploration only — not for production</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <pre>schema = StructType([StructField("user_id", IntegerType()),
+                     StructField("action",  StringType())])
+
+# Full parse
+df.withColumn("p", F.from_json("payload", schema)).select("p.user_id", "p.action")
+
+# Extract 2 fields in one pass — cheaper than two get_json_object calls
+df.select(F.json_tuple("payload", "user_id", "action").alias("uid", "act"))
+
+# Extract one nested field — fastest
+F.get_json_object("payload", "$.address.city")</pre>
+  <div class="callout warn">
+    <strong>Exam trap:</strong> <code>from_json</code> silently returns <strong>null</strong> for malformed JSON — no exception at any stage. Always follow with <code>.filter(F.col("parsed").isNotNull())</code> or route bad rows to a dead-letter table.
+  </div>
+
+  <h3 id="col-struct">Struct Access</h3>
+  <pre>F.struct(F.col("lat"), F.col("lon")).alias("coordinates")
+F.col("coordinates.lat")           # dot notation — preferred
+F.col("address.city.district")     # nested access, any depth</pre>
+</section>
+
+
 <section class="tab-panel" id="panel-delta">
   <div class="section-links">
     <a href="#delta-props">Properties</a>
@@ -1019,6 +1235,15 @@ df.<span class="fn">unpersist</span>()</pre>
     <li><strong>Delta time travel: integer → VERSION AS OF; date string → TIMESTAMP AS OF.</strong></li>
     <li><strong>Window ORDER BY changes the default frame.</strong> Without ORDER BY: whole partition. With ORDER BY: running (unbounded preceding to current row). This is why SUM OVER behaves differently with vs without ORDER BY.</li>
     <li><strong>rollup() is hierarchical left-to-right.</strong> rollup(a, b, c) produces n+1 = 4 grouping combinations. cube() produces 2ⁿ = 8.</li>
+    <li><strong>regexp_extract returns "" on no match — not null.</strong> Filtering with <code>.isNull()</code> will not catch unmatched rows. Use <code>F.length(col) &gt; 0</code>.</li>
+    <li><strong>datediff(end, start) — end comes first.</strong> Reversing the arguments gives a negative result. The most commonly swapped date function on the exam.</li>
+    <li><strong>dayofweek: 1 = Sunday, 2 = Monday, ..., 7 = Saturday.</strong> Spark does not follow Monday = 1 conventions used in many databases.</li>
+    <li><strong>element_at is 1-indexed; getItem is 0-indexed.</strong> element_at(col, 1) and getItem(0) both return the first element. element_at(col, 2) and getItem(2) return different elements.</li>
+    <li><strong>size(null) = -1; cardinality(null) = 0.</strong> Both exclude null arrays when filtering &gt; 0, but the raw return values differ.</li>
+    <li><strong>explode drops null/empty arrays; explode_outer keeps them as a null row.</strong> If row count is unexpectedly low after explode, this is almost always the cause.</li>
+    <li><strong>array_position returns 0 (not null) when the value is not found.</strong> Checking isNull() will never match — filter on &gt; 0 instead.</li>
+    <li><strong>from_json silently returns null on malformed JSON — no exception.</strong> Always filter or route bad rows to a dead-letter table after parsing.</li>
+    <li><strong>map_concat — right map wins on key conflict.</strong> <code>map_concat(a, b)</code>: if both have key "status", b's value is kept.</li>
   </ul>
 
   <h3>Delta Lake Quick Reference</h3>
@@ -1059,7 +1284,7 @@ df.<span class="fn">unpersist</span>()</pre>
 
 <script>
   function switchTab(id) {
-    const ids = ['agg','win','join','delta','udf','tips'];
+    const ids = ['agg','win','join','str','col','delta','udf','tips'];
     document.querySelectorAll('.tab-btn').forEach((btn, i) => {
       btn.classList.toggle('active', ids[i] === id);
     });

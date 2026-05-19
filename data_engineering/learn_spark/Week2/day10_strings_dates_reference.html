@@ -1,0 +1,279 @@
+
+<style>
+  .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:transparent;color:var(--color-text-secondary);}
+  .tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .cb{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin:8px 0;}
+  .lbl{font-size:11px;color:var(--color-text-tertiary);margin:12px 0 3px;text-transform:uppercase;letter-spacing:0.05em;}
+  .warn{background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;align-items:flex-start;}
+  .tip{background:var(--color-background-info);color:var(--color-text-info);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;align-items:flex-start;}
+  .ask-btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);margin-top:10px;margin-right:8px;}
+  .ask-btn:hover{background:var(--color-background-secondary);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0;}
+  .mc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;}
+  .mc .lang{font-size:11px;color:var(--color-text-tertiary);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
+  .fn-row{display:grid;grid-template-columns:180px 1fr 1fr;gap:8px;align-items:start;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12.5px;}
+  .fn-row code{font-family:var(--font-mono);font-size:12px;}
+  .opt{padding:8px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:5px 0;font-size:13px;cursor:pointer;color:var(--color-text-secondary);line-height:1.5;}
+  .opt:hover{background:var(--color-background-secondary);}
+  .explain{display:none;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:13px;color:var(--color-text-secondary);margin-top:10px;line-height:1.6;}
+</style>
+<h2 class="sr-only">Day 10 reference: Spark string functions, date functions, higher-order functions, and quiz</h2>
+<div style="padding:1rem 0;">
+  <div class="tabs">
+    <button class="tab active" onclick="show('strings')">String functions</button>
+    <button class="tab" onclick="show('dates')">Date functions</button>
+    <button class="tab" onclick="show('hof')">Higher-order</button>
+    <button class="tab" onclick="show('oracle')">Oracle mapping</button>
+    <button class="tab" onclick="show('quiz')">Quiz</button>
+  </div>
+
+  <div id="strings" class="panel active">
+    <div class="lbl">Core string functions</div>
+    <div id="str-table"></div>
+    <div class="lbl">Regex</div>
+    <div class="grid2">
+      <div class="mc"><div class="lang">regexp_replace</div><div class="cb">F.regexp_replace(
+  "phone",
+  r"[^0-9]", ""
+)</div></div>
+      <div class="mc"><div class="lang">regexp_extract</div><div class="cb">F.regexp_extract(
+  "email",
+  r"@(.+)\.", 1
+)</div></div>
+    </div>
+    <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span><code>regexp_extract</code> returns <code>""</code> (empty string) on no match — not null. Exam trap when filtering on the result.</span></div>
+    <button class="ask-btn" onclick="sendPrompt('Show me 3 practical Spark regexp_replace and regexp_extract examples with tricky edge cases')">Regex examples ↗</button>
+  </div>
+
+  <div id="dates" class="panel">
+    <div class="lbl">Parsing and formatting</div>
+    <div class="grid2">
+      <div class="mc"><div class="lang">string → date</div><div class="cb">F.to_date("col", "yyyy-MM-dd")
+F.to_timestamp("col",
+  "yyyy-MM-dd HH:mm:ss")</div></div>
+      <div class="mc"><div class="lang">date → string</div><div class="cb">F.date_format("col",
+  "dd/MM/yyyy")
+F.date_format("col", "yyyy-MM")</div></div>
+    </div>
+    <div class="lbl">Arithmetic</div>
+    <div id="date-table"></div>
+    <div class="lbl">Extraction</div>
+    <div class="cb">F.year("d")  F.month("d")  F.dayofmonth("d")
+F.quarter("d")  F.weekofyear("d")
+F.dayofweek("d")   # 1=Sunday, 7=Saturday</div>
+    <div class="lbl">Timezone</div>
+    <div class="cb">F.from_utc_timestamp("ts", "Europe/Bucharest")
+F.to_utc_timestamp("ts",   "Europe/Bucharest")
+F.convert_timezone("UTC", "Europe/Bucharest", "ts")  # Spark 3.4+</div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Delta stores timestamps as UTC. Never store local time in Delta if data crosses timezones. Convert at read time.</span></div>
+    <button class="ask-btn" onclick="sendPrompt('What are the most common date function exam traps in Spark — datediff argument order, dayofweek numbering, date_trunc units?')">Date traps ↗</button>
+  </div>
+
+  <div id="hof" class="panel">
+    <div class="lbl">Higher-order functions on arrays</div>
+    <div id="hof-table"></div>
+    <div class="lbl">Spark SQL syntax</div>
+    <div class="cb">SELECT
+  transform(prices, x -> x * 1.2)         AS increased,
+  filter(tags,   x -> x LIKE 'de_%')      AS de_tags,
+  exists(scores, x -> x > 90)             AS has_high,
+  forall(scores, x -> x >= 0)             AS all_positive,
+  aggregate(prices, 0D, (acc,x) -> acc+x) AS total
+FROM products</div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Use higher-order functions instead of <code>explode → groupBy → collect_list</code> when you only need to transform or filter array elements in place.</span></div>
+    <div class="lbl">When to use each approach</div>
+    <div id="hof-compare"></div>
+    <button class="ask-btn" onclick="sendPrompt('Show me a worked example where transform+filter on an array is more efficient than explode+groupBy — with both versions side by side')">explode vs HOF comparison ↗</button>
+  </div>
+
+  <div id="oracle" class="panel">
+    <div class="lbl">Oracle / MSSQL → Spark mapping</div>
+    <div id="oracle-table"></div>
+  </div>
+
+  <div id="quiz" class="panel">
+    <div id="qscore" style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:12px;"></div>
+    <div id="qbody"></div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const strFns = [
+  ['F.substring(c, 1, 3)','First 3 chars','SUBSTR(c, 1, 3)'],
+  ['F.upper(c) / F.lower(c)','Case conversion','UPPER / LOWER'],
+  ['F.trim(c)','Strip whitespace both sides','TRIM(c)'],
+  ['F.lpad(c, 5, "0")','Left-pad to width','LPAD(c, 5, "0")'],
+  ['F.split(c, " ")','Split → array','No direct equiv.'],
+  ['F.concat_ws("-", a, b)','Join with separator','a || "-" || b'],
+  ['F.length(c)','Character count','LENGTH(c)'],
+  ['F.regexp_replace(c, pat, r)','Replace regex matches','REGEXP_REPLACE'],
+  ['F.regexp_extract(c, pat, 1)','Extract group → string','REGEXP_SUBSTR'],
+];
+const st = document.getElementById('str-table');
+st.innerHTML = `<div class="fn-row" style="font-weight:500;color:var(--color-text-primary);border-bottom:0.5px solid var(--color-border-secondary);">
+  <span>Function</span><span>Effect</span><span style="color:var(--color-text-tertiary);">Oracle</span></div>`;
+strFns.forEach(r => {
+  st.innerHTML += `<div class="fn-row"><code>${r[0]}</code><span style="color:var(--color-text-secondary);">${r[1]}</span><span style="color:var(--color-text-tertiary);font-size:12px;">${r[2]}</span></div>`;
+});
+
+const dateFns = [
+  ['F.date_add(c, 7)','Add 7 days'],
+  ['F.date_sub(c, 7)','Subtract 7 days'],
+  ['F.datediff(end, start)','Days between (end − start)'],
+  ['F.months_between(end, start)','Fractional months between'],
+  ['F.date_trunc("month", c)','First day of month'],
+  ['F.last_day(c)','Last day of month'],
+  ['F.next_day(c, "Mon")','Next Monday after date'],
+  ['F.add_months(c, 3)','Add 3 months'],
+];
+const dt = document.getElementById('date-table');
+dateFns.forEach(r => {
+  dt.innerHTML += `<div style="display:grid;grid-template-columns:220px 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12.5px;"><code style="font-family:var(--font-mono);font-size:12px;">${r[0]}</code><span style="color:var(--color-text-secondary);">${r[1]}</span></div>`;
+});
+
+const hofFns = [
+  ['transform(arr, x -> expr)','Map: apply expr to every element','F.transform("prices", lambda x: x*1.2)'],
+  ['filter(arr, x -> cond)','Keep elements where cond is true','F.filter("scores", lambda x: x > 50)'],
+  ['exists(arr, x -> cond)','True if any element matches','F.exists("scores", lambda x: x > 90)'],
+  ['forall(arr, x -> cond)','True if all elements match','F.forall("scores", lambda x: x >= 0)'],
+  ['aggregate(arr, init, (acc,x)->)','Fold/reduce array to scalar','F.aggregate("prices", F.lit(0.0), ...)'],
+];
+const ht = document.getElementById('hof-table');
+ht.innerHTML = `<div style="display:grid;grid-template-columns:200px 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:12px;font-weight:500;color:var(--color-text-primary);"><span>SQL syntax</span><span>Python equivalent</span></div>`;
+hofFns.forEach(r => {
+  ht.innerHTML += `<div style="display:grid;grid-template-columns:200px 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;align-items:start;">
+    <code style="font-family:var(--font-mono);color:var(--color-text-primary);">${r[0]}</code>
+    <div><span style="color:var(--color-text-secondary);display:block;margin-bottom:3px;">${r[1]}</span><code style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);">${r[2]}</code></div>
+  </div>`;
+});
+
+const hofComp = [
+  ['Transform array elements in place','transform()', 'green'],
+  ['Filter array elements without expanding','filter()', 'green'],
+  ['Check existence in array','exists()', 'green'],
+  ['Need row-per-element with other columns','explode()', 'amber'],
+  ['Need position index of each element','posexplode()', 'amber'],
+  ['Aggregate across rows (not within array)','groupBy + agg()', 'amber'],
+];
+const hc = document.getElementById('hof-compare');
+hofComp.forEach(r => {
+  const colors = {green:'var(--color-background-success)',amber:'var(--color-background-warning)'};
+  const tc = {green:'var(--color-text-success)',amber:'var(--color-text-warning)'};
+  hc.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;">
+    <span style="color:var(--color-text-secondary);">${r[0]}</span>
+    <span style="padding:3px 10px;border-radius:var(--border-radius-md);background:${colors[r[2]]};color:${tc[r[2]]};font-size:12px;">${r[1]}</span>
+  </div>`;
+});
+
+const oracleMap = [
+  ['SUBSTR(c,1,3)','F.substring(c, 1, 3)'],
+  ['LENGTH(c)','F.length(c)'],
+  ['INSTR(c, "x")','F.instr(c, "x")'],
+  ['NVL(c, default)','F.coalesce(c, F.lit(default))'],
+  ['TO_DATE(c, fmt)','F.to_date(c, fmt)'],
+  ['TRUNC(d, "MM")','F.date_trunc("month", d)'],
+  ['ADD_MONTHS(d, n)','F.add_months(d, n)'],
+  ['MONTHS_BETWEEN(a,b)','F.months_between(a, b)'],
+  ['SYSDATE','F.current_date()'],
+  ['SYSTIMESTAMP','F.current_timestamp()'],
+  ['REGEXP_REPLACE','F.regexp_replace(c, pat, repl)'],
+  ['REGEXP_SUBSTR','F.regexp_extract(c, pat, grp)'],
+  ['LISTAGG(c, ",")','F.concat_ws(",", F.collect_list(c))'],
+  ['DECODE / CASE','F.when().when().otherwise()'],
+  ['NVL2(c, t, f)','F.when(c.isNotNull(), t).otherwise(f)'],
+];
+const ot = document.getElementById('oracle-table');
+ot.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:12px;font-weight:500;color:var(--color-text-primary);"><span>Oracle / MSSQL</span><span>Spark equivalent</span></div>`;
+oracleMap.forEach(r => {
+  ot.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;">
+    <code style="font-family:var(--font-mono);color:var(--color-text-tertiary);">${r[0]}</code>
+    <code style="font-family:var(--font-mono);color:var(--color-text-primary);">${r[1]}</code>
+  </div>`;
+});
+
+const qs = [
+  {
+    q: "F.regexp_extract('user@spark.io', r'@(.+)\\.', 1) returns what?",
+    options: ["null","@spark.io","spark","spark.io"],
+    answer: 2,
+    explain: "Group 1 captures everything between @ and the last dot: 'spark'. Returns '' (empty string) on no match, not null."
+  },
+  {
+    q: "Which function gives you the first day of the current month?",
+    options: ["F.month(F.current_date())","F.date_trunc('month', F.current_date())","F.date_add(F.current_date(), -30)","F.dayofmonth(F.current_date())"],
+    answer: 1,
+    explain: "date_trunc('month', d) truncates to the first day of the month. month() returns just the integer month number."
+  },
+  {
+    q: "F.datediff(F.lit('2024-03-01'), F.lit('2024-01-01')) returns?",
+    options: ["-60","60","2","31"],
+    answer: 1,
+    explain: "datediff(end, start) = end - start in days. March 1 minus Jan 1 = 60 days. Argument order matters — end comes first."
+  },
+  {
+    q: "You have a column 'tags' of type Array<String>. You want a boolean column 'has_python' that is true if any element equals 'python'. Best approach?",
+    options: [
+      "explode('tags'), filter WHERE tag='python', groupBy",
+      "F.array_contains(F.col('tags'), 'python')",
+      "F.exists(F.col('tags'), lambda x: x == 'python')",
+      "Both B and C are correct"
+    ],
+    answer: 3,
+    explain: "Both array_contains and exists work here. array_contains is simpler for equality checks; exists is more flexible for arbitrary conditions. Neither requires exploding the array."
+  },
+  {
+    q: "F.dayofweek('2024-01-01') — this was a Monday. What does Spark return?",
+    options: ["1","2","0","7"],
+    answer: 1,
+    explain: "Spark's dayofweek uses 1=Sunday, 2=Monday ... 7=Saturday. Jan 1 2024 was a Monday → returns 2. This differs from Oracle's TO_CHAR(d,'D') which is locale-dependent."
+  }
+];
+
+let cur=0, sc=0, done=false;
+function renderQ() {
+  document.getElementById('qscore').textContent = `Question ${cur+1} of ${qs.length} · Score: ${sc}`;
+  const q = qs[cur];
+  let html = `<div style="font-size:14px;font-weight:500;color:var(--color-text-primary);line-height:1.6;margin-bottom:14px;">${q.q}</div><div id="qopts">`;
+  q.options.forEach((o,i) => { html += `<div class="opt" id="qo-${i}" onclick="pick(${i})">${o}</div>`; });
+  html += `</div><div class="explain" id="qex"></div><div id="qnext" style="display:none;margin-top:4px;">`;
+  html += cur < qs.length-1
+    ? `<button class="ask-btn" onclick="nextQ()">Next →</button>`
+    : `<button class="ask-btn" onclick="showFinal()">See score ↗</button>`;
+  html += `</div>`;
+  document.getElementById('qbody').innerHTML = html;
+  done = false;
+}
+function pick(i) {
+  if(done) return; done=true;
+  const q=qs[cur]; const ok=i===q.answer;
+  if(ok) sc++;
+  document.getElementById(`qo-${i}`).style.cssText += ok?';background:var(--color-background-success);color:var(--color-text-success)':';background:var(--color-background-danger);color:var(--color-text-danger)';
+  if(!ok) document.getElementById(`qo-${q.answer}`).style.cssText+=';background:var(--color-background-success);color:var(--color-text-success)';
+  const ex=document.getElementById('qex'); ex.style.display='block'; ex.textContent=q.explain;
+  document.getElementById('qnext').style.display='block';
+  document.getElementById('qscore').textContent=`Question ${cur+1} of ${qs.length} · Score: ${sc}`;
+}
+function nextQ(){cur++;renderQ();}
+function showFinal(){
+  const pct=Math.round(sc/qs.length*100);
+  const msg=pct===100?'Perfect.':pct>=80?'Strong — move to Day 11.':'Review the date traps and regex section.';
+  document.getElementById('qbody').innerHTML=`<div style="text-align:center;padding:2rem 0;">
+    <div style="font-size:40px;font-weight:500;color:var(--color-text-primary);">${sc}/${qs.length}</div>
+    <div style="font-size:14px;color:var(--color-text-secondary);margin-top:8px;">${pct}% · ${msg}</div>
+    <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="ask-btn" onclick="cur=0;sc=0;renderQ()">Retry ↗</button>
+      <button class="ask-btn" onclick="sendPrompt('Teach me Day 11: math and collection functions in Spark — round, abs, arrays, maps, structs, explode patterns, JSON parsing. Senior DE background.')">Continue to Day 11 ↗</button>
+    </div></div>`;
+}
+renderQ();
+</script>

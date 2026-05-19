@@ -1,0 +1,143 @@
+
+<style>
+  .label{font-size:12px;color:var(--color-text-tertiary);margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.05em;}
+  .ask-btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);margin-top:10px;margin-right:8px;}
+  .ask-btn:hover{background:var(--color-background-secondary);}
+  .code-block{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin:8px 0;}
+  .opt{padding:8px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:5px 0;font-size:13px;cursor:pointer;color:var(--color-text-secondary);line-height:1.5;}
+  .opt:hover{background:var(--color-background-secondary);}
+  .explain{display:none;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:13px;color:var(--color-text-secondary);margin-top:10px;line-height:1.6;}
+</style>
+<h2 class="sr-only">5 Spark join exam questions, round 2</h2>
+<div style="padding:1rem 0;">
+  <div id="score-bar" style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:16px;">Question 1 of 5 · Score: 0</div>
+  <div id="quiz-body"></div>
+</div>
+
+<script>
+const qs = [
+  {
+    q: "You run this code:\n\ndf_a.join(df_b,\n    df_a.id == df_b.id,\n    how='inner')\n  .select('id')\n\nIt throws: AnalysisException: Reference 'id' is ambiguous.\nWhat is the simplest fix?",
+    code: true,
+    options: [
+      "Use .drop(df_b.id) after the join",
+      "Change on= to the string form: on='id'",
+      "Alias both DataFrames before joining",
+      "Use left_semi instead of inner"
+    ],
+    answer: 1,
+    explain: "Using the string form on='id' is the simplest fix — Spark automatically deduplicates the key column. Options A and C also work but require more code. left_semi changes the join semantics entirely."
+  },
+  {
+    q: "A job joins a 500GB fact table with a 2GB dimension table. autoBroadcastJoinThreshold is at the default 10MB. The job is slow. What is the most targeted fix?",
+    options: [
+      "Increase spark.sql.shuffle.partitions to 800",
+      "Wrap the dimension table in broadcast()",
+      "Switch to a left_semi join",
+      "Enable spark.sql.adaptive.enabled"
+    ],
+    answer: 1,
+    explain: "The 2GB dimension is too large for auto-broadcast but small enough to broadcast manually. broadcast() eliminates the shuffle on the dimension side entirely. Increasing shuffle partitions doesn't help here — the bottleneck is the shuffle itself, not partition count."
+  },
+  {
+    q: "Which of the following joins can produce MORE output rows than either input table has?",
+    options: [
+      "left_anti",
+      "left_semi",
+      "inner join on a non-unique key",
+      "full outer join on a unique key"
+    ],
+    answer: 2,
+    explain: "An inner join on a non-unique key multiplies rows — if customer_id appears 5 times in orders and 3 times in events, you get 15 output rows for that customer. left_anti and left_semi never produce more rows than the left side. Full outer on a unique key produces at most max(left, right) rows."
+  },
+  {
+    q: "You need to find all product IDs that exist in a catalog table but have NO corresponding rows in a sales table. Which is the most efficient Spark approach?",
+    options: [
+      "full outer join, then filter WHERE sales.id IS NULL",
+      "left join from catalog to sales, filter WHERE sales.id IS NULL",
+      "catalog.join(sales, on='id', how='left_anti')",
+      "NOT IN subquery in Spark SQL"
+    ],
+    answer: 2,
+    explain: "left_anti is purpose-built for this — it returns only left rows with no match and carries no right-side columns, making it cheaper than a full outer or left join + filter. Both options A and B work but shuffle more data and require a post-join filter step."
+  },
+  {
+    q: "AQE is enabled. At runtime Spark discovers that after partition pruning, the right side of a planned sort-merge join is only 8MB. What does AQE do?",
+    options: [
+      "Nothing — the physical plan is fixed at compile time",
+      "Raises an AnalysisException and asks you to add a broadcast hint",
+      "Dynamically switches the sort-merge join to a broadcast hash join",
+      "Coalesces shuffle partitions but keeps sort-merge strategy"
+    ],
+    answer: 2,
+    explain: "AQE re-optimizes the physical plan at runtime using actual partition statistics. If the right side falls below autoBroadcastJoinThreshold after pruning, AQE promotes the join to a broadcast hash join — even with no hint in your code. This is one of AQE's three core capabilities (the others: coalescing partitions, handling skew)."
+  }
+];
+
+let current = 0, score = 0, answered = false;
+
+function render() {
+  const q = qs[current];
+  document.getElementById('score-bar').textContent = `Question ${current+1} of ${qs.length} · Score: ${score}`;
+  let html = `<div style="font-size:14px;font-weight:500;color:var(--color-text-primary);line-height:1.6;margin-bottom:${q.code?'4px':'14px'};">${q.q.replace(/\n/g,'<br>')}</div>`;
+  if (q.code) {
+    const lines = q.q.split('\n');
+    const prose = lines[0];
+    const code = lines.slice(2, lines.length-1).join('\n');
+    const tail = lines[lines.length-1];
+    html = `<div style="font-size:14px;font-weight:500;color:var(--color-text-primary);line-height:1.6;margin-bottom:4px;">${prose}</div>
+      <div class="code-block">${code}</div>
+      <div style="font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:14px;">${tail}</div>`;
+  }
+  html += `<div id="opts">`;
+  q.options.forEach((o,i) => {
+    html += `<div class="opt" id="opt-${i}" onclick="pick(${i})">${o}</div>`;
+  });
+  html += `</div>
+    <div class="explain" id="explain"></div>
+    <div id="next-wrap" style="margin-top:4px;display:none;">
+      ${current < qs.length-1
+        ? `<button class="ask-btn" onclick="next()">Next question →</button>`
+        : `<button class="ask-btn" onclick="finish()">See final score ↗</button>`}
+    </div>`;
+  document.getElementById('quiz-body').innerHTML = html;
+  answered = false;
+}
+
+function pick(i) {
+  if (answered) return;
+  answered = true;
+  const q = qs[current];
+  const correct = i === q.answer;
+  if (correct) score++;
+  document.getElementById(`opt-${i}`).style.background = correct ? 'var(--color-background-success)' : 'var(--color-background-danger)';
+  document.getElementById(`opt-${i}`).style.color = correct ? 'var(--color-text-success)' : 'var(--color-text-danger)';
+  if (!correct) {
+    document.getElementById(`opt-${q.answer}`).style.background = 'var(--color-background-success)';
+    document.getElementById(`opt-${q.answer}`).style.color = 'var(--color-text-success)';
+  }
+  const ex = document.getElementById('explain');
+  ex.style.display = 'block';
+  ex.textContent = q.explain;
+  document.getElementById('next-wrap').style.display = 'block';
+  document.getElementById('score-bar').textContent = `Question ${current+1} of ${qs.length} · Score: ${score}`;
+}
+
+function next() { current++; render(); }
+
+function finish() {
+  const pct = Math.round((score / qs.length) * 100);
+  const msg = pct === 100 ? 'Perfect — ready for Day 10.' : pct >= 80 ? 'Solid. Review the ones you missed.' : 'Worth re-reading the pitfalls and strategies tabs.';
+  document.getElementById('quiz-body').innerHTML = `
+    <div style="text-align:center;padding:2rem 0;">
+      <div style="font-size:40px;font-weight:500;color:var(--color-text-primary);">${score}/${qs.length}</div>
+      <div style="font-size:14px;color:var(--color-text-secondary);margin-top:8px;">${pct}% · ${msg}</div>
+      <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="ask-btn" onclick="current=0;score=0;render()">Retry ↗</button>
+        <button class="ask-btn" onclick="sendPrompt('Teach me Day 10: string and date functions in Spark — substring, regexp_replace, to_date, date_diff, higher-order functions. Senior DE background.')">Continue to Day 10 ↗</button>
+      </div>
+    </div>`;
+}
+
+render();
+</script>

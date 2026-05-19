@@ -1,0 +1,249 @@
+
+<style>
+  .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:transparent;color:var(--color-text-secondary);}
+  .tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .code-block{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:14px 16px;font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin:10px 0;}
+  .label{font-size:12px;color:var(--color-text-tertiary);margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.05em;}
+  .note{font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin:8px 0;}
+  .warn{background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:10px 0;display:flex;gap:8px;align-items:flex-start;}
+  .tip{background:var(--color-background-info);color:var(--color-text-info);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:10px 0;display:flex;gap:8px;align-items:flex-start;}
+  .ask-btn{margin-top:12px;background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);display:inline-block;margin-right:8px;}
+  .ask-btn:hover{background:var(--color-background-secondary);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0;}
+  .mini-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;}
+  .mini-card .lang{font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;}
+  .strategy-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:6px 0;cursor:pointer;}
+  .strategy-row:hover{background:var(--color-background-secondary);}
+  .strategy-row.selected{border-color:var(--color-border-info);background:var(--color-background-info);}
+  .s-name{font-size:13px;font-weight:500;color:var(--color-text-primary);min-width:160px;}
+  .s-bar{flex:1;height:14px;border-radius:4px;}
+  .s-label{font-size:12px;color:var(--color-text-secondary);min-width:60px;text-align:right;}
+  .detail-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px;margin-top:10px;font-size:13px;color:var(--color-text-secondary);line-height:1.6;display:none;}
+  .detail-box.show{display:block;}
+  .pitfall-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;margin:8px 0;}
+  .pitfall-title{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+</style>
+<h2 class="sr-only">Interactive reference for Spark Day 9: join types, broadcast joins, physical strategies, and join pitfalls</h2>
+<div style="padding:1rem 0;">
+  <div class="tabs">
+    <button class="tab active" onclick="show('types')">Join types</button>
+    <button class="tab" onclick="show('broadcast')">Broadcast join</button>
+    <button class="tab" onclick="show('strategy')">Physical strategies</button>
+    <button class="tab" onclick="show('pitfalls')">Pitfalls</button>
+    <button class="tab" onclick="show('quiz')">Quick quiz</button>
+  </div>
+
+  <div id="types" class="panel active">
+    <div class="label">All join types with Oracle mapping</div>
+    <div id="join-list"></div>
+    <div class="label">Semi and anti — the ones to know</div>
+    <div class="grid2">
+      <div class="mini-card"><div class="lang">left_semi — EXISTS equivalent</div><div class="code-block">df_customers.join(
+  df_orders,
+  on="customer_id",
+  how="left_semi"
+)</div></div>
+      <div class="mini-card"><div class="lang">left_anti — NOT EXISTS equivalent</div><div class="code-block">df_customers.join(
+  df_orders,
+  on="customer_id",
+  how="left_anti"
+)</div></div>
+    </div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i> Semi/anti never duplicate rows from the left side — unlike an inner join on a non-unique key which multiplies rows.</div>
+    <button class="ask-btn" onclick="sendPrompt('Give me 3 exam-style practice questions on Spark join types — semi, anti, and full outer — with answers')">Practice questions ↗</button>
+  </div>
+
+  <div id="broadcast" class="panel">
+    <div class="label">Broadcast hint — explicit</div>
+    <div class="code-block">from pyspark.sql.functions import broadcast
+
+df_orders.join(
+    broadcast(df_products),
+    on="product_id",
+    how="inner"
+)</div>
+    <div class="label">Spark SQL hint</div>
+    <div class="code-block">SELECT /*+ BROADCAST(p) */ o.*, p.name
+FROM orders o
+JOIN products p ON o.product_id = p.id</div>
+    <div class="label">Threshold config</div>
+    <div class="code-block">spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "50mb")
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "-1")</div>
+    <div class="warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i> <span>Forcing broadcast on a table that's actually large will OOM the driver. Check the actual size first — Spark UI → Stages → Input Size.</span></div>
+    <div class="tip"><i class="ti ti-info-circle" aria-hidden="true"></i> AQE can promote a sort-merge join to broadcast at runtime if it discovers one side is small after partition pruning — even without a hint.</div>
+    <div class="label">When to use broadcast</div>
+    <div id="broadcast-guide"></div>
+    <button class="ask-btn" onclick="sendPrompt('How does AQE dynamically switch a sort-merge join to a broadcast join at runtime? Exam-level explanation.')">AQE dynamic broadcast ↗</button>
+  </div>
+
+  <div id="strategy" class="panel">
+    <div class="label">Click a strategy to see details</div>
+    <div class="strategy-row" onclick="selectStrategy(this,'bcast')">
+      <span class="s-name">Broadcast hash join</span>
+      <div class="s-bar" style="background:#1D9E75;width:30%;"></div>
+      <span class="s-label">fastest</span>
+    </div>
+    <div class="detail-box" id="bcast">Small side broadcast to all executors. Hash table built in memory. Large side streams through and probes. <strong>Zero shuffle.</strong> Requires one side &lt; autoBroadcastJoinThreshold or explicit hint. OOM risk if overused on large tables.</div>
+
+    <div class="strategy-row" onclick="selectStrategy(this,'shash')">
+      <span class="s-name">Shuffle hash join</span>
+      <div class="s-bar" style="background:#BA7517;width:60%;"></div>
+      <span class="s-label">medium</span>
+    </div>
+    <div class="detail-box" id="shash">Both sides shuffled by key. Smaller side builds a hash table per partition, larger side probes it. Faster than sort-merge when one side fits in executor memory but is too large to broadcast to all executors. Hint: <code>SHUFFLE_HASH</code>.</div>
+
+    <div class="strategy-row" onclick="selectStrategy(this,'smj')">
+      <span class="s-name">Sort-merge join</span>
+      <div class="s-bar" style="background:#D85A30;width:90%;"></div>
+      <span class="s-label">default large</span>
+    </div>
+    <div class="detail-box" id="smj">Both sides shuffled and sorted on join key, then merged in a single pass. Handles arbitrarily large data — neither side needs to fit in memory. Default when both sides are large. Hint: <code>MERGE</code>. Two shuffles = highest cost.</div>
+
+    <div class="strategy-row" onclick="selectStrategy(this,'cartesian')">
+      <span class="s-name">Shuffle replicate NL</span>
+      <div class="s-bar" style="background:#E24B4A;width:100%;"></div>
+      <span class="s-label">avoid</span>
+    </div>
+    <div class="detail-box" id="cartesian">Used for cross joins and non-equi joins with no usable key. One side replicated to all partitions, nested-loop join applied. Cost grows as O(n×m). Hint: <code>SHUFFLE_REPLICATE_NL</code>. Only intentional cross joins should reach this strategy.</div>
+
+    <button class="ask-btn" onclick="sendPrompt('How do I read the physical plan in Spark to identify which join strategy was chosen? What to look for in EXPLAIN output.')">Reading EXPLAIN output ↗</button>
+  </div>
+
+  <div id="pitfalls" class="panel">
+    <div class="pitfall-card">
+      <div class="pitfall-title"><i class="ti ti-alert-triangle" style="font-size:15px;color:var(--color-text-warning);" aria-hidden="true"></i> Duplicate column names</div>
+      <div class="code-block">joined = df_orders.join(df_customers,
+    df_orders.customer_id == df_customers.customer_id)
+joined.select("customer_id")
+
+joined = df_orders.join(df_customers, on="customer_id")
+
+joined = df_orders.alias("o").join(
+    df_customers.alias("c"),
+    F.col("o.customer_id") == F.col("c.customer_id")
+).select("o.customer_id", "c.name")</div>
+    </div>
+    <div class="pitfall-card">
+      <div class="pitfall-title"><i class="ti ti-alert-triangle" style="font-size:15px;color:var(--color-text-warning);" aria-hidden="true"></i> NULL key matching</div>
+      <div class="code-block">df.join(df2,
+    df["key"].eqNullSafe(df2["key"]),
+    how="inner"
+)</div>
+      <div class="note" style="font-size:12px;">Standard equi-join: NULL ≠ NULL (same as Oracle). Use <code>eqNullSafe</code> when you want NULL = NULL semantics.</div>
+    </div>
+    <div class="pitfall-card">
+      <div class="pitfall-title"><i class="ti ti-alert-triangle" style="font-size:15px;color:var(--color-text-warning);" aria-hidden="true"></i> Row multiplication on non-unique key</div>
+      <div class="code-block">orders (10M rows) inner join events (50M rows)
+on customer_id (non-unique both sides)
+→ potentially billions of output rows</div>
+      <div class="note" style="font-size:12px;">Verify join key uniqueness before joining large tables. Use <code>left_semi</code> when you only need existence, not the joined columns.</div>
+    </div>
+    <div class="pitfall-card">
+      <div class="pitfall-title"><i class="ti ti-alert-triangle" style="font-size:15px;color:var(--color-text-warning);" aria-hidden="true"></i> Skew on join key</div>
+      <div class="code-block">spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionFactor", "5")</div>
+      <div class="note" style="font-size:12px;">AQE splits skewed partitions at runtime. For extreme skew on a known key, combine with salting or isolate the hot key.</div>
+    </div>
+    <button class="ask-btn" onclick="sendPrompt('Walk me through debugging a slow Spark join step by step — what to check in the Spark UI, how to identify the cause, and which fix to apply')">Debugging slow joins ↗</button>
+  </div>
+
+  <div id="quiz" class="panel">
+    <div id="quiz-container"></div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function selectStrategy(row, detailId) {
+  document.querySelectorAll('.strategy-row').forEach(r=>r.classList.remove('selected'));
+  document.querySelectorAll('.detail-box').forEach(d=>d.classList.remove('show'));
+  row.classList.add('selected');
+  document.getElementById(detailId).classList.add('show');
+}
+
+const joins = [
+  {how:'inner', oracle:'INNER JOIN', keeps:'Matching rows only'},
+  {how:'left', oracle:'LEFT OUTER JOIN', keeps:'All left + matched right'},
+  {how:'right', oracle:'RIGHT OUTER JOIN', keeps:'All right + matched left'},
+  {how:'full', oracle:'FULL OUTER JOIN', keeps:'All rows both sides'},
+  {how:'cross', oracle:'CROSS JOIN', keeps:'Cartesian — every combination'},
+  {how:'left_semi', oracle:'WHERE EXISTS', keeps:'Left rows with a match (no right cols)'},
+  {how:'left_anti', oracle:'WHERE NOT EXISTS', keeps:'Left rows with no match'},
+];
+const jlist = document.getElementById('join-list');
+joins.forEach(j => {
+  jlist.innerHTML += `<div style="display:grid;grid-template-columns:110px 160px 1fr;gap:8px;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;">
+    <code style="color:var(--color-text-primary);">${j.how}</code>
+    <span style="color:var(--color-text-secondary);">${j.oracle}</span>
+    <span style="color:var(--color-text-tertiary);">${j.keeps}</span>
+  </div>`;
+});
+
+const bgData = [
+  {label:'Dimension / lookup table', rec:'broadcast', color:'#1D9E75'},
+  {label:'One side < 50MB', rec:'auto-broadcast (AQE)', color:'#1D9E75'},
+  {label:'One side < ~200MB', rec:'explicit broadcast hint', color:'#BA7517'},
+  {label:'Both sides large', rec:'sort-merge (default)', color:'#D85A30'},
+  {label:'One side skewed', rec:'AQE skewJoin + consider salting', color:'#E24B4A'},
+];
+const bg = document.getElementById('broadcast-guide');
+bgData.forEach(b => {
+  bg.innerHTML += `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;">
+    <span style="color:var(--color-text-secondary);flex:1;">${b.label}</span>
+    <span style="padding:3px 10px;border-radius:var(--border-radius-md);background:${b.color}22;color:${b.color};font-size:12px;">${b.rec}</span>
+  </div>`;
+});
+
+const questions = [
+  {q:"You need customers who have placed at least one order, but you don't need any order columns. Which join type?", options:["inner","left","left_semi","left_anti"], answer:2, explain:"left_semi returns only left rows that have a match — no right columns, no row duplication."},
+  {q:"Your join produces far more rows than either input. What's the most likely cause?", options:["Null key mismatch","Non-unique join key on both sides","Skewed partition","Wrong broadcast threshold"], answer:1, explain:"Non-unique keys on both sides cause row multiplication. 10 orders × 10 events per customer = 100 output rows per customer."},
+  {q:"Spark auto-broadcasts a table at what default threshold?", options:["1MB","10MB","50MB","100MB"], answer:1, explain:"Default autoBroadcastJoinThreshold is 10MB. Commonly raised to 50–100MB in practice."},
+  {q:"Which join strategy requires zero shuffle?", options:["Sort-merge join","Shuffle hash join","Broadcast hash join","Shuffle replicate NL"], answer:2, explain:"Broadcast hash join sends the small table to every executor — no shuffling of either side."},
+  {q:"You join two large tables on customer_id. One key has 40% of all rows. AQE is enabled. What happens?", options:["Job fails with OOM","Spark skips the skewed partition","AQE splits the skewed partition into sub-tasks","Nothing — Spark proceeds as normal"], answer:2, explain:"With skewJoin enabled, AQE detects skewed partitions at runtime and splits them into smaller sub-tasks automatically."},
+];
+
+let current = 0, score = 0, answered = false;
+function renderQuiz() {
+  const q = questions[current];
+  const qc = document.getElementById('quiz-container');
+  qc.innerHTML = `<div style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:8px;">Question ${current+1} of ${questions.length} · Score: ${score}</div>
+    <div style="font-size:14px;color:var(--color-text-primary);font-weight:500;margin-bottom:14px;line-height:1.5;">${q.q}</div>
+    <div id="options"></div>
+    <div id="explain-box" style="display:none;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:13px;color:var(--color-text-secondary);margin-top:10px;line-height:1.5;"></div>
+    <div id="next-wrap" style="margin-top:12px;display:none;">
+      ${current < questions.length-1
+        ? `<button class="ask-btn" onclick="nextQ()">Next question →</button>`
+        : `<button class="ask-btn" onclick="sendPrompt('Give me 5 more Spark join exam questions at the same difficulty level')">More questions ↗</button>`}
+    </div>`;
+  const opts = document.getElementById('options');
+  q.options.forEach((o,i) => {
+    opts.innerHTML += `<div onclick="answer(${i})" style="padding:8px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:5px 0;font-size:13px;cursor:pointer;color:var(--color-text-secondary);" id="opt-${i}">${o}</div>`;
+  });
+  answered = false;
+}
+function answer(i) {
+  if (answered) return;
+  answered = true;
+  const q = questions[current];
+  const correct = i === q.answer;
+  if (correct) score++;
+  document.getElementById(`opt-${i}`).style.background = correct ? 'var(--color-background-success)' : 'var(--color-background-danger)';
+  document.getElementById(`opt-${i}`).style.color = correct ? 'var(--color-text-success)' : 'var(--color-text-danger)';
+  document.getElementById(`opt-${q.answer}`).style.background = 'var(--color-background-success)';
+  document.getElementById(`opt-${q.answer}`).style.color = 'var(--color-text-success)';
+  document.getElementById('explain-box').style.display = 'block';
+  document.getElementById('explain-box').textContent = q.explain;
+  document.getElementById('next-wrap').style.display = 'block';
+}
+function nextQ() { current++; renderQuiz(); }
+renderQuiz();
+</script>

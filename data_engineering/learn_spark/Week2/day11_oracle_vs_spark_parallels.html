@@ -1,0 +1,297 @@
+
+<style>
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:transparent;color:var(--color-text-secondary);}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);}
+.panel{display:none;}.panel.active{display:block;}
+.cb{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin:8px 0;}
+.lbl{font-size:11px;color:var(--color-text-tertiary);margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.05em;}
+.tip{background:var(--color-background-info);color:var(--color-text-info);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;}
+.warn{background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;}
+.ask-btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);margin-top:10px;margin-right:8px;}
+.ask-btn:hover{background:var(--color-background-secondary);}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;}
+.card .lang{font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;}
+.arrow{text-align:center;font-size:22px;color:var(--color-text-tertiary);padding:8px 0;}
+.concept-row{display:flex;align-items:center;gap:0;margin:6px 0;}
+.concept-oracle{flex:1;padding:8px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md) 0 0 var(--border-radius-md);font-size:13px;color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary);}
+.concept-arrow{padding:8px 6px;background:var(--color-background-secondary);font-size:13px;color:var(--color-text-tertiary);border-top:0.5px solid var(--color-border-tertiary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.concept-spark{flex:1;padding:8px 12px;background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;font-size:13px;color:var(--color-text-primary);font-weight:500;border:0.5px solid var(--color-border-tertiary);}
+.hdr{display:flex;gap:0;margin-bottom:4px;}
+.hdr-l{flex:1;font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;padding:4px 12px;}
+.hdr-r{flex:1;font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;padding:4px 12px;}
+.flow-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;margin:8px 0;}
+.flow-title{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;}
+.flow-step{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px;color:var(--color-text-secondary);}
+.step-fn{font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);padding:2px 8px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);white-space:nowrap;}
+</style>
+
+<div style="padding:1rem 0;">
+<div class="tabs">
+  <button class="tab active" onclick="show('concepts')">Concept map</button>
+  <button class="tab" onclick="show('phones')">Phones example</button>
+  <button class="tab" onclick="show('orders')">Order items</button>
+  <button class="tab" onclick="show('attrs')">Product attrs</button>
+  <button class="tab" onclick="show('pipeline')">Bronze→Gold</button>
+</div>
+
+<div id="concepts" class="panel active">
+  <div class="lbl">Oracle concept → Spark equivalent</div>
+  <div class="hdr"><div class="hdr-l">Oracle / Excel / MSSQL</div><div class="hdr-r">Spark / JSON / Parquet</div></div>
+  <div id="concept-map"></div>
+  <div class="tip" style="margin-top:14px;"><i class="ti ti-bulb" aria-hidden="true"></i><span>The key insight: in Oracle, complexity lives in <b>JOIN tables</b>. In Spark, it lives in <b>nested columns</b>. Day 11 is the toolkit for moving between these two worlds.</span></div>
+  <div class="lbl">When does nested data appear?</div>
+  <div id="sources"></div>
+</div>
+
+<div id="phones" class="panel">
+  <div class="lbl">Problem: customer has multiple phone numbers</div>
+  <div class="split">
+    <div class="card"><div class="lang">Oracle — 2 tables + JOIN</div><div class="cb">customers
+id | name
+1  | Ciprian
+
+customer_phones
+id | phone
+1  | 0721000001
+1  | 0721000002
+1  | 0721000003
+
+SELECT name, phone
+FROM customers c
+JOIN customer_phones p
+  ON c.id = p.id</div></div>
+    <div class="card"><div class="lang">Spark — 1 row, array column</div><div class="cb">id | name    | phones
+1  | Ciprian | ["0721000001",
+               "0721000002",
+               "0721000003"]
+
+# Access first phone
+F.col("phones").getItem(0)
+
+# Has specific number?
+F.array_contains("phones",
+  "0721000001")
+
+# One row per phone (= JOIN)
+F.explode("phones")</div></div>
+  </div>
+  <div class="tip"><i class="ti ti-bulb" aria-hidden="true"></i><span><code>explode()</code> = the Oracle JOIN result. <code>collect_list()</code> = the reverse, packing JOIN rows back into an array.</span></div>
+  <div class="lbl">Going wide→long and back</div>
+  <div class="cb">wide→long:  df.select("id", F.explode("phones").alias("phone"))
+long→wide:  df.groupBy("id").agg(F.collect_list("phone").alias("phones"))</div>
+  <button class="ask-btn" onclick="sendPrompt('Show me a full Spark example: start with a flat customer_phones table, collect_list to create array column, then explode back to flat — round trip')">Round-trip example ↗</button>
+</div>
+
+<div id="orders" class="panel">
+  <div class="lbl">Problem: order has variable number of line items</div>
+  <div class="split">
+    <div class="card"><div class="lang">Oracle — order_items table</div><div class="cb">orders
+order_id | customer
+1001     | Ciprian
+
+order_items
+order_id | product  | qty | price
+1001     | Laptop   | 1   | 4500
+1001     | Mouse    | 2   | 85
+1001     | Keyboard | 1   | 220
+
+-- Order total:
+SELECT order_id,
+  SUM(qty * price) AS total
+FROM order_items
+GROUP BY order_id</div></div>
+    <div class="card"><div class="lang">Spark — array of structs</div><div class="cb">order_id | items
+1001     | [
+  {product:Laptop, qty:1,price:4500},
+  {product:Mouse,  qty:2,price:85},
+  {product:Keyboard,qty:1,price:220}
+]
+
+# Order total — no explode needed
+F.aggregate("items",
+  F.lit(0.0),
+  lambda acc, x:
+    acc + x.qty * x.price
+).alias("total")
+# → 4875.0</div></div>
+  </div>
+  <div class="lbl">Flatten to Oracle-style rows</div>
+  <div class="cb">df.select("order_id",
+           F.explode("items").alias("item")) \
+  .select("order_id",
+          F.col("item.product"),
+          F.col("item.qty"),
+          F.col("item.price"))</div>
+  <div class="lbl">Enrich without flattening (Silver layer)</div>
+  <div class="cb"># Apply 10% discount to every item price
+df.withColumn("items",
+  F.transform("items",
+    lambda x: F.struct(
+      x.product.alias("product"),
+      x.qty.alias("qty"),
+      (x.price * 0.9).alias("price")
+    )
+  )
+)</div>
+  <div class="tip"><i class="ti ti-bulb" aria-hidden="true"></i><span><b>Rule of thumb:</b> if you need the individual rows for analysis → explode (Silver table). If you're enriching/aggregating within the array → transform/aggregate (stay nested, cheaper).</span></div>
+  <button class="ask-btn" onclick="sendPrompt('Show me a Spark example with array of structs — inline() to explode into columns, vs explode().select() pattern — when to use each')">inline vs explode ↗</button>
+</div>
+
+<div id="attrs" class="panel">
+  <div class="lbl">Problem: different products have different attributes</div>
+  <div class="split">
+    <div class="card"><div class="lang">Oracle — EAV antipattern</div><div class="cb">product_attributes
+prod_id | attr     | value
+101     | RAM      | 16GB
+101     | CPU      | i7
+102     | size     | XL
+102     | color    | blue
+
+-- Get RAM for product 101:
+SELECT value FROM product_attributes
+WHERE prod_id=101
+  AND attr='RAM'
+
+-- Bloated, hard to query,
+-- no type safety</div></div>
+    <div class="card"><div class="lang">Spark — MAP column</div><div class="cb">prod_id | attrs
+101     | {RAM:16GB, CPU:i7, GPU:RTX}
+102     | {size:XL, color:blue}
+
+# Get RAM (null if missing)
+F.col("attrs")["RAM"]
+
+# What keys does each row have?
+F.map_keys("attrs")
+
+# Only rows with RAM key
+F.filter(
+  F.map_contains_key(col,"RAM")
+)
+
+# Add a new attribute
+F.map_concat("attrs",
+  F.create_map(
+    F.lit("source"),
+    F.lit("catalog_v2")
+  )
+)</div></div>
+  </div>
+  <div class="tip"><i class="ti ti-bulb" aria-hidden="true"></i><span>MAP column = Oracle EAV table collapsed into one cell. Keys can differ per row. Missing key returns null — no KeyError, no join miss.</span></div>
+  <div class="lbl">Struct vs Map — when to use which</div>
+  <div id="struct-vs-map"></div>
+  <button class="ask-btn" onclick="sendPrompt('When should I use a Struct vs a Map column in Spark? Give me a decision rule with real examples.')">Struct vs Map decision ↗</button>
+</div>
+
+<div id="pipeline" class="panel">
+  <div class="lbl">The full Bronze → Silver → Gold pipeline using Day 11 tools</div>
+  <div class="flow-box">
+    <div class="flow-title">🟫 Bronze — land raw JSON as-is</div>
+    <div class="flow-step"><span class="step-fn">from_json</span><span>Parse raw JSON string into typed struct</span></div>
+    <div class="flow-step"><span class="step-fn">schema_of_json</span><span>Infer schema from a sample (dev only)</span></div>
+    <div class="flow-step" style="color:var(--color-text-tertiary);font-size:12px;">→ One row per API call / Kafka message. Nested shape preserved.</div>
+  </div>
+  <div class="arrow">↓</div>
+  <div class="flow-box">
+    <div class="flow-title">🥈 Silver — normalize to flat analytical rows</div>
+    <div class="flow-step"><span class="step-fn">explode</span><span>Array → one row per element</span></div>
+    <div class="flow-step"><span class="step-fn">col("struct.field")</span><span>Access nested struct fields</span></div>
+    <div class="flow-step"><span class="step-fn">map_keys / element_at</span><span>Unpack map columns</span></div>
+    <div class="flow-step" style="color:var(--color-text-tertiary);font-size:12px;">→ Flat table. Looks like Oracle. One row per event/item/vehicle.</div>
+  </div>
+  <div class="arrow">↓</div>
+  <div class="flow-box">
+    <div class="flow-title">🥇 Gold — aggregate into business-ready structures</div>
+    <div class="flow-step"><span class="step-fn">collect_list / collect_set</span><span>Re-pack rows into arrays (GROUP BY → array)</span></div>
+    <div class="flow-step"><span class="step-fn">transform / filter / exists</span><span>Enrich/filter within array columns</span></div>
+    <div class="flow-step"><span class="step-fn">to_json / struct()</span><span>Pack into nested output for APIs / dashboards</span></div>
+    <div class="flow-step" style="color:var(--color-text-tertiary);font-size:12px;">→ One row per entity (route, customer, product) with rich nested summary.</div>
+  </div>
+  <div class="lbl">Transit project mapping</div>
+  <div id="transit-map"></div>
+  <button class="ask-btn" onclick="sendPrompt('Walk me through the Bronze to Silver transform for a Kafka JSON source in Spark — from_json, explode, struct field access — with a realistic bus arrival example')">Transit Bronze→Silver walkthrough ↗</button>
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const concepts=[
+  ['JOIN table (1-to-many)','Array<T> column'],
+  ['Object / nested type','Struct<field:type,...>'],
+  ['EAV attribute table','Map<String,String> column'],
+  ['LISTAGG / STRING_AGG','collect_list + array_join'],
+  ['COUNT(*) in subquery','F.size(array_col)'],
+  ['WHERE EXISTS (subquery)','F.exists(col, lambda)'],
+  ['Correlated subquery per row','F.transform / F.filter on array'],
+  ['JSON_VALUE(doc, path)','F.get_json_object(col, "$.path")'],
+  ['JSON_TABLE(doc, ...)','F.from_json(col, schema) + explode'],
+  ['SUM in subquery per row','F.aggregate(col, init, lambda)'],
+  ['UNNEST / LATERAL FLATTEN','F.explode(col)'],
+  ['Rebuild array from rows','F.collect_list after groupBy'],
+];
+const cm=document.getElementById('concept-map');
+concepts.forEach(r=>{
+  cm.innerHTML+=`<div class="concept-row">
+    <div class="concept-oracle">${r[0]}</div>
+    <div class="concept-arrow"> → </div>
+    <div class="concept-spark"><code style="font-family:var(--font-mono);font-size:12px;">${r[1]}</code></div>
+  </div>`;
+});
+
+const sources=[
+  ['Kafka / event streaming','Messages arrive as JSON — arrays of events per message'],
+  ['REST APIs','Responses nest objects and arrays — one call = many entities'],
+  ['Parquet from modern systems','Databricks, Snowflake, BigQuery all write nested Parquet natively'],
+  ['MongoDB / DynamoDB exports','Documents are nested by design — no normalization'],
+  ['IoT / clickstream','Variable-length event sequences per device/session'],
+  ['GTFS / transit feeds','Trips contain arrays of stop times — your Transit project'],
+];
+const ss=document.getElementById('sources');
+sources.forEach(r=>{
+  ss.innerHTML+=`<div style="display:flex;gap:10px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;">
+    <span style="color:var(--color-text-primary);min-width:180px;">${r[0]}</span>
+    <span style="color:var(--color-text-secondary);">${r[1]}</span>
+  </div>`;
+});
+
+const svm=[
+  ['Struct','Fixed known fields, all rows same shape','Address {street, city, zip}','col("address.city")'],
+  ['Map','Variable keys, keys differ per row','Product attributes {RAM:16GB} or {size:XL}','col("attrs")["RAM"]'],
+];
+const sv=document.getElementById('struct-vs-map');
+sv.innerHTML=`<div style="display:grid;grid-template-columns:60px 1fr 1fr 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">
+  <span>Type</span><span>Use when</span><span>Example</span><span>Access</span></div>`;
+svm.forEach(r=>{
+  sv.innerHTML+=`<div style="display:grid;grid-template-columns:60px 1fr 1fr 1fr;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;">
+    <span style="font-weight:500;color:var(--color-text-primary);">${r[0]}</span>
+    <span style="color:var(--color-text-secondary);">${r[1]}</span>
+    <span style="color:var(--color-text-secondary);">${r[2]}</span>
+    <code style="font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);">${r[3]}</code>
+  </div>`;
+});
+
+const transit=[
+  ['Bronze','Raw API JSON string','from_json + schema','One row per API poll'],
+  ['Silver','vehicles array → flat rows','explode("vehicles") + col("v.lat")','One row per vehicle per poll'],
+  ['Gold','Route-level delay summary','collect_list + exists + avg','One row per route'],
+];
+const tm=document.getElementById('transit-map');
+tm.innerHTML=`<div style="display:grid;grid-template-columns:70px 1fr 1fr 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">
+  <span>Layer</span><span>What it holds</span><span>Day 11 tool used</span><span>Granularity</span></div>`;
+transit.forEach(r=>{
+  tm.innerHTML+=`<div style="display:grid;grid-template-columns:70px 1fr 1fr 1fr;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;">
+    <span style="font-weight:500;color:var(--color-text-primary);">${r[0]}</span>
+    <span style="color:var(--color-text-secondary);">${r[1]}</span>
+    <code style="font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);">${r[2]}</code>
+    <span style="color:var(--color-text-tertiary);font-size:12px;">${r[3]}</span>
+  </div>`;
+});
+</script>

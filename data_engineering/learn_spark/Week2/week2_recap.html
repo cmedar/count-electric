@@ -297,6 +297,7 @@
   <button class="tab-btn" role="tab" onclick="switchTab('join')">Joins</button>
   <button class="tab-btn" role="tab" onclick="switchTab('str')">Strings &amp; Dates</button>
   <button class="tab-btn" role="tab" onclick="switchTab('col')">Collections</button>
+  <button class="tab-btn" role="tab" onclick="switchTab('oracle')">Oracle &#8594; Spark</button>
   <button class="tab-btn" role="tab" onclick="switchTab('delta')">Delta Lake</button>
   <button class="tab-btn" role="tab" onclick="switchTab('udf')">UDFs &amp; Caching</button>
   <button class="tab-btn" role="tab" onclick="switchTab('tips')">Exam Tips</button>
@@ -879,6 +880,445 @@ F.col("address.city.district")     # nested access, any depth</pre>
 </section>
 
 
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: Oracle → Spark
+═══════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="panel-oracle">
+  <div class="section-links">
+    <a href="#oracle-map">Concept map</a>
+    <a href="#oracle-phones">Phones example</a>
+    <a href="#oracle-orders">Order items</a>
+    <a href="#oracle-attrs">Product attrs</a>
+    <a href="#oracle-formats">Formats</a>
+    <a href="#oracle-pipeline">Bronze→Gold</a>
+  </div>
+
+  <h2>Oracle → Spark</h2>
+  <p>In Oracle, complexity lives in <strong>JOIN tables</strong>. In Spark, it lives in <strong>nested columns</strong> — arrays, structs, and maps. This tab maps the two worlds and explains when each format is appropriate.</p>
+
+  <h3 id="oracle-map">Concept Map — Oracle to Spark</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Oracle / Excel / MSSQL</th><th>Spark / JSON / Parquet equivalent</th></tr></thead>
+      <tbody>
+        <tr><td>JOIN table (1-to-many)</td><td><code>Array&lt;T&gt;</code> column</td></tr>
+        <tr><td>Object / nested type</td><td><code>Struct&lt;field:type,...&gt;</code></td></tr>
+        <tr><td>EAV attribute table</td><td><code>Map&lt;String,String&gt;</code> column</td></tr>
+        <tr><td>LISTAGG / STRING_AGG</td><td><code>collect_list + array_join</code></td></tr>
+        <tr><td>COUNT(*) in subquery</td><td><code>F.size(array_col)</code></td></tr>
+        <tr><td>WHERE EXISTS (subquery)</td><td><code>F.exists(col, lambda x: ...)</code></td></tr>
+        <tr><td>Correlated subquery per row</td><td><code>F.transform / F.filter</code> on array</td></tr>
+        <tr><td>JSON_VALUE(doc, path)</td><td><code>F.get_json_object(col, "$.path")</code></td></tr>
+        <tr><td>JSON_TABLE(doc, ...)</td><td><code>F.from_json(col, schema) + explode</code></td></tr>
+        <tr><td>SUM in subquery per row</td><td><code>F.aggregate(col, init, lambda)</code></td></tr>
+        <tr><td>UNNEST / LATERAL FLATTEN</td><td><code>F.explode(col)</code></td></tr>
+        <tr><td>Rebuild array from rows</td><td><code>F.collect_list</code> after groupBy</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout info">
+    <strong>Key insight:</strong> The Day 11 toolkit is the bridge between these two worlds — <code>explode</code> / <code>collect_list</code> move data between Oracle-style flat rows and Spark nested columns.
+  </div>
+
+  <h3 id="oracle-phones">Phones — Array Column</h3>
+  <p>Customer has multiple phone numbers. Oracle requires a separate table and a JOIN. Spark collapses them into one <code>Array&lt;String&gt;</code> column.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">Oracle — 2 tables + JOIN</div>
+      <pre style="margin-bottom:0;font-size:0.78rem;">customers
+id | name
+1  | Ciprian
+
+customer_phones
+id | phone
+1  | 0721000001
+1  | 0721000002
+1  | 0721000003
+
+SELECT name, phone
+FROM customers c
+JOIN customer_phones p
+  ON c.id = p.id</pre>
+    </div>
+    <div class="card">
+      <div class="card-title">Spark — 1 row, array column</div>
+      <pre style="margin-bottom:0;font-size:0.78rem;">id | name    | phones
+1  | Ciprian | ["0721000001",
+               "0721000002",
+               "0721000003"]
+
+<span class="cm"># Access first phone (0-indexed)</span>
+F.col("phones").getItem(0)
+
+<span class="cm"># Has specific number?</span>
+F.array_contains("phones", "0721000001")
+
+<span class="cm"># One row per phone (= JOIN)</span>
+F.explode("phones")</pre>
+    </div>
+  </div>
+  <div class="callout tip">
+    <strong>Round-trip:</strong> <code>explode()</code> = Oracle JOIN result. <code>collect_list()</code> = the reverse, packing JOIN rows back into an array.
+  </div>
+  <pre><span class="cm"># wide→long (= Oracle JOIN result)</span>
+df.<span class="fn">select</span>(<span class="str">"id"</span>, F.<span class="fn">explode</span>(<span class="str">"phones"</span>).<span class="fn">alias</span>(<span class="str">"phone"</span>))
+<span class="cm"># long→wide (collapse flat rows back to array)</span>
+df.<span class="fn">groupBy</span>(<span class="str">"id"</span>).<span class="fn">agg</span>(F.<span class="fn">collect_list</span>(<span class="str">"phone"</span>).<span class="fn">alias</span>(<span class="str">"phones"</span>))</pre>
+
+  <h3 id="oracle-orders">Order Items — Array of Structs</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">Oracle — order_items table</div>
+      <pre style="margin-bottom:0;font-size:0.78rem;">order_items
+order_id | product  | qty | price
+1001     | Laptop   | 1   | 4500
+1001     | Mouse    | 2   | 85
+1001     | Keyboard | 1   | 220
+
+<span class="cm">-- Order total:</span>
+SELECT order_id,
+  SUM(qty * price) AS total
+FROM order_items
+GROUP BY order_id</pre>
+    </div>
+    <div class="card">
+      <div class="card-title">Spark — array of structs</div>
+      <pre style="margin-bottom:0;font-size:0.78rem;"><span class="cm"># Total — no explode needed</span>
+F.aggregate("items",
+  F.lit(0.0),
+  lambda acc, x:
+    acc + x.qty * x.price
+).alias("total")   <span class="cm"># → 4875.0</span>
+
+<span class="cm"># Flatten to Oracle-style rows</span>
+df.select("order_id",
+    F.explode("items").alias("i"))   .select("order_id",
+    F.col("i.product"),
+    F.col("i.qty"),
+    F.col("i.price"))</pre>
+    </div>
+  </div>
+  <div class="callout">
+    <strong>Rule of thumb:</strong> need individual rows for analysis → <code>explode</code> (Silver table). Enriching/aggregating within the array → <code>transform/aggregate</code> (stay nested, cheaper).
+  </div>
+  <h3>Enrich without flattening (Silver layer)</h3>
+  <pre><span class="cm"># Apply 10% discount to every item price — no explode needed</span>
+df.<span class="fn">withColumn</span>(<span class="str">"items"</span>,
+  F.<span class="fn">transform</span>(<span class="str">"items"</span>,
+    <span class="kw">lambda</span> x: F.<span class="fn">struct</span>(
+      x.product.<span class="fn">alias</span>(<span class="str">"product"</span>),
+      x.qty.<span class="fn">alias</span>(<span class="str">"qty"</span>),
+      (x.price * <span class="num">0.9</span>).<span class="fn">alias</span>(<span class="str">"price"</span>)
+    )
+  )
+)</pre>
+
+  <h3 id="oracle-attrs">Product Attrs — Map Column (EAV)</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">Oracle — EAV antipattern</div>
+      <pre style="margin-bottom:0;font-size:0.78rem;">product_attributes
+prod_id | attr  | value
+101     | RAM   | 16GB
+101     | CPU   | i7
+102     | size  | XL
+102     | color | blue
+
+<span class="cm">-- Get RAM for product 101:</span>
+SELECT value
+FROM product_attributes
+WHERE prod_id=101 AND attr='RAM'
+<span class="cm">-- Bloated, hard to query,
+-- no type safety</span></pre>
+    </div>
+    <div class="card">
+      <div class="card-title">Spark — Map column</div>
+      <pre style="margin-bottom:0;font-size:0.78rem;">prod_id | attrs
+101     | {RAM:16GB, CPU:i7}
+102     | {size:XL, color:blue}
+
+F.col("attrs")["RAM"]    <span class="cm"># null if missing</span>
+F.map_keys("attrs")      <span class="cm"># what keys exist?</span>
+F.map_concat("attrs",
+  F.create_map(
+    F.lit("source"),
+    F.lit("catalog_v2")
+  ))                     <span class="cm"># add new key</span></pre>
+    </div>
+  </div>
+  <div class="callout info">
+    <strong>MAP column = Oracle EAV table collapsed into one cell.</strong> Keys can differ per row. Missing key returns null — no KeyError, no join miss.
+  </div>
+
+  <h3>Struct vs Map — When to Use Which</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Type</th><th>Use when</th><th>Example</th><th>Access syntax</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Struct</strong></td>
+          <td>Fixed known fields, all rows same shape</td>
+          <td><code>Address {street, city, zip}</code></td>
+          <td><code>col("address.city")</code></td>
+        </tr>
+        <tr>
+          <td><strong>Map</strong></td>
+          <td>Variable keys, keys differ per row</td>
+          <td><code>{RAM:16GB}</code> or <code>{size:XL, color:blue}</code></td>
+          <td><code>col("attrs")["RAM"]</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="oracle-formats">Storage Formats — Oracle / JSON / Parquet</h3>
+  <div class="card-grid">
+    <div class="card blue">
+      <div class="card-title">Oracle / MSSQL</div>
+      <div class="card-body">Row-oriented heap storage. No nesting — 1NF enforced. Complexity lives in JOIN relationships. Slow at scale: reads all columns. Seen in: OLTP systems, legacy pipelines.</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">JSON (lines / API)</div>
+      <div class="card-body">Text, row-oriented. Native nesting: arrays and objects built in. Human-readable. Slow for analytics: no compression, full parse per row. Seen in: APIs, Kafka, Bronze landing zone.</div>
+    </div>
+    <div class="card accent">
+      <div class="card-title">Parquet</div>
+      <div class="card-body">Binary, columnar. Native nesting: array, map, struct in spec. Binary — needs Spark to read. Fast: column pruning + compression (4–10× at scale). Seen in: Silver/Gold Delta tables, data lake.</div>
+    </div>
+  </div>
+
+  <h3>Oracle on disk vs Parquet on disk</h3>
+  <p>Oracle reads every column of every row. Parquet skips to the exact column chunks you query — product and qty chunks are never opened for <code>SUM(price)</code>.</p>
+  <div style="margin:16px 0;">
+  <svg width="100%" viewBox="0 0 680 620" role="img" style="" xmlns="http://www.w3.org/2000/svg">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Oracle vs Parquet on disk: two rows of order data stored in each format</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Oracle stores complete rows sequentially. Parquet stores a footer index first, then column chunks with key+values together, using rep levels to mark row boundaries.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  
+  <!-- ── ORACLE side ── -->
+  <text x="160" y="32" text-anchor="middle" style="fill:rgb(20, 20, 19);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:auto">Oracle on disk</text>
+  <text x="160" y="50" text-anchor="middle" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">row-oriented</text>
+  
+  <!-- Row 1 label -->
+  <text x="22" y="90" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">row 0</text>
+  
+  <!-- Row 0 cells -->
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="60" y="74" width="68" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="94" y="91" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">order_id</text>
+    <text x="94" y="103" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">1001</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="132" y="74" width="68" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="166" y="91" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">product</text>
+    <text x="166" y="103" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Laptop</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="204" y="74" width="52" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="230" y="91" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">qty</text>
+    <text x="230" y="103" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">1</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="260" y="74" width="60" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="290" y="91" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">price</text>
+    <text x="290" y="103" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">4500</text>
+  </g>
+  
+  <!-- Row 1 -->
+  <text x="22" y="130" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">row 1</text>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="60" y="114" width="68" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="94" y="131" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">order_id</text>
+    <text x="94" y="143" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">1001</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="132" y="114" width="68" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="166" y="131" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">product</text>
+    <text x="166" y="143" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Mouse</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="204" y="114" width="52" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="230" y="131" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">qty</text>
+    <text x="230" y="143" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">2</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="260" y="114" width="60" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="290" y="131" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">price</text>
+    <text x="290" y="143" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">85</text>
+  </g>
+  
+  <!-- Row 2 -->
+  <text x="22" y="170" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">row 2</text>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="60" y="154" width="68" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="94" y="171" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">order_id</text>
+    <text x="94" y="183" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">1002</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="132" y="154" width="68" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="166" y="171" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">product</text>
+    <text x="166" y="183" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Monitor</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="204" y="154" width="52" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="230" y="171" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">qty</text>
+    <text x="230" y="183" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">1</text>
+  </g>
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="260" y="154" width="60" height="34" rx="4" stroke-width="0.5" style="fill:rgb(230, 241, 251);stroke:rgb(24, 95, 165);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="290" y="171" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">price</text>
+    <text x="290" y="183" text-anchor="middle" dominant-baseline="central" style="fill:rgb(24, 95, 165);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">800</text>
+  </g>
+  
+  <!-- Oracle annotation -->
+  <text x="60" y="214" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">key repeated on every row</text>
+  <text x="60" y="228" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">read all columns even for SUM(price)</text>
+  
+  <!-- divider -->
+  <line x1="340" y1="20" x2="340" y2="600" stroke="var(--t)" stroke-width="0.5" stroke-dasharray="4 4" opacity="0.4" style="fill:rgb(0, 0, 0);stroke:rgb(115, 114, 108);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-dasharray:4px, 4px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  
+  <!-- ── PARQUET side ── -->
+  <text x="510" y="32" text-anchor="middle" style="fill:rgb(20, 20, 19);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:auto">Parquet on disk</text>
+  <text x="510" y="50" text-anchor="middle" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">columnar</text>
+  
+  <!-- Footer box -->
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="356" y="62" width="312" height="54" rx="6" stroke-width="0.5" style="fill:rgb(250, 238, 218);stroke:rgb(133, 79, 11);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="512" y="82" text-anchor="middle" dominant-baseline="central" style="fill:rgb(99, 56, 6);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">Footer (read first)</text>
+    <text x="512" y="100" text-anchor="middle" dominant-baseline="central" style="fill:rgb(133, 79, 11);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">schema + byte offsets for each column chunk</text>
+  </g>
+  
+  <line x1="512" y1="116" x2="512" y2="136" marker-end="url(#arrow)" stroke="var(--s)" style="fill:none;stroke:rgb(115, 114, 108);color:rgb(0, 0, 0);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  
+  <!-- product chunk -->
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="356" y="138" width="312" height="90" rx="6" stroke-width="0.5" style="fill:rgb(225, 245, 238);stroke:rgb(15, 110, 86);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="512" y="158" text-anchor="middle" dominant-baseline="central" style="fill:rgb(8, 80, 65);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">product chunk</text>
+    <text x="512" y="176" text-anchor="middle" dominant-baseline="central" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">key: "product" (once, in header)</text>
+    <text x="373" y="196" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0 Laptop</text>
+    <text x="465" y="196" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=1 Mouse</text>
+    <text x="557" y="196" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0 Monitor</text>
+    <text x="373" y="214" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">↑ new row</text>
+    <text x="465" y="214" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">↑ same row</text>
+    <text x="557" y="214" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">↑ new row</text>
+  </g>
+  
+  <line x1="512" y1="228" x2="512" y2="248" marker-end="url(#arrow)" stroke="var(--s)" style="fill:none;stroke:rgb(115, 114, 108);color:rgb(0, 0, 0);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  
+  <!-- qty chunk -->
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="356" y="250" width="312" height="74" rx="6" stroke-width="0.5" style="fill:rgb(225, 245, 238);stroke:rgb(15, 110, 86);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="512" y="270" text-anchor="middle" dominant-baseline="central" style="fill:rgb(8, 80, 65);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">qty chunk</text>
+    <text x="512" y="288" text-anchor="middle" dominant-baseline="central" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">key: "qty" (once, in header)</text>
+    <text x="373" y="308" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0  1</text>
+    <text x="465" y="308" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=1  2</text>
+    <text x="557" y="308" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0  1</text>
+  </g>
+  
+  <line x1="512" y1="324" x2="512" y2="344" marker-end="url(#arrow)" stroke="var(--s)" style="fill:none;stroke:rgb(115, 114, 108);color:rgb(0, 0, 0);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  
+  <!-- price chunk -->
+  <g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <rect x="356" y="346" width="312" height="74" rx="6" stroke-width="0.5" style="fill:rgb(225, 245, 238);stroke:rgb(15, 110, 86);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+    <text x="512" y="366" text-anchor="middle" dominant-baseline="central" style="fill:rgb(8, 80, 65);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">price chunk</text>
+    <text x="512" y="384" text-anchor="middle" dominant-baseline="central" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">key: "price" (once, in header)</text>
+    <text x="373" y="404" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0  4500</text>
+    <text x="465" y="404" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=1  85</text>
+    <text x="557" y="404" text-anchor="start" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0  800</text>
+  </g>
+  
+  <!-- SUM annotation arrow pointing at price chunk -->
+  <line x1="668" y1="383" x2="670" y2="383" stroke="none" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M640 450 L640 383 L670 383" fill="none" stroke="var(--s)" stroke-width="1" stroke-dasharray="3 3" style="fill:none;stroke:rgb(61, 61, 58);color:rgb(0, 0, 0);stroke-width:1px;stroke-dasharray:3px, 3px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <text x="510" y="450" text-anchor="middle" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">SUM(price) reads only this chunk</text>
+  <text x="510" y="466" text-anchor="middle" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">product + qty chunks never opened</text>
+  
+  <!-- r legend -->
+  <rect x="356" y="488" width="312" height="52" rx="6" fill="none" stroke="var(--t)" stroke-width="0.5" stroke-dasharray="3 3" style="fill:none;stroke:rgb(115, 114, 108);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-dasharray:3px, 3px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <text x="368" y="508" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=0  new row starts here  (like \n in CSV)</text>
+  <text x="368" y="526" text-anchor="start" style="fill:rgb(61, 61, 58);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">r=1  next item in same row  (like , in CSV)</text>
+  
+  </svg>
+  </div>
+
+  <h3>Do you need <code>from_json</code>?</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Source</th><th>What you receive</th><th>Need from_json?</th><th>Typical layer</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>JSON string column in Spark</td>
+          <td>Raw text — looks like <code>{"id":1}</code></td>
+          <td><span class="tag tag-orange">Yes — required</span></td>
+          <td>Bronze after Kafka/API ingest</td>
+        </tr>
+        <tr>
+          <td>Parquet / Delta column</td>
+          <td>Binary typed — already Array/Struct/Map</td>
+          <td><span class="tag tag-green">No — already typed</span></td>
+          <td>Silver/Gold after first transform</td>
+        </tr>
+        <tr>
+          <td>Oracle table column</td>
+          <td>Flat scalar only — no nesting possible</td>
+          <td><span class="tag tag-blue">n/a — JOIN instead</span></td>
+          <td>Legacy source systems</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout info">
+    <strong>Remember:</strong> Parquet already decoded the types — nested columns arrive as Array/Struct/Map objects ready to use. JSON arrives as a raw string — you must call <code>from_json</code> first to get the same result.
+  </div>
+
+  <h3 id="oracle-pipeline">Bronze → Silver → Gold Pipeline</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>What it holds</th><th>Day 11 tool used</th><th>Granularity</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Bronze</strong></td>
+          <td>Raw API JSON string</td>
+          <td><code>from_json + schema_of_json</code></td>
+          <td>One row per API call / Kafka message</td>
+        </tr>
+        <tr>
+          <td><strong>Silver</strong></td>
+          <td>Normalized flat analytical rows</td>
+          <td><code>explode + col("struct.field") + map_keys</code></td>
+          <td>One row per event / item / vehicle</td>
+        </tr>
+        <tr>
+          <td><strong>Gold</strong></td>
+          <td>Business-ready aggregate structures</td>
+          <td><code>collect_list + transform + to_json</code></td>
+          <td>One row per entity (route, customer, product)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <pre><span class="cm"># Bronze: parse raw JSON string → typed struct</span>
+df.<span class="fn">withColumn</span>(<span class="str">"parsed"</span>, F.<span class="fn">from_json</span>(F.<span class="fn">col</span>(<span class="str">"raw_json"</span>), schema))
+
+<span class="cm"># Silver: explode array → flat rows, access struct fields</span>
+df.<span class="fn">select</span>(F.<span class="fn">explode</span>(<span class="str">"parsed.vehicles"</span>).<span class="fn">alias</span>(<span class="str">"v"</span>))   .<span class="fn">select</span>(F.<span class="fn">col</span>(<span class="str">"v.id"</span>), F.<span class="fn">col</span>(<span class="str">"v.lat"</span>), F.<span class="fn">col</span>(<span class="str">"v.delay"</span>))
+
+<span class="cm"># Gold: re-pack into one row per route, no parsing needed</span>
+df.<span class="fn">groupBy</span>(<span class="str">"route_id"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">collect_list</span>(<span class="str">"delay"</span>).<span class="fn">alias</span>(<span class="str">"delays"</span>),
+    F.<span class="fn">avg</span>(<span class="str">"delay"</span>).<span class="fn">alias</span>(<span class="str">"avg_delay"</span>)
+)</pre>
+  <div class="callout tip">
+    <strong>The toolkit split:</strong> <code>from_json / to_json</code> are for the Bronze edge (JSON strings). <code>explode / transform / collect_list / struct</code> are for Silver↔Gold work on already-typed Parquet columns.
+  </div>
+</section>
+
+
 <section class="tab-panel" id="panel-delta">
   <div class="section-links">
     <a href="#delta-props">Properties</a>
@@ -1284,7 +1724,7 @@ df.<span class="fn">unpersist</span>()</pre>
 
 <script>
   function switchTab(id) {
-    const ids = ['agg','win','join','str','col','delta','udf','tips'];
+    const ids = ['agg','win','join','str','col','oracle','delta','udf','tips'];
     document.querySelectorAll('.tab-btn').forEach((btn, i) => {
       btn.classList.toggle('active', ids[i] === id);
     });

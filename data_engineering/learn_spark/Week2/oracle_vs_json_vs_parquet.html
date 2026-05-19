@@ -1,0 +1,234 @@
+
+<style>
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:transparent;color:var(--color-text-secondary);}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);}
+.panel{display:none;}.panel.active{display:block;}
+.cb{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px 14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin:8px 0;}
+.lbl{font-size:11px;color:var(--color-text-tertiary);margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.05em;}
+.tip{background:var(--color-background-info);color:var(--color-text-info);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;}
+.warn{background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px;padding:8px 12px;border-radius:var(--border-radius-md);margin:8px 0;display:flex;gap:8px;}
+.ask-btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);margin-top:10px;margin-right:8px;}
+.ask-btn:hover{background:var(--color-background-secondary);}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px;}
+.card .ctitle{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.card .crow{font-size:12px;color:var(--color-text-secondary);padding:4px 0;border-bottom:0.5px solid var(--color-border-tertiary);line-height:1.5;}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:var(--border-radius-md);margin:2px 2px 2px 0;}
+.frow{display:grid;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;align-items:start;}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0;}
+.mc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;}
+.mc .lang{font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;}
+</style>
+
+<div style="padding:1rem 0;">
+<div class="tabs">
+  <button class="tab active" onclick="show('compare')">Format comparison</button>
+  <button class="tab" onclick="show('nested')">Nested in Parquet</button>
+  <button class="tab" onclick="show('workflow')">When to use what</button>
+  <button class="tab" onclick="show('delta')">Parquet + Delta</button>
+</div>
+
+<div id="compare" class="panel active">
+  <div class="lbl">Three formats — what they are and when you see them</div>
+  <div class="grid3">
+    <div class="card">
+      <div class="ctitle">🗄 Oracle / MSSQL table</div>
+      <div class="crow"><b>Format:</b> row-oriented heap storage</div>
+      <div class="crow"><b>Nested types:</b> not supported — 1NF enforced</div>
+      <div class="crow"><b>Human readable:</b> via SQL only</div>
+      <div class="crow"><b>Analytics speed:</b> slow at scale — reads all columns</div>
+      <div class="crow"><b>Where you see it:</b> OLTP systems, legacy pipelines</div>
+      <div class="crow"><b>Complexity lives in:</b> JOIN relationships between tables</div>
+    </div>
+    <div class="card">
+      <div class="ctitle">📄 JSON (lines / API response)</div>
+      <div class="crow"><b>Format:</b> text, row-oriented</div>
+      <div class="crow"><b>Nested types:</b> native — arrays and objects built-in</div>
+      <div class="crow"><b>Human readable:</b> yes — open in any text editor</div>
+      <div class="crow"><b>Analytics speed:</b> slow — no compression, full parse each row</div>
+      <div class="crow"><b>Where you see it:</b> APIs, Kafka messages, Bronze landing zone</div>
+      <div class="crow"><b>Complexity lives in:</b> nested objects inside the document</div>
+    </div>
+    <div class="card">
+      <div class="ctitle">⚡ Parquet file</div>
+      <div class="crow"><b>Format:</b> binary, columnar</div>
+      <div class="crow"><b>Nested types:</b> native — array, map, struct in spec</div>
+      <div class="crow"><b>Human readable:</b> no — binary, needs Spark/tool to read</div>
+      <div class="crow"><b>Analytics speed:</b> fast — column pruning + compression</div>
+      <div class="crow"><b>Where you see it:</b> Silver/Gold Delta tables, data lake files</div>
+      <div class="crow"><b>Complexity lives in:</b> nested columns, already typed</div>
+    </div>
+  </div>
+
+  <div class="lbl">Key difference: do you need from_json?</div>
+  <div id="parse-table"></div>
+  <div class="tip"><i class="ti ti-bulb" aria-hidden="true"></i><span>Parquet already decoded the types — nested columns arrive as Array/Struct/Map objects ready to use. JSON arrives as a raw string — you must call <code>from_json</code> first to get the same result.</span></div>
+</div>
+
+<div id="nested" class="panel">
+  <div class="lbl">Same data — three physical representations</div>
+  <div class="lbl">Oracle — normalized, 4 rows across 2 tables</div>
+  <div class="cb">orders            order_items
+order_id|customer  order_id|product |qty|price
+1001    |Ciprian   1001    |Laptop  |1  |4500
+                   1001    |Mouse   |2  |85
+                   1001    |Keyboard|1  |220</div>
+
+  <div class="lbl">JSON — one document, nested array (Bronze layer)</div>
+  <div class="cb">{
+  "order_id": 1001,
+  "customer": "Ciprian",
+  "items": [
+    {"product": "Laptop",   "qty": 1, "price": 4500},
+    {"product": "Mouse",    "qty": 2, "price": 85},
+    {"product": "Keyboard", "qty": 1, "price": 220}
+  ]
+}
+# Arrives as raw STRING in Spark — needs from_json to become typed</div>
+
+  <div class="lbl">Parquet — one row, nested array, already typed (Silver/Gold)</div>
+  <div class="cb">df.printSchema()
+# root
+#  |-- order_id: integer        ← already an INT, not a string
+#  |-- customer: string
+#  |-- items: array
+#  |    |-- element: struct
+#  |    |    |-- product: string   ← already typed
+#  |    |    |-- qty: integer      ← already typed
+#  |    |    |-- price: double     ← already typed
+
+# No from_json needed — just use it directly:
+df.select("order_id",
+          F.explode("items").alias("item")) \
+  .select("order_id",
+          F.col("item.product"),
+          F.col("item.qty"),
+          F.col("item.price"))</div>
+
+  <div class="lbl">Why columnar matters for analytics</div>
+  <div class="split">
+    <div class="mc"><div class="lang">Oracle / JSON — row scan</div><div class="cb">SELECT SUM(price) FROM orders
+-- Must read every column
+-- of every row to find price:
+[1001,Ciprian,Laptop,1,4500]
+[1001,Ciprian,Mouse,2,85]
+[1001,Ciprian,Keyboard,1,220]
+-- Wastes I/O on order_id,
+-- customer, product, qty</div></div>
+    <div class="mc"><div class="lang">Parquet — column scan</div><div class="cb">SELECT SUM(items.price)
+-- Reads ONLY the price
+-- column off disk:
+price: [4500, 85, 220, 800...]
+-- order_id, customer, product,
+-- qty never touched
+-- 4-10x faster at scale</div></div>
+  </div>
+  <button class="ask-btn" onclick="sendPrompt('Explain Parquet row groups, column chunks, and metadata footer — how Spark uses them for predicate pushdown and column pruning')">How Spark reads Parquet ↗</button>
+</div>
+
+<div id="workflow" class="panel">
+  <div class="lbl">Format flow in a real Databricks pipeline</div>
+  <div id="flow-steps"></div>
+  <div class="lbl">Decision: JSON string column vs Parquet nested column</div>
+  <div id="decision-t"></div>
+  <div class="tip"><i class="ti ti-bulb" aria-hidden="true"></i><span>The Day 11 toolkit splits naturally: <b>from_json / to_json</b> are for the Bronze edge (JSON strings in, JSON strings out). <b>explode / transform / collect_list / struct</b> are for Silver↔Gold work on already-typed Parquet columns.</span></div>
+  <button class="ask-btn" onclick="sendPrompt('Show me how Auto Loader reads JSON files into Bronze, from_json parses to Silver Parquet/Delta, and what the schema looks like at each stage')">Auto Loader → Bronze → Silver ↗</button>
+</div>
+
+<div id="delta" class="panel">
+  <div class="lbl">Delta = Parquet + transaction log</div>
+  <div class="cb">Delta table on disk:
+/mnt/silver/orders/
+  ├── _delta_log/          ← transaction log (JSON files)
+  │   ├── 00000.json       ← "added these Parquet files"
+  │   ├── 00001.json       ← "updated these rows"
+  │   └── 00002.json       ← "deleted these rows"
+  ├── part-00000.parquet   ← actual data, columnar, nested-ready
+  ├── part-00001.parquet
+  └── part-00002.parquet
+
+# The data files ARE Parquet.
+# Delta just wraps them with ACID semantics.</div>
+  <div class="tip"><i class="ti ti-bulb" aria-hidden="true"></i><span>When you write a Delta table and read it back, nested columns (arrays, maps, structs) are preserved exactly — no re-parsing. This is why Bronze→Silver writes nested Parquet/Delta and Silver→Gold reads it back as typed objects.</span></div>
+  <div class="lbl">Schema evolution with nested types in Delta</div>
+  <div class="cb"># New API version adds a field to the items struct
+# Delta can merge the new schema automatically:
+df.write \
+  .format("delta") \
+  .option("mergeSchema", "true") \
+  .mode("append") \
+  .save("/mnt/silver/orders")
+# New field appears as null in old rows — no rewrite needed</div>
+  <div class="lbl">Reading back — no from_json, types intact</div>
+  <div class="cb">df = spark.read.format("delta").load("/mnt/silver/orders")
+# items column is Array&lt;Struct&gt; — already typed
+# Just explode and work with it directly
+df.select(F.explode("items").alias("i")).select("i.product","i.price")</div>
+  <button class="ask-btn" onclick="sendPrompt('Explain Delta Lake schema evolution with nested struct columns — mergeSchema, overwriteSchema, and what happens to old rows when a new field is added')">Delta schema evolution ↗</button>
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const parseRows=[
+  ['JSON string column in Spark','Raw text — looks like {"id":1}','Yes — from_json required','Bronze layer after Kafka/API ingest'],
+  ['Parquet / Delta column','Binary typed — already Array/Struct/Map','No — types already decoded','Silver/Gold after first transform'],
+  ['Oracle table column','Flat scalar only — no nesting possible','n/a — must JOIN for relationships','Legacy source systems'],
+];
+const pt=document.getElementById('parse-table');
+pt.innerHTML=`<div style="display:grid;grid-template-columns:180px 1fr 120px 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">
+  <span>Source</span><span>What you receive</span><span>Need from_json?</span><span>Typical layer</span></div>`;
+parseRows.forEach(r=>{
+  pt.innerHTML+=`<div style="display:grid;grid-template-columns:180px 1fr 120px 1fr;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12.5px;align-items:start;">
+    <span style="font-weight:500;color:var(--color-text-primary);">${r[0]}</span>
+    <span style="color:var(--color-text-secondary);">${r[1]}</span>
+    <span style="color:${r[2].startsWith('Yes')?'var(--color-text-warning)':'var(--color-text-success)'};">${r[2]}</span>
+    <span style="color:var(--color-text-tertiary);font-size:12px;">${r[3]}</span>
+  </div>`;
+});
+
+const flowSteps=[
+  ['1','API / Kafka','JSON string','Auto Loader / readStream','Raw JSON lands as string column','Bronze'],
+  ['2','Bronze → Silver','JSON string → Parquet','from_json + explode + write.delta','Parse, flatten, type — nested Parquet written','Silver'],
+  ['3','Silver → Gold','Parquet nested → Parquet flat','transform / collect_list / agg','Enrich and aggregate — already typed, no parsing','Gold'],
+  ['4','Gold → Consumer','Parquet → JSON string (optional)','to_json for API output','Pack back to JSON only if consumer needs it','Output'],
+];
+const fs=document.getElementById('flow-steps');
+fs.innerHTML=`<div style="display:grid;grid-template-columns:24px 100px 140px 180px 1fr 60px;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">
+  <span>#</span><span>From</span><span>Data shape</span><span>Key function</span><span>What happens</span><span>Layer</span></div>`;
+flowSteps.forEach(r=>{
+  fs.innerHTML+=`<div style="display:grid;grid-template-columns:24px 100px 140px 180px 1fr 60px;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12.5px;align-items:start;">
+    <span style="color:var(--color-text-tertiary);">${r[0]}</span>
+    <span style="font-weight:500;color:var(--color-text-primary);">${r[1]}</span>
+    <span style="color:var(--color-text-secondary);font-size:12px;">${r[2]}</span>
+    <code style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-primary);">${r[3]}</code>
+    <span style="color:var(--color-text-secondary);font-size:12px;">${r[4]}</span>
+    <span style="font-size:11px;color:var(--color-text-tertiary);">${r[5]}</span>
+  </div>`;
+});
+
+const decRows=[
+  ['You just read from Kafka / API','JSON string column','from_json to parse, then Day 11 tools'],
+  ['You read a Delta/Parquet Silver table','Already typed Array/Struct/Map','Go straight to explode / transform / collect_list'],
+  ['You need to write nested data to Delta','Struct/Array/Map columns','Just write — Parquet preserves types automatically'],
+  ['You need to send data to a REST API','Struct/Map column','to_json to serialise back to string'],
+  ['You read CSV or old flat files','No nested types — flat only','Day 11 not needed until you build nesting yourself'],
+];
+const dt=document.getElementById('decision-t');
+dt.innerHTML=`<div style="display:grid;grid-template-columns:1fr 130px 1fr;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-secondary);font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">
+  <span>Situation</span><span>Data shape</span><span>What to do</span></div>`;
+decRows.forEach(r=>{
+  dt.innerHTML+=`<div style="display:grid;grid-template-columns:1fr 130px 1fr;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12.5px;align-items:start;">
+    <span style="color:var(--color-text-secondary);">${r[0]}</span>
+    <span style="color:var(--color-text-primary);font-size:12px;">${r[1]}</span>
+    <span style="color:var(--color-text-secondary);font-size:12px;">${r[2]}</span>
+  </div>`;
+});
+</script>

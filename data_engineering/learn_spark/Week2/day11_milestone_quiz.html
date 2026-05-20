@@ -1,0 +1,232 @@
+
+<h2 class="sr-only">Day 11 milestone quiz: 15 questions covering array, map and struct operations in Spark, plus JSON, Parquet and Oracle storage concepts. Click an answer to reveal the explanation immediately.</h2>
+<style>
+.wrap{padding:1rem 0;}
+.prog-bar{height:4px;background:var(--color-border-tertiary);border-radius:2px;margin-bottom:1.5rem;}
+.prog-fill{height:4px;border-radius:2px;transition:width 0.3s;}
+.section-pill{display:inline-block;font-size:11px;padding:3px 10px;border-radius:var(--border-radius-md);margin-bottom:10px;font-weight:500;}
+.qcard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;}
+.qnum{font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+.qtxt{font-size:14px;font-weight:500;color:var(--color-text-primary);line-height:1.6;margin-bottom:14px;}
+.cb{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 12px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--color-text-primary);white-space:pre;overflow-x:auto;margin-bottom:14px;}
+.opt{padding:9px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:5px 0;font-size:13px;cursor:pointer;color:var(--color-text-secondary);line-height:1.5;transition:border-color 0.1s;}
+.opt:hover{background:var(--color-background-secondary);border-color:var(--color-border-secondary);}
+.opt.correct{border-color:var(--color-border-success)!important;background:var(--color-background-success)!important;color:var(--color-text-success)!important;cursor:default;}
+.opt.wrong{border-color:var(--color-border-danger)!important;background:var(--color-background-danger)!important;color:var(--color-text-danger)!important;cursor:default;}
+.opt.reveal{border-color:var(--color-border-success)!important;background:var(--color-background-success)!important;color:var(--color-text-success)!important;opacity:0.55;cursor:default;}
+.opt.done{cursor:default;}
+.expl{display:none;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:13px;color:var(--color-text-secondary);margin-top:12px;line-height:1.6;}
+.next-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.nbtn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 16px;font-size:13px;cursor:pointer;color:var(--color-text-secondary);}
+.nbtn:hover{background:var(--color-background-secondary);}
+.sc{font-size:12px;color:var(--color-text-tertiary);}
+.final{text-align:center;padding:2rem 0;}
+.big{font-size:48px;font-weight:500;color:var(--color-text-primary);}
+.sub{font-size:14px;color:var(--color-text-secondary);margin-top:6px;}
+.section-score{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;}
+.brow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;}
+.btag{font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);white-space:nowrap;}
+</style>
+
+<div class="wrap">
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:6.67%;background:var(--color-text-info);"></div></div>
+  <div id="qbody"></div>
+</div>
+
+<script>
+const sections={
+  'arrays':'#378ADD',
+  'maps & structs':'#1D9E75',
+  'storage concepts':'#BA7517'
+};
+
+const Qs=[
+  {s:'arrays',
+   q:'F.col("items").getItem(0) vs F.element_at(F.col("items"), 1) — what do they each return?',
+   opts:['Both return the second element','getItem returns first (0-indexed), element_at returns second (1-indexed)','Both return the first element, via different indexing conventions','element_at(col,1) throws — 1 is out of range'],
+   ans:2,
+   ex:'Both return the first element. getItem uses 0-based indexing (Python convention). element_at uses 1-based indexing (SQL convention). The trap: element_at(col,2) and getItem(2) return DIFFERENT elements.'},
+
+  {s:'arrays',
+   q:'A table has 50 rows. 8 rows have NULL for the array column "tags". You run F.explode("tags"). How many of those 8 rows appear in the output?',
+   opts:['8 rows — each appears with tag = null','0 rows — explode silently drops them','8 rows — each appears with an empty array','It depends on spark.sql.shuffle.partitions'],
+   ans:1,
+   ex:'explode silently drops rows where the array is null or empty. Use explode_outer to preserve them as a single null row. This is the most exam-tested explode behaviour.'},
+
+  {s:'arrays',
+   q:'You want to uppercase every element in an Array<String> column "tags" without exploding. Which is correct?',
+   opts:['F.filter(F.col("tags"), lambda x: F.upper(x))','F.transform(F.col("tags"), lambda x: F.upper(x))','F.aggregate(F.col("tags"), F.lit(""), lambda acc,x: F.upper(x))','F.array_sort(F.upper(F.col("tags")))'],
+   ans:1,
+   ex:'transform() maps a function over every element and returns a new array of the same size. filter() removes elements that fail a boolean condition — it does not transform values. aggregate() reduces an array to a scalar.'},
+
+  {s:'arrays',
+   q:'F.array_position(F.col("tags"), "python") — what does it return when "python" is not in the array?',
+   opts:['null','false','0','-1'],
+   ans:2,
+   ex:'array_position returns 0 (not null) when the value is absent. Filter array_position > 0 to find rows that contain the value. Checking isNull() will never match — a common trap.'},
+
+  {s:'arrays',
+   q:'F.size(null) returns ___. F.cardinality(null) returns ___.',
+   opts:['0 and 0','null and null','-1 and 0','0 and -1'],
+   ans:2,
+   ex:'size(null) = -1. cardinality(null) = 0. Both exclude nulls when filtering > 0 since -1 > 0 is false. The return values differ — an exam distractor when choosing between the two functions.'},
+
+  {s:'maps & structs',
+   q:'You have a Map<String,String> column "attrs". Key "RAM" exists on some rows but not others. What does F.col("attrs")["RAM"] return for rows where the key is absent?',
+   opts:['KeyError is raised','An empty string ""','null','The string "null"'],
+   ans:2,
+   ex:'Map access in Spark always returns null for a missing key — never an exception. This is the key difference from Python dict access (which raises KeyError). Use map_contains_key() to check existence before access if needed.'},
+
+  {s:'maps & structs',
+   q:'F.map_concat(map1, map2) — both maps contain key "status". Which value appears in the result?',
+   opts:['The value from map1 — left wins','The value from map2 — right wins','Both values combined into an array','A DuplicateKeyException is thrown'],
+   ans:1,
+   ex:'map_concat keeps the second (right) map\'s value on key conflict — right wins. Consistent with Python {**a, **b} behavior. No exception is thrown.'},
+
+  {s:'maps & structs',
+   q:'When should you use a Struct column instead of a Map column?',
+   opts:['When keys differ between rows and are unknown at schema time','When fields are fixed and known — same keys on every row','When you need to store more than 10 fields','When the values are arrays'],
+   ans:1,
+   ex:'Struct = fixed known fields, same schema on every row. Access via dot notation: col("address.city"). Map = variable keys per row, unknown at schema time. Access via bracket: col("attrs")["RAM"]. The choice is about whether the schema is stable.'},
+
+  {s:'maps & structs',
+   q:'You have column "events" of type Array<Struct<ts:timestamp, type:string>>. Which function flattens it to one row per struct with ts and type as columns?',
+   opts:['F.explode("events").select("ts","type")','F.inline("events")','F.posexplode("events")','F.flatten("events")'],
+   ans:1,
+   ex:'inline() is purpose-built for Array<Struct> — it expands each struct into columns directly. explode() gives you a single column of struct type that you then need to .select() fields from. flatten() merges nested arrays, not structs.'},
+
+  {s:'maps & structs',
+   q:'F.from_json(F.col("payload"), schema) — payload contains malformed JSON on some rows. What happens?',
+   opts:['Spark throws AnalysisException at plan time','Spark throws RuntimeException at execution time','Those rows are silently dropped','The parsed column is null — no exception thrown'],
+   ans:3,
+   ex:'from_json returns null silently for malformed input. The row is preserved, only the parsed column is null. Always filter nulls after parsing or route bad rows to a dead-letter table in production.'},
+
+  {s:'storage concepts',
+   q:'You read a Delta Silver table in Spark. The schema has an "items" Array<Struct> column. Do you need to call from_json before using it?',
+   opts:['Yes — all nested data needs from_json to become typed','No — Parquet already decoded the types; the column is ready to use','Only if the items were originally stored as JSON strings','Yes, but only for the Struct fields inside the array'],
+   ans:1,
+   ex:'Parquet stores types natively. When you write a Delta table with an Array<Struct> column and read it back, the types are already decoded — no from_json needed. from_json is only required when the data arrives as a raw JSON string (Kafka, API, Bronze landing zone).'},
+
+  {s:'storage concepts',
+   q:'In a Parquet file, where are the column names (keys) stored?',
+   opts:['Repeated on every row alongside the values','Once in the file footer, plus once in each column chunk header','Only in the file footer — chunk headers contain values only','In a separate sidecar .schema file'],
+   ans:1,
+   ex:'Column names are stored in the footer (read first — used for column pruning and byte offset lookup) and again in each column chunk header (confirmation / recovery). Values flow after the chunk header. This is why Parquet is storage-efficient — keys are never repeated per row.'},
+
+  {s:'storage concepts',
+   q:'SELECT SUM(price) FROM orders — the Parquet file has columns order_id, customer, product, qty, price. Which columns does Spark physically read off disk?',
+   opts:['All five columns — Parquet reads full rows','Only price — column pruning skips the rest','price and order_id — it needs the row identifier','All columns in the row group containing price'],
+   ans:1,
+   ex:'This is column pruning. Spark reads the footer, finds the byte offset of the price chunk, seeks directly to it, and reads only that column. The other four chunks are never opened. This is the core analytical performance advantage of columnar storage.'},
+
+  {s:'storage concepts',
+   q:'In a Parquet column chunk, r=0 means ___ and r=1 means ___.',
+   opts:['value is null / value is present','first column / second column','start of a new row / still inside the same row (next array element)','row group boundary / within row group'],
+   ans:2,
+   ex:'r is the repetition level. r=0 = new top-level row starts here (like \\n in CSV). r=1 = still inside the same row, this is the next element in the current array (like , between items). This is how Parquet knows Laptop, Mouse, Keyboard all belong to order 1001 without storing order_id three times.'},
+
+  {s:'storage concepts',
+   q:'Oracle stores customer phone numbers in a separate customer_phones table with a foreign key. Parquet stores them as an Array<String> column on the customer row. What is the Spark equivalent of the Oracle JOIN that retrieves all phones per customer?',
+   opts:['F.collect_list("phones")','F.array_contains("phones","x")','F.explode("phones")','F.flatten("phones")'],
+   ans:2,
+   ex:'explode() is the Parquet equivalent of an Oracle JOIN on a 1-to-many table. It takes the array stored in one cell and produces one row per element — the same shape as the Oracle normalized result. collect_list() is the inverse: it takes one row per phone and packs them back into an array.'},
+];
+
+let cur=0,score=0,answered=false,results=[];
+
+function sectionColor(s){
+  return s==='arrays'?'var(--color-text-info)':s==='maps & structs'?'var(--color-text-success)':'var(--color-text-warning)';
+}
+function sectionBg(s){
+  return s==='arrays'?'var(--color-background-info)':s==='maps & structs'?'var(--color-background-success)':'var(--color-background-warning)';
+}
+
+function renderQ(){
+  const pct=((cur+1)/Qs.length*100).toFixed(1);
+  document.getElementById('prog').style.width=pct+'%';
+  document.getElementById('prog').style.background=sectionColor(Qs[cur].s);
+  const q=Qs[cur];
+  let html=`<div class="qcard">
+    <div class="qnum">Question ${cur+1} of ${Qs.length} &nbsp;·&nbsp; score: ${score}</div>
+    <span class="section-pill" style="background:${sectionBg(q.s)};color:${sectionColor(q.s)};">${q.s}</span>
+    <div class="qtxt">${q.q}</div>`;
+  if(q.code) html+=`<div class="cb">${q.code}</div>`;
+  html+=`<div id="opts">`;
+  q.opts.forEach((o,i)=>{html+=`<div class="opt" id="opt-${i}" onclick="pick(${i})">${o}</div>`;});
+  html+=`</div><div class="expl" id="expl"></div>
+    <div class="next-row" id="nrow" style="display:none;">
+      ${cur<Qs.length-1?`<button class="nbtn" onclick="nextQ()">Next &rarr;</button>`:`<button class="nbtn" onclick="showFinal()">See results &rarr;</button>`}
+    </div>
+  </div>`;
+  document.getElementById('qbody').innerHTML=html;
+  answered=false;
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const q=Qs[cur];
+  const ok=i===q.ans;
+  if(ok)score++;
+  results.push({s:q.s,correct:ok,q:q.q.substring(0,55)+'...'});
+  q.opts.forEach((_,j)=>{
+    const el=document.getElementById(`opt-${j}`);
+    el.classList.add('done');
+    if(j===q.ans&&j===i) el.classList.add('correct');
+    else if(j===i&&!ok) el.classList.add('wrong');
+    else if(j===q.ans) el.classList.add('reveal');
+  });
+  const ex=document.getElementById('expl');
+  ex.style.display='block';
+  ex.textContent=q.ex;
+  document.getElementById('nrow').style.display='flex';
+  document.getElementById('prog').style.width=((cur+1)/Qs.length*100).toFixed(1)+'%';
+}
+
+function nextQ(){cur++;renderQ();}
+
+function showFinal(){
+  const pct=Math.round(score/Qs.length*100);
+  const verdict=pct===100?'Locked in. Day 12 awaits.':pct>=80?'Strong — minor gaps below.':pct>=60?'Decent. Review weak sections.':'Revisit Day 11 before moving on.';
+
+  const bySection={};
+  results.forEach(r=>{
+    if(!bySection[r.s]){bySection[r.s]={c:0,t:0};}
+    bySection[r.s].t++;
+    if(r.correct)bySection[r.s].c++;
+  });
+
+  let srows='';
+  Object.entries(bySection).forEach(([s,v])=>{
+    const ok=v.c===v.t;
+    srows+=`<div class="section-score">
+      <span class="section-pill" style="background:${sectionBg(s)};color:${sectionColor(s)};">${s}</span>
+      <span style="flex:1;color:var(--color-text-secondary);">${v.c} of ${v.t} correct</span>
+      <span class="btag" style="background:var(--color-background-${ok?'success':'warning'});color:var(--color-text-${ok?'success':'warning'});">${Math.round(v.c/v.t*100)}%</span>
+    </div>`;
+  });
+
+  const brows=results.map((r,i)=>`<div class="brow">
+    <span style="font-size:12px;color:var(--color-text-tertiary);min-width:24px;">Q${i+1}</span>
+    <span class="section-pill" style="background:${sectionBg(r.s)};color:${sectionColor(r.s)};padding:1px 6px;">${r.s}</span>
+    <span style="flex:1;color:var(--color-text-secondary);font-size:12px;">${r.q}</span>
+    <span class="btag" style="background:var(--color-background-${r.correct?'success':'danger'});color:var(--color-text-${r.correct?'success':'danger'});">${r.correct?'correct':'wrong'}</span>
+  </div>`).join('');
+
+  document.getElementById('qbody').innerHTML=`<div class="final">
+    <div class="big">${score}/${Qs.length}</div>
+    <div class="sub">${pct}% &middot; ${verdict}</div>
+    <div style="margin:1.5rem 0 0.5rem;text-align:left;font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">By section</div>
+    ${srows}
+    <div style="margin:1.5rem 0 0.5rem;text-align:left;font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">All questions</div>
+    ${brows}
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:1.5rem;flex-wrap:wrap;">
+      <button class="nbtn" onclick="cur=0;score=0;answered=false;results=[];renderQ()">Retry &rarr;</button>
+      <button class="nbtn" onclick="sendPrompt('Teach me Day 12: Spark UDFs — Python UDFs, Pandas vectorized UDFs, SQL registration, Catalyst impact, when to avoid. Senior DE background.')">Day 12 &rarr;</button>
+    </div>
+  </div>`;
+  document.getElementById('prog').style.width='100%';
+}
+
+renderQ();
+</script>

@@ -331,7 +331,7 @@ const decks = {
   },
 
   daily: {
-    headerSub: "22 questions · Days 8 – 11 · added as the week progresses",
+    headerSub: "33 questions · Days 8 – 11 · added as the week progresses",
     passScore: null,
     topics: [
       { id:"d8-agg", label:"Day 8 · Aggregations", day:"Day 8",
@@ -441,10 +441,14 @@ const decks = {
           { q:"F.array_position(F.col('tags'), 'python') — what does it return when 'python' is NOT in the array?",
             opts:["null","0","-1","False"],
             code:true, ans:1,
-            exp:"<strong>B.</strong> <code>array_position</code> returns <strong>0</strong> (not null) when the value is not found. Filter with <code>&gt; 0</code> to identify rows containing the value. Checking <code>.isNull()</code> will never match — a common trap." }
+            exp:"<strong>B.</strong> <code>array_position</code> returns <strong>0</strong> (not null) when the value is not found. Filter with <code>&gt; 0</code> to identify rows containing the value. Checking <code>.isNull()</code> will never match — a common trap." },
+          { q:"You want to uppercase every element in an Array&lt;String&gt; column 'tags' — without exploding. Which is correct?",
+            opts:["F.filter(F.col('tags'), lambda x: F.upper(x))","F.transform(F.col('tags'), lambda x: F.upper(x))","F.aggregate(F.col('tags'), F.lit(''), lambda acc,x: F.upper(x))","F.array_sort(F.upper(F.col('tags')))"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>transform()</code> maps a function over every element and returns a new array of the same size. <code>filter()</code> removes elements that fail a boolean condition — it does not transform values. <code>aggregate()</code> reduces an array to a scalar. <code>array_sort</code> sorts, not transforms." }
         ]
       },
-      { id:"d11-json", label:"Day 11 · Maps & JSON", day:"Day 11",
+      { id:"d11-map", label:"Day 11 · Maps & Structs", day:"Day 11",
         questions:[
           { q:"F.from_json(F.col('payload'), schema) — what happens when payload contains malformed JSON?",
             opts:["Spark throws an AnalysisException at plan time","Spark throws a RuntimeException at execution time","The row is silently dropped from the output","The parsed column is set to null — no exception is thrown"],
@@ -454,10 +458,46 @@ const decks = {
             opts:["Two separate F.get_json_object() calls","F.json_tuple() in a single select","F.from_json() with a full StructType schema","F.schema_of_json() followed by F.from_json()"],
             code:true, ans:1,
             exp:"<strong>B.</strong> <code>json_tuple()</code> extracts multiple named fields in a single pass without parsing the full document into a struct. For 2+ fields it beats multiple <code>get_json_object</code> calls and is cheaper than <code>from_json</code> with a full schema." },
-          { q:"F.map_concat(map1, map2) — both maps contain the key 'status'. Which value appears in the result?",
-            opts:["map1's value — left wins","map2's value — right wins","Both values are kept as an array","A DuplicateKeyException is thrown"],
+          { q:"F.map_concat(map1, map2) — both maps contain key 'status'. What happens by default?",
+            opts:["map2's value wins — right always wins, no error","map1's value wins — left always wins, no error","A DUPLICATED_MAP_KEY error is thrown — right wins only if spark.sql.mapKeyDedupPolicy=LAST_WIN","Both values are combined into an array"],
+            code:true, ans:2,
+            exp:"<strong>C.</strong> By default Spark throws a <code>DUPLICATED_MAP_KEY</code> error when <code>map_concat</code> encounters a duplicate key. Right-wins behaviour only applies when <code>spark.sql.mapKeyDedupPolicy</code> is set to <code>LAST_WIN</code>. On the exam, treat duplicate keys in map_concat as an error unless the config is explicitly mentioned." },
+          { q:"Map column 'attrs' has key 'RAM' on some rows but not others. What does F.col('attrs')['RAM'] return on rows where 'RAM' is absent?",
+            opts:["Raises a KeyError","An empty string \"\"","null","The string \"null\""],
+            code:true, ans:2,
+            exp:"<strong>C.</strong> Map access in Spark always returns <code>null</code> for a missing key — never an exception. This is the key difference from Python dict access (which raises <code>KeyError</code>). Use <code>map_contains_key()</code> to test existence before access if needed." },
+          { q:"When should you use a Struct column instead of a Map column?",
+            opts:["When keys differ between rows and are unknown at schema time","When fields are fixed and known — same keys on every row, dot-notation access","When you need to store more than 10 fields","When the values are themselves arrays"],
+            ans:1,
+            exp:"<strong>B.</strong> Struct = fixed known fields, same schema on every row — access via <code>col('address.city')</code>. Map = variable keys per row, unknown at schema time — access via <code>col('attrs')['RAM']</code>. The choice is whether the schema is stable across all rows." },
+          { q:"Column 'events' is type Array&lt;Struct&lt;ts:timestamp, type:string&gt;&gt;. explode('events') gives one row per element, but the struct stays as a single column. Which function opens the array AND unpacks the struct fields as separate columns in one step?",
+            opts:["F.explode('events') then .select('ts','type')","F.inline('events')","F.posexplode('events')","F.flatten('events')"],
             code:true, ans:1,
-            exp:"<strong>B.</strong> <code>map_concat</code> keeps the second (right) map's value on key conflict — right wins. Consistent with Python's <code>{**a, **b}</code> behavior. No exception is thrown." }
+            exp:"<strong>B.</strong> <code>explode()</code> opens the array → one row per element, but the element is still a single struct column — you'd need <code>.select(col('item.ts'), col('item.type'))</code> to get the fields. <code>inline()</code> does both in one step: opens the array AND projects each struct field as its own column. <code>flatten()</code> merges nested arrays, not structs." }
+        ]
+      },
+      { id:"d11-storage", label:"Day 11 · Parquet & Storage", day:"Day 11",
+        questions:[
+          { q:"You read a Delta Silver table. Its schema has an 'items' Array&lt;Struct&gt; column. Must you call from_json before using it?",
+            opts:["Yes — all nested data needs from_json to become typed","No — Parquet already decoded the types; the column is ready to use","Only if items were originally stored as JSON strings in the source","Yes, but only for the Struct fields inside the array"],
+            ans:1,
+            exp:"<strong>B.</strong> Parquet stores types natively. When you write a Delta table with an Array&lt;Struct&gt; column and read it back, the types are already decoded — no <code>from_json</code> needed. <code>from_json</code> is only required when data arrives as a raw JSON string (Kafka, API, Bronze landing zone)." },
+          { q:"In a Parquet file, where are the column names and types stored?",
+            opts:["Repeated on every row alongside the values","Once in the footer, and again in each column chunk header","Only in the file footer — chunk headers contain values and rep/def levels only","In a separate sidecar .schema file"],
+            ans:2,
+            exp:"<strong>C.</strong> Column names and types are stored <strong>only in the file footer</strong>. Column chunk headers contain values and repetition/definition levels — no name or type is repeated there. This is why Parquet is storage-efficient: metadata is never duplicated per row or per chunk. The footer is read first to get byte offsets for column pruning." },
+          { q:"SELECT SUM(price) FROM orders — Parquet has columns order_id, customer, product, qty, price. Which columns does Spark physically read off disk?",
+            opts:["All five — Parquet reads full rows","Only price — column pruning skips the rest","price and order_id — it needs the row identifier","All columns in the row group containing price"],
+            ans:1,
+            exp:"<strong>B.</strong> Column pruning: Spark reads the footer, finds the byte offset of the price chunk, seeks directly to it, and reads only that chunk. The other four chunks are never opened. This is the core analytical performance advantage of columnar storage." },
+          { q:"In a Parquet column chunk for a nested array, r=0 means ___ and r=1 means ___.",
+            opts:["value is null / value is present","first column / second column","start of a new top-level row / next element in the same array","row group boundary / within row group"],
+            ans:2,
+            exp:"<strong>C.</strong> <code>r</code> is the repetition level. <code>r=0</code> = a new top-level row starts here (like \\n between CSV rows). <code>r=1</code> = still inside the same row, this is the next array element (like , between items). This lets Parquet store [Laptop, Mouse, Keyboard] all belonging to order_id 1001 without repeating the key per element." },
+          { q:"Oracle stores customer phones in a separate customer_phones table joined by FK. In Parquet, they are an Array&lt;String&gt; on the customer row. What is the Spark equivalent of the Oracle JOIN?",
+            opts:["F.collect_list('phones')","F.array_contains('phones','x')","F.explode('phones')","F.flatten('phones')"],
+            ans:2,
+            exp:"<strong>C.</strong> <code>explode()</code> is the Parquet equivalent of an Oracle 1-to-many JOIN — it takes the array in one cell and produces one row per element, matching the shape of the normalized Oracle result. <code>collect_list()</code> is the inverse: packs one row per phone back into an array (GROUP BY → collect)." }
         ]
       }
     ]

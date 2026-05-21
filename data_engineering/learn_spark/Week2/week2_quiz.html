@@ -331,7 +331,7 @@ const decks = {
   },
 
   daily: {
-    headerSub: "33 questions · Days 8 – 11 · added as the week progresses",
+    headerSub: "40 questions · Days 8 – 11 · added as the week progresses",
     passScore: null,
     topics: [
       { id:"d8-agg", label:"Day 8 · Aggregations", day:"Day 8",
@@ -442,10 +442,30 @@ const decks = {
             opts:["null","0","-1","False"],
             code:true, ans:1,
             exp:"<strong>B.</strong> <code>array_position</code> returns <strong>0</strong> (not null) when the value is not found. Filter with <code>&gt; 0</code> to identify rows containing the value. Checking <code>.isNull()</code> will never match — a common trap." },
+          { q:"You have Array[&quot;Laptop&quot;,&quot;Mouse&quot;,&quot;Keyboard&quot;]. What does F.element_at(F.col('items'), 2) return?",
+            opts:["Laptop — element_at is 0-indexed so 2 = third slot","Mouse — element_at is 1-indexed so 2 = second slot","Keyboard — element_at(col,2) means last two elements","null — index 2 is out of range for a 3-element array"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>element_at</code> is 1-indexed. Position 1 = Laptop, 2 = Mouse, 3 = Keyboard. <code>getItem(2)</code> would return Keyboard (0-indexed: 0=Laptop, 1=Mouse, 2=Keyboard). Same number, different element — the core indexing trap." },
           { q:"You want to uppercase every element in an Array&lt;String&gt; column 'tags' — without exploding. Which is correct?",
             opts:["F.filter(F.col('tags'), lambda x: F.upper(x))","F.transform(F.col('tags'), lambda x: F.upper(x))","F.aggregate(F.col('tags'), F.lit(''), lambda acc,x: F.upper(x))","F.array_sort(F.upper(F.col('tags')))"],
             code:true, ans:1,
-            exp:"<strong>B.</strong> <code>transform()</code> maps a function over every element and returns a new array of the same size. <code>filter()</code> removes elements that fail a boolean condition — it does not transform values. <code>aggregate()</code> reduces an array to a scalar. <code>array_sort</code> sorts, not transforms." }
+            exp:"<strong>B.</strong> <code>transform()</code> maps a function over every element and returns a new array of the same size. <code>filter()</code> removes elements that fail a boolean condition — it does not transform values. <code>aggregate()</code> reduces an array to a scalar. <code>array_sort</code> sorts, not transforms." },
+          { q:"Which expression returns the LAST element of array column 'tags' regardless of its length?",
+            opts:["F.col('tags').getItem(-1)","F.element_at(F.col('tags'), -1)","F.col('tags').getItem(F.size('tags'))","F.last(F.col('tags'))"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>element_at</code> supports negative indexing: -1 = last element, -2 = second to last. <code>getItem</code> does not support negative indexes — <code>getItem(-1)</code> returns null. <code>F.last()</code> is a window/aggregate function, not an array accessor." },
+          { q:"You want rows where 'python' appears in the 'tags' array. Which two approaches are both correct?",
+            opts:["F.array_position(F.col('tags'),&quot;python&quot;) &gt; 0  AND  F.array_contains(F.col('tags'),&quot;python&quot;)","F.array_position(F.col('tags'),&quot;python&quot;).isNotNull()  AND  F.array_contains(F.col('tags'),&quot;python&quot;)","F.array_position(F.col('tags'),&quot;python&quot;) &gt;= 0  AND  F.exists(F.col('tags'), lambda x: x==&quot;python&quot;)","F.array_position(F.col('tags'),&quot;python&quot;) &gt; 0  AND  F.size(F.col('tags')) &gt; 0"],
+            code:true, ans:0,
+            exp:"<strong>A.</strong> <code>array_position &gt; 0</code> correctly identifies found (positions start at 1, 0 means not found). <code>array_contains</code> returns a boolean directly. Both work for equality checks. <code>isNotNull()</code> never matches since <code>array_position</code> returns 0 not null on miss. <code>size &gt; 0</code> only checks if the array is non-empty, not if 'python' is in it." },
+          { q:"F.size(F.col('tags')) &gt; 0 is used to filter out empty arrays. A row has tags = null. Does it pass the filter?",
+            opts:["Yes — null is treated as an empty array, size returns 0, 0 &gt; 0 is false so excluded","No — size(null) = -1, and -1 &gt; 0 is false, so null rows are correctly excluded","Yes — null &gt; 0 evaluates to null which is truthy in Spark filters","No — the filter throws a NullPointerException on null arrays"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> <code>size(null) = -1</code>. So -1 &gt; 0 is false — null rows are excluded. The mechanism surprises people: it works not because Spark handles null gracefully but because -1 happens to be less than 0. Use <code>cardinality()</code> if you prefer a cleaner 0 for nulls instead of -1." },
+          { q:"What is the difference between F.size() and F.cardinality() on a non-null array?",
+            opts:["size counts distinct elements; cardinality counts all including duplicates","They are identical on non-null arrays — difference only appears on null input","size returns a Long; cardinality returns an Integer","size is for arrays only; cardinality works on arrays and maps"],
+            ans:1,
+            exp:"<strong>B.</strong> On non-null arrays they return exactly the same value — the element count. The only difference is null behaviour: <code>size(null) = -1</code>, <code>cardinality(null) = 0</code>. Both work on arrays and maps. Choose based on how you want nulls to behave downstream." }
         ]
       },
       { id:"d11-map", label:"Day 11 · Maps & Structs", day:"Day 11",
@@ -470,10 +490,18 @@ const decks = {
             opts:["When keys differ between rows and are unknown at schema time","When fields are fixed and known — same keys on every row, dot-notation access","When you need to store more than 10 fields","When the values are themselves arrays"],
             ans:1,
             exp:"<strong>B.</strong> Struct = fixed known fields, same schema on every row — access via <code>col('address.city')</code>. Map = variable keys per row, unknown at schema time — access via <code>col('attrs')['RAM']</code>. The choice is whether the schema is stable across all rows." },
-          { q:"Column 'events' is type Array&lt;Struct&lt;ts:timestamp, type:string&gt;&gt;. explode('events') gives one row per element, but the struct stays as a single column. Which function opens the array AND unpacks the struct fields as separate columns in one step?",
-            opts:["F.explode('events') then .select('ts','type')","F.inline('events')","F.posexplode('events')","F.flatten('events')"],
+          { q:"Column 'events' is Array&lt;Struct&lt;ts:timestamp, type:string&gt;&gt;. After F.explode('events').alias('e'), what is the type of column 'e'?",
+            opts:["Two columns: ts and type are already unpacked","A single Struct&lt;ts:timestamp,type:string&gt; column — fields still nested","A string containing the JSON representation of the struct","A Map with ts and type as keys"],
             code:true, ans:1,
-            exp:"<strong>B.</strong> <code>explode()</code> opens the array → one row per element, but the element is still a single struct column — you'd need <code>.select(col('item.ts'), col('item.type'))</code> to get the fields. <code>inline()</code> does both in one step: opens the array AND projects each struct field as its own column. <code>flatten()</code> merges nested arrays, not structs." }
+            exp:"<strong>B.</strong> <code>explode()</code> opens the array — one row per element — but the element itself (a Struct) stays intact as a single column. You then need <code>.select(F.col('e.ts'), F.col('e.type'))</code> to unpack the fields. <code>inline()</code> does both steps: opens the array AND unpacks struct fields into separate columns in one call." },
+          { q:"When can you use F.inline() and when must you use F.explode() instead?",
+            opts:["inline works on any array type; explode only works on Array&lt;Struct&gt;","inline only works on Array&lt;Struct&gt;; explode works on any array type","inline and explode are interchangeable — inline is just faster","inline works on maps; explode works on arrays"],
+            ans:1,
+            exp:"<strong>B.</strong> <code>inline()</code> is specifically designed for <code>Array&lt;Struct&gt;</code> — it expands each struct into columns. If your array contains plain scalars (strings, ints) you must use <code>explode()</code>. <code>explode()</code> works on any array or map type. Think of <code>inline</code> as a specialised shortcut for the <code>Array&lt;Struct&gt;</code> → flat table pattern." },
+          { q:"After F.from_json(F.col('payload'), schema), which filter correctly catches ALL failed parses?",
+            opts:["F.col('parsed') == \"\"","F.col('parsed').isNull()","F.col('parsed') == \"null\"","F.length(F.col('parsed')) == 0"],
+            ans:1,
+            exp:"<strong>B.</strong> <code>from_json</code> returns <code>null</code> (not an empty string, not the string <code>'null'</code>) for malformed JSON. So <code>.isNull()</code> is the correct check. The row itself is preserved — only the parsed column is null. Always add <code>.filter(F.col('parsed').isNotNull())</code> after from_json to route bad rows to a dead-letter table." }
         ]
       },
       { id:"d11-storage", label:"Day 11 · Parquet & Storage", day:"Day 11",

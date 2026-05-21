@@ -1474,8 +1474,11 @@ target.<span class="fn">alias</span>(<span class="str">"t"</span>).<span class="
 <section class="tab-panel" id="panel-udf">
   <div class="section-links">
     <a href="#udf-basic">Python UDFs</a>
-    <a href="#udf-pitfalls">UDF Pitfalls</a>
+    <a href="#udf-pitfalls">UDF Pitfalls &amp; Catalyst</a>
     <a href="#udf-pandas">Pandas UDFs</a>
+    <a href="#udf-pandas-adv">Iterator &amp; applyInPandas</a>
+    <a href="#udf-decision">Decision rule</a>
+    <a href="#udf-sqlreg">SQL registration</a>
     <a href="#udf-cache">Caching &amp; Persist</a>
   </div>
 
@@ -1521,6 +1524,24 @@ spark.<span class="fn">sql</span>(<span class="str">"SELECT clean_name(name) FRO
     </div>
   </div>
 
+  <h3>Catalyst optimisations broken by UDFs</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Optimisation</th><th>Built-in function</th><th>Python / Pandas UDF</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Predicate pushdown</td><td>Pushed to scan layer</td><td>Cannot push — evaluated after scan</td></tr>
+        <tr><td>Column pruning</td><td>Only reads needed columns</td><td>Safe only if input columns are explicit</td></tr>
+        <tr><td>Constant folding</td><td>Evaluated at plan time</td><td>Always evaluated at runtime</td></tr>
+        <tr><td>Whole-stage codegen</td><td>JVM bytecode, very fast</td><td>Broken — switches to Python interpreter<br><span style="font-size:0.82rem;color:var(--muted)">Arrow reduces serialisation cost for Pandas UDFs, but the codegen boundary breaks the same way.</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout info">
+    <strong>Oracle analogy:</strong> A UDF is like a scalar function called per-row in a WHERE clause — Oracle can't push it into an index scan, forcing a full table scan. Built-in functions compile into the SQL engine; your function doesn't.
+  </div>
+
   <h3 id="udf-pandas">Pandas UDFs (Vectorized UDFs)</h3>
   <pre><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> pandas_udf
 <span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> DoubleType
@@ -1560,6 +1581,82 @@ df.<span class="fn">withColumn</span>(<span class="str">"norm_salary"</span>, <s
 
   <div class="callout tip">
     <strong>Why Pandas UDFs are faster:</strong> They use Apache Arrow to transfer data between JVM and Python in batches (columnar format), instead of row-by-row Python object serialization. Typically 10–100x faster than row-at-a-time Python UDFs. Requires <code>pyarrow</code> to be installed.
+  </div>
+
+  <h3 id="udf-pandas-adv">Iterator of Series — load expensive objects once per partition</h3>
+  <p>Useful when you need to load a model or file once and reuse it across all batches in a partition. The object is initialised before the loop, not per batch.</p>
+  <pre><span class="kw">from</span> typing <span class="kw">import</span> Iterator
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> pandas_udf
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="op">@</span><span class="fn">pandas_udf</span>(DoubleType())
+<span class="kw">def</span> <span class="fn">score_delay</span>(iterator: Iterator[pd.Series]) -> Iterator[pd.Series]:
+    model = <span class="fn">load_model</span>()   <span class="cm"># loaded ONCE per partition, not per batch</span>
+    <span class="kw">for</span> batch <span class="kw">in</span> iterator:
+        <span class="kw">yield</span> model.<span class="fn">predict</span>(batch)</pre>
+
+  <h3>applyInPandas — grouped-map pattern</h3>
+  <p>Groups data like <code>groupBy</code>, sends each group as a full <code>pd.DataFrame</code>, returns a <code>pd.DataFrame</code>. Use for per-group ML fitting, z-score normalisation, or custom aggregations not expressible in Spark SQL.</p>
+  <pre><span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> StructType, StructField
+
+schema = StructType([
+    StructField(<span class="str">"route_id"</span>, StringType()),
+    StructField(<span class="str">"z_delay"</span>, DoubleType())
+])
+
+<span class="kw">def</span> <span class="fn">z_score_delays</span>(pdf: pd.DataFrame) -> pd.DataFrame:
+    pdf[<span class="str">"z_delay"</span>] = (pdf[<span class="str">"delay_sec"</span>] - pdf[<span class="str">"delay_sec"</span>].<span class="fn">mean</span>()) / pdf[<span class="str">"delay_sec"</span>].<span class="fn">std</span>()
+    <span class="kw">return</span> pdf[[<span class="str">"route_id"</span>, <span class="str">"z_delay"</span>]]
+
+df.<span class="fn">groupBy</span>(<span class="str">"route_id"</span>).<span class="fn">applyInPandas</span>(z_score_delays, schema=schema)</pre>
+
+  <div class="callout warn">
+    <strong>applyInPandas risk:</strong> The entire group must fit in executor memory. If a single group has millions of rows it will OOM. The output schema is flexible — define it explicitly; you can return fewer or more columns than the input.
+  </div>
+
+  <h3 id="udf-decision">Decision rule — UDF vs built-in vs higher-order</h3>
+  <div class="callout info">
+    <strong>Rule of thumb:</strong> A UDF is a last resort. Exhaust the function catalogue first: built-ins → higher-order functions → Pandas UDF → Python UDF.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Scenario</th><th>Best choice</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>String manipulation, date math, arithmetic</td><td><span class="tag tag-green">Built-in</span></td><td>Catalyst-aware, JVM speed, no serialisation</td></tr>
+        <tr><td>Array / map transformation element-wise</td><td><span class="tag tag-green">HOF</span> (<code>transform</code>, <code>filter</code>, <code>aggregate</code>)</td><td>Catalyst-friendly, no Python overhead</td></tr>
+        <tr><td>Complex business logic, external libs</td><td><span class="tag tag-orange">Pandas UDF scalar</span></td><td>Arrow batches, vectorised, 10–100× faster</td></tr>
+        <tr><td>Per-group ML inference, custom aggregation</td><td><span class="tag tag-orange">applyInPandas</span></td><td>Full DataFrame per group in Python</td></tr>
+        <tr><td>Simple one-off, low volume, prototyping</td><td><span class="tag tag-blue">Python UDF</span></td><td>Easiest to write; acceptable at small scale</td></tr>
+        <tr><td>Unavoidable complex logic at scale</td><td><span class="tag tag-red">Python UDF + cache upstream</span></td><td>Cache to avoid repeated UDF calls over same data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="udf-sqlreg">SQL registration &amp; Unity Catalog</h3>
+  <pre><span class="cm"># Register so the UDF is callable in spark.sql() and %sql magic</span>
+spark.udf.<span class="fn">register</span>(<span class="str">"clean_route"</span>, clean_route, StringType())
+spark.<span class="fn">sql</span>(<span class="str">"SELECT clean_route(route_name) FROM routes"</span>)
+
+<span class="cm"># Pandas UDFs register the same way</span>
+spark.udf.<span class="fn">register</span>(<span class="str">"normalise_headsign"</span>, normalise_headsign, StringType())</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>Spark SQL built-in</th><th>Registered Python UDF</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Catalyst-aware</td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-red">No</span></td></tr>
+        <tr><td>Available in <code>%sql</code></td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-green">Yes</span> (after register)</td></tr>
+        <tr><td>Available in DLT SQL</td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-green">Yes</span> (must register in same session)</td></tr>
+        <tr><td>Survives cluster restart</td><td><span class="tag tag-green">Yes</span></td><td><span class="tag tag-red">No</span> — re-register on each start</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout info">
+    <strong>Unity Catalog:</strong> Persist UDFs as catalog functions (<code>CREATE FUNCTION catalog.schema.fn AS ...</code>) so they survive cluster restarts. Python UDFs in UC require a cluster with a matching runtime version.
   </div>
 
   <h3 id="udf-cache">Caching and Persist</h3>

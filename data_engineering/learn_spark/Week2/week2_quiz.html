@@ -81,7 +81,7 @@
       <span class="deck-icon">⚡</span>
       <span>
         <span class="deck-name">Daily Quick Checks</span>
-        <span class="deck-sub">22 questions · Days 8 – 11</span>
+        <span class="deck-sub">40+ questions · Days 8 – 11</span>
       </span>
     </button>
   </div>
@@ -331,7 +331,7 @@ const decks = {
   },
 
   daily: {
-    headerSub: "40 questions · Days 8 – 11 · added as the week progresses",
+    headerSub: "48 questions · Days 8 – 12 · added as the week progresses",
     passScore: null,
     topics: [
       { id:"d8-agg", label:"Day 8 · Aggregations", day:"Day 8",
@@ -526,6 +526,42 @@ const decks = {
             opts:["F.collect_list('phones')","F.array_contains('phones','x')","F.explode('phones')","F.flatten('phones')"],
             ans:2,
             exp:"<strong>C.</strong> <code>explode()</code> is the Parquet equivalent of an Oracle 1-to-many JOIN — it takes the array in one cell and produces one row per element, matching the shape of the normalized Oracle result. <code>collect_list()</code> is the inverse: packs one row per phone back into an array (GROUP BY → collect)." }
+        ]
+      }
+      { id:"d12-udf", label:"Day 12 · UDFs", day:"Day 12",
+        questions:[
+          { q:"@udf(returnType=StringType()) wraps a function that returns None for null input. What does Spark do when it encounters a NULL row?",
+            opts:["Skips the row automatically — nulls are filtered before UDF call","Calls the UDF and returns None, which maps to NULL in the output column","Raises a NullPointerException at executor","Infers null-safety from the Python type hint and skips the call"],
+            code:true, ans:1,
+            exp:"<strong>B.</strong> UDFs are called on every row including NULLs by default. Returning <code>None</code> from Python correctly maps to a Spark NULL — but you must write the guard yourself. Spark does not skip NULL rows automatically." },
+          { q:"What is the primary reason a Python UDF prevents Catalyst from applying predicate pushdown?",
+            opts:["UDFs are always non-deterministic","Catalyst cannot inspect the Python bytecode to understand the expression semantics","UDFs always require a shuffle","UDFs don't support nullable return types"],
+            ans:1,
+            exp:"<strong>B.</strong> Catalyst works on an expression tree of known Spark expressions. A Python UDF is an opaque <code>PythonUDF</code> node — Catalyst cannot see what it computes, so it cannot safely push predicates to the scan layer. This is the core optimisation cost of any UDF." },
+          { q:"A Pandas scalar UDF is called with two column arguments. What does the function actually receive?",
+            opts:["Two Python values per invocation (row-at-a-time)","A pd.DataFrame per partition","One pd.Series per column argument, per batch","A list of rows per executor"],
+            ans:2,
+            exp:"<strong>C.</strong> Scalar Pandas UDFs receive one <code>pd.Series</code> per column argument and return one <code>pd.Series</code>. Arrow serialises the entire batch at once — far cheaper than row-at-a-time pickle serialisation in Python UDFs." },
+          { q:"You need to apply a scikit-learn model to score 2 billion rows. Loading the model takes 3 seconds. Which Pandas UDF pattern minimises total model-load overhead?",
+            opts:["Scalar Pandas UDF — loads once per function call","Iterator of Series — loads once per partition, processes many batches in one loop","Grouped-map applyInPandas — loads once per group","Python UDF — simplest to write"],
+            ans:1,
+            exp:"<strong>B.</strong> The Iterator of Series pattern: you initialise expensive objects (model, DB connection) once before the <code>for</code> loop, then process each batch inside the loop. This means one load per partition, not per batch — crucial for large models." },
+          { q:"spark.udf.register('fn', my_udf, StringType()) is required when:",
+            opts:["Using the UDF in a DataFrame .withColumn() call","Using the UDF inside spark.sql() or %sql magic","Using a Pandas UDF inside applyInPandas","Using the UDF with a broadcast join"],
+            ans:1,
+            exp:"<strong>B.</strong> <code>spark.udf.register</code> makes a UDF callable by name in SQL strings and the <code>%sql</code> magic. Without it the UDF only exists in the Python namespace. Registered UDFs don't survive cluster restarts unless persisted in Unity Catalog." },
+          { q:"You want to normalise Romanian diacritics in stop names before a join. Which approach keeps Catalyst optimisations intact?",
+            opts:["Python UDF with string.translate()","Pandas scalar UDF with Series.str.replace()","regexp_replace() chained with upper() — both Spark built-ins","applyInPandas per stop_id group"],
+            ans:2,
+            exp:"<strong>C.</strong> <code>regexp_replace()</code> and <code>upper()</code> are Spark built-in functions. Catalyst can inline them, push them alongside filters, and compile them with whole-stage codegen. Any UDF — even Pandas — breaks that pipeline. Always prefer built-ins for string operations expressible without Python logic." },
+          { q:"applyInPandas sends each group to the executor as a full pd.DataFrame. What is the key risk?",
+            opts:["It requires a re-partition to a single partition first","The entire group must fit in executor memory — OOM risk for very large groups","It cannot return more rows than the input group","The output schema must match the input schema exactly"],
+            ans:1,
+            exp:"<strong>B.</strong> <code>applyInPandas</code> materialises the entire group as a Pandas DataFrame in executor memory. If a single group is very large, this causes an OOM. The output schema is flexible — define it explicitly and you can return fewer or more columns than the input." },
+          { q:"Pandas UDFs use Apache Arrow for serialisation. Does this preserve whole-stage codegen?",
+            opts:["Yes — Arrow keeps execution inside the JVM boundary","No — both Python UDFs and Pandas UDFs break whole-stage codegen","Only unregistered UDFs break whole-stage codegen","Whole-stage codegen only applies to joins, not UDFs"],
+            ans:1,
+            exp:"<strong>B.</strong> Whole-stage codegen fuses multiple Spark operators into a single JVM bytecode method. Any Python UDF — including Pandas UDFs — breaks this fusion because execution must leave the JVM and enter the Python interpreter. Arrow reduces serialisation cost, but the codegen boundary break is the same." }
         ]
       }
     ]

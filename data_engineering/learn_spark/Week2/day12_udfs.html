@@ -1,0 +1,382 @@
+
+<style>
+:root{--tab-active:#E6F1FB;--tab-border:#378ADD;--code-bg:#F1EFE8;--accent-blue:#185FA5;--accent-teal:#0F6E56;--accent-red:#A32D2D;--accent-amber:#854F0B;--card-bg:var(--color-background-primary);--muted:var(--color-text-secondary)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:14px;color:var(--color-text-primary)}
+.tabs{display:flex;gap:2px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.25rem;flex-wrap:wrap}
+.tab{padding:8px 14px;font-size:13px;cursor:pointer;border:0.5px solid transparent;border-bottom:none;border-radius:var(--border-radius-md) var(--border-radius-md) 0 0;color:var(--color-text-secondary);background:transparent;transition:all .15s}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-tertiary)}
+.panel{display:none}.panel.active{display:block}
+code{font-family:var(--font-mono);font-size:12.5px;background:var(--color-background-secondary);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:12px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);overflow-x:auto;line-height:1.6;margin:8px 0 12px}
+.kw{color:#185FA5}.cm{color:#888780}.fn{color:#0F6E56}.st{color:#993C1D}.nb{color:#854F0B}
+h3{font-size:15px;font-weight:500;margin:16px 0 8px;color:var(--color-text-primary)}
+h3:first-child{margin-top:0}
+p{line-height:1.6;margin-bottom:8px;color:var(--color-text-primary)}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;margin:0 2px 2px 0}
+.pill-blue{background:#E6F1FB;color:#0C447C}
+.pill-red{background:#FCEBEB;color:#A32D2D}
+.pill-green{background:#EAF3DE;color:#27500A}
+.pill-amber{background:#FAEEDA;color:#633806}
+.pill-teal{background:#E1F5EE;color:#085041}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.card{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px 14px}
+.card-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 12px}
+th{text-align:left;font-weight:500;font-size:12px;color:var(--muted);padding:6px 8px;border-bottom:0.5px solid var(--color-border-tertiary)}
+td{padding:6px 8px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+.warn{background:#FAEEDA;border-left:3px solid #EF9F27;padding:8px 12px;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;margin:10px 0;font-size:13px;color:#633806}
+.info{background:#E6F1FB;border-left:3px solid #378ADD;padding:8px 12px;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;margin:10px 0;font-size:13px;color:#0C447C}
+.good{background:#EAF3DE;border-left:3px solid #639922;padding:8px 12px;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;margin:10px 0;font-size:13px;color:#27500A}
+.section-sep{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:16px 0}
+.q-block{padding:6px 0 12px}
+.q-text{font-size:14px;font-weight:500;margin-bottom:12px;line-height:1.5}
+.choices{display:flex;flex-direction:column;gap:6px}
+.choice{padding:9px 14px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);cursor:pointer;font-size:13px;background:var(--color-background-primary);color:var(--color-text-primary);transition:all .15s;text-align:left}
+.choice:hover:not(.locked){background:var(--color-background-secondary);border-color:var(--color-border-secondary)}
+.choice.correct{background:#EAF3DE;border-color:#639922;color:#173404}
+.choice.wrong{background:#FCEBEB;border-color:#E24B4A;color:#501313}
+.explanation{margin-top:10px;padding:10px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);font-size:13px;line-height:1.6;display:none}
+.q-nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.q-counter{font-size:12px;color:var(--muted)}
+.nav-btn{padding:7px 18px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;cursor:pointer;font-size:13px;color:var(--color-text-primary);display:none}
+.nav-btn:hover{background:var(--color-background-secondary)}
+.score-bar{height:4px;background:var(--color-border-tertiary);border-radius:2px;margin-bottom:16px}
+.score-fill{height:100%;background:#639922;border-radius:2px;transition:width .3s}
+</style>
+
+<h2 class="sr-only">Day 12 study reference: UDFs in Spark/Databricks with quiz</h2>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('udf-basics')">UDF basics</div>
+  <div class="tab" onclick="switchTab('pandas-udfs')">Pandas UDFs</div>
+  <div class="tab" onclick="switchTab('catalyst')">Catalyst & cost</div>
+  <div class="tab" onclick="switchTab('sql-reg')">SQL registration</div>
+  <div class="tab" onclick="switchTab('decision')">Decision rule</div>
+  <div class="tab" onclick="switchTab('quiz')">Quiz</div>
+</div>
+
+<div id="udf-basics" class="panel active">
+  <h3>Python UDF — the basics</h3>
+  <p>A UDF wraps arbitrary Python logic so Spark can call it per-row. Two syntaxes, same result:</p>
+<pre><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> udf
+<span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> StringType
+
+<span class="cm"># Style 1 — decorator (preferred in notebooks)</span>
+<span class="kw">@</span><span class="fn">udf</span>(returnType=StringType())
+<span class="kw">def</span> <span class="fn">clean_route</span>(name: str) -> str:
+    <span class="kw">return</span> name.strip().upper() <span class="kw">if</span> name <span class="kw">else</span> <span class="st">None</span>
+
+<span class="cm"># Style 2 — explicit wrap</span>
+<span class="kw">def</span> <span class="fn">_clean_route</span>(name): ...
+clean_route = <span class="fn">udf</span>(_clean_route, StringType())
+
+df.<span class="fn">withColumn</span>(<span class="st">"route_clean"</span>, <span class="fn">clean_route</span>(<span class="st">"route_name"</span>))</pre>
+
+  <h3>Return type is mandatory</h3>
+  <p>Omitting it defaults to <code>StringType()</code>. Spark serialises/deserialises every value, so a wrong type causes runtime errors, not plan-time errors.</p>
+  <table>
+    <tr><th>Python type</th><th>Spark type</th></tr>
+    <tr><td><code>str</code></td><td><code>StringType()</code></td></tr>
+    <tr><td><code>int</code></td><td><code>IntegerType()</code> / <code>LongType()</code></td></tr>
+    <tr><td><code>float</code></td><td><code>DoubleType()</code></td></tr>
+    <tr><td><code>bool</code></td><td><code>BooleanType()</code></td></tr>
+    <tr><td><code>dict / NamedTuple</code></td><td><code>StructType([...])</code></td></tr>
+    <tr><td><code>list</code></td><td><code>ArrayType(element_type)</code></td></tr>
+  </table>
+
+  <h3>Null handling</h3>
+  <div class="warn">By default UDFs are called even when input is <code>NULL</code>. Your Python code must guard against <code>None</code>, or you get a NullPointerException at the executor.</div>
+<pre><span class="kw">@</span><span class="fn">udf</span>(returnType=StringType())
+<span class="kw">def</span> <span class="fn">safe_upper</span>(s):
+    <span class="kw">return</span> s.upper() <span class="kw">if</span> s <span class="kw">is not None else None</span>
+
+<span class="cm"># Or declare UDF as non-nullable to skip null rows entirely:</span>
+<span class="kw">@</span><span class="fn">udf</span>(returnType=StringType(), <span class="fn">useArrow</span>=<span class="kw">False</span>)
+<span class="kw">def</span> <span class="fn">safe_upper2</span>(s: str) -> str: ...
+<span class="cm"># But the UDF is still invoked — the declaration is metadata, not a guard</span></pre>
+
+  <div class="info">Tineretului–Română Transit use case: a UDF to normalise trip_headsign values (e.g. "Piața Romană" → "PIATA ROMANA") before joining with GTFS static data — except you'd actually reach for <code>upper(regexp_replace(col, "ă|â|î|ș|ț", "a"))</code> first to stay in Catalyst.</div>
+</div>
+
+<div id="pandas-udfs" class="panel">
+  <h3>Pandas UDFs — three flavours</h3>
+  <p>Pandas UDFs use Apache Arrow for serialisation: <strong>10–100× faster</strong> than row-at-a-time Python UDFs. Three patterns cover different shapes of work.</p>
+  <hr class="section-sep">
+
+  <h3>1. Scalar (vectorised) — most common</h3>
+  <p>Input: one <code>pd.Series</code> per column argument. Output: one <code>pd.Series</code>. Processes a batch of rows together.</p>
+<pre><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> pandas_udf
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="kw">@</span><span class="fn">pandas_udf</span>(StringType())
+<span class="kw">def</span> <span class="fn">normalise_headsign</span>(s: pd.Series) -> pd.Series:
+    <span class="kw">return</span> s.<span class="fn">str</span>.<span class="fn">strip</span>().<span class="fn">str</span>.<span class="fn">upper</span>().<span class="fn">fillna</span>(<span class="st">""</span>)
+
+df.<span class="fn">withColumn</span>(<span class="st">"headsign_norm"</span>, <span class="fn">normalise_headsign</span>(<span class="st">"trip_headsign"</span>))</pre>
+
+  <hr class="section-sep">
+  <h3>2. Iterator of series — memory-efficient for large datasets</h3>
+  <p>Streams batches via an iterator. Useful when you need to load a model/file once and reuse it across batches.</p>
+<pre><span class="kw">from</span> typing <span class="kw">import</span> Iterator
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> pandas_udf
+
+<span class="kw">@</span><span class="fn">pandas_udf</span>(DoubleType())
+<span class="kw">def</span> <span class="fn">score_arrival</span>(iterator: Iterator[pd.Series]) -> Iterator[pd.Series]:
+    model = <span class="fn">load_model</span>()   <span class="cm"># loaded once per partition</span>
+    <span class="kw">for</span> batch <span class="kw">in</span> iterator:
+        <span class="kw">yield</span> model.<span class="fn">predict</span>(batch)</pre>
+
+  <hr class="section-sep">
+  <h3>3. Grouped map — applyInPandas</h3>
+  <p>Groups data like <code>groupBy</code>, sends each group as a full <code>pd.DataFrame</code>, returns a <code>pd.DataFrame</code>. Useful for per-group fitting, ranking, or custom aggregations not expressible in Spark SQL.</p>
+<pre><span class="kw">from</span> pyspark.sql.types <span class="kw">import</span> StructType, StructField, ...
+
+schema = StructType([
+    StructField(<span class="st">"route_id"</span>, StringType()),
+    StructField(<span class="st">"z_delay"</span>, DoubleType())
+])
+
+<span class="kw">def</span> <span class="fn">z_score_delays</span>(pdf: pd.DataFrame) -> pd.DataFrame:
+    pdf[<span class="st">"z_delay"</span>] = (pdf[<span class="st">"delay_sec"</span>] - pdf[<span class="st">"delay_sec"</span>].<span class="fn">mean</span>()) / pdf[<span class="st">"delay_sec"</span>].<span class="fn">std</span>()
+    <span class="kw">return</span> pdf[[<span class="st">"route_id"</span>, <span class="st">"z_delay"</span>]]
+
+df.<span class="fn">groupBy</span>(<span class="st">"route_id"</span>).<span class="fn">applyInPandas</span>(z_score_delays, schema=schema)</pre>
+
+  <div class="warn"><strong>Gotcha:</strong> full group must fit in executor memory — if a single bus route has 50M rows, this will OOM.</div>
+
+  <hr class="section-sep">
+  <div class="grid2">
+    <div class="card">
+      <div class="card-label">Python UDF</div>
+      <p>Row-at-a-time. Pickle serialisation. Slowest. Simple to write.</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Pandas UDF</div>
+      <p>Batch via Arrow. Fast. Null-safe by default (NaN in series). Needs <code>pyarrow</code>.</p>
+    </div>
+  </div>
+</div>
+
+<div id="catalyst" class="panel">
+  <h3>Why UDFs are opaque to Catalyst</h3>
+  <p>Catalyst optimises Spark SQL via rule-based and cost-based rewrites: predicate pushdown, column pruning, join reordering, constant folding. It works by inspecting an <strong>expression tree</strong> made of known Spark expressions.</p>
+  <p>A UDF is a black box — Catalyst sees it as <code>PythonUDF(…)</code> with no knowledge of what's inside. This breaks three key optimisations:</p>
+  <table>
+    <tr><th>Optimisation</th><th>Built-in</th><th>UDF</th></tr>
+    <tr><td>Predicate pushdown</td><td>Pushed to scan layer</td><td>Cannot push — evaluated after scan</td></tr>
+    <tr><td>Column pruning</td><td>Only reads needed columns</td><td>Safe only if input columns are explicit</td></tr>
+    <tr><td>Constant folding</td><td>Evaluated at plan time</td><td>Always evaluated at runtime</td></tr>
+    <tr><td>Whole-stage codegen</td><td>JVM bytecode, very fast</td><td>Broken — switches to Python interpreter</td></tr>
+  </table>
+
+  <h3>Serialisation cost — the real bottleneck</h3>
+  <p>Every row crossing the JVM → Python boundary is serialised (pickle or Arrow), sent over a socket, executed, then deserialised back. At scale this dominates.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-label">Python UDF cost</div>
+      <p><span class="pill pill-red">Pickle serialise</span> <span class="pill pill-red">Socket round-trip</span> <span class="pill pill-red">Row-at-a-time</span></p>
+      <p style="font-size:12px;color:var(--muted)">~100M rows/min on good hardware</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Pandas UDF cost</div>
+      <p><span class="pill pill-amber">Arrow serialise</span> <span class="pill pill-amber">Batch boundary</span> <span class="pill pill-green">Vectorised ops</span></p>
+      <p style="font-size:12px;color:var(--muted)">~1B rows/min — 10× improvement</p>
+    </div>
+  </div>
+  <div class="good">Analogy (Oracle/MSSQL): a UDF is like a scalar function called per-row in a WHERE clause — Oracle can't push it into an index scan, forcing a full table scan. Built-in functions compile into the SQL engine; your function doesn't.</div>
+
+  <h3>Practical impact in streaming</h3>
+  <p>In Tineretului–Română Transit, a Python UDF on the arrival time window column would be called on every micro-batch row. A Pandas UDF processes the batch as a Series — far better. But if <code>window()</code> or <code>date_trunc()</code> cover the need, skip the UDF entirely.</p>
+</div>
+
+<div id="sql-reg" class="panel">
+  <h3>Registering UDFs for SQL contexts</h3>
+  <p>Python UDFs defined via <code>@udf</code> only work in the DataFrame API. To call them in SQL strings or notebooks via <code>%sql</code>, you must register with <code>spark.udf.register</code>.</p>
+<pre><span class="cm"># Register a Python UDF</span>
+spark.udf.<span class="fn">register</span>(<span class="st">"clean_route"</span>, clean_route, StringType())
+
+<span class="cm"># Now callable in SQL</span>
+spark.<span class="fn">sql</span>(<span class="st">"SELECT clean_route(route_name) FROM routes"</span>)
+
+<span class="cm"># Pandas UDFs also registerable the same way</span>
+spark.udf.<span class="fn">register</span>(<span class="st">"normalise_headsign"</span>, normalise_headsign, StringType())</pre>
+
+  <h3>Spark SQL functions vs registered UDFs</h3>
+  <table>
+    <tr><th></th><th>Spark SQL built-in</th><th>Registered UDF</th></tr>
+    <tr><td>Catalyst-aware</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Available in %sql</td><td>Yes</td><td>Yes (after register)</td></tr>
+    <tr><td>Available in DLT SQL</td><td>Yes</td><td>Yes (must register in same session)</td></tr>
+    <tr><td>Works across clusters</td><td>Yes</td><td>No — re-register on each cluster start</td></tr>
+  </table>
+
+  <div class="warn">In Databricks Unity Catalog you can persist UDFs as catalog functions (<code>CREATE FUNCTION catalog.schema.fn AS ...</code>) so they survive cluster restarts. Python UDFs require a cluster with matching runtime.</div>
+
+  <h3>DLT pipelines</h3>
+  <p>In DLT (Delta Live Tables), define UDFs in a Python notebook cell above your <code>@dlt.table</code> definitions. DLT registers them in its execution context automatically.</p>
+<pre><span class="cm"># In DLT notebook</span>
+<span class="kw">@</span><span class="fn">udf</span>(StringType())
+<span class="kw">def</span> <span class="fn">normalise_stop</span>(s): <span class="kw">return</span> s.strip() <span class="kw">if</span> s <span class="kw">else None</span>
+
+<span class="kw">@</span>dlt.<span class="fn">table</span>()
+<span class="kw">def</span> <span class="fn">silver_stops</span>():
+    <span class="kw">return</span> dlt.<span class="fn">read</span>(<span class="st">"bronze_stops"</span>).<span class="fn">withColumn</span>(<span class="st">"stop_norm"</span>, <span class="fn">normalise_stop</span>(col(<span class="st">"stop_name"</span>)))</pre>
+</div>
+
+<div id="decision" class="panel">
+  <h3>Decision rule: UDF vs built-in vs higher-order</h3>
+  <div class="info">Rule of thumb: a UDF is a last resort. Exhaust the function catalogue first.</div>
+
+  <table>
+    <tr><th>Scenario</th><th>Best choice</th><th>Why</th></tr>
+    <tr><td>String manipulation, date math, math</td><td><span class="pill pill-green">Built-in</span></td><td>Catalyst-aware, JVM speed, no serialisation</td></tr>
+    <tr><td>Array / map transformation element-wise</td><td><span class="pill pill-green">HOF</span> (<code>transform</code>, <code>filter</code>, <code>aggregate</code>)</td><td>Catalyst-friendly; no Python overhead</td></tr>
+    <tr><td>Complex business logic, regex, external libs</td><td><span class="pill pill-amber">Pandas UDF</span></td><td>Arrow batches, still vectorised</td></tr>
+    <tr><td>Per-group ML inference, custom aggregation</td><td><span class="pill pill-amber">Pandas UDF grouped-map</span></td><td>Full DataFrame per group in Python</td></tr>
+    <tr><td>Simple one-off, low volume, prototyping</td><td><span class="pill pill-blue">Python UDF</span></td><td>Easiest to write; acceptable at small scale</td></tr>
+    <tr><td>Truly unavoidable complex logic at scale</td><td><span class="pill pill-red">Python UDF + cache</span></td><td>Cache upstream to avoid repeated UDF calls</td></tr>
+  </table>
+
+  <h3>Flowchart (mental model)</h3>
+  <p>When you reach for a UDF, ask in order:</p>
+  <p><strong>1.</strong> Does a built-in Spark function do this? → Use it.<br>
+  <strong>2.</strong> Is this a collection operation (per-element)? → Use <code>transform</code> / <code>filter</code> / <code>aggregate</code>.<br>
+  <strong>3.</strong> Is throughput critical? → Pandas UDF (scalar or iterator).<br>
+  <strong>4.</strong> Is it per-group logic? → <code>applyInPandas</code>.<br>
+  <strong>5.</strong> None of the above → Python UDF, but measure the cost.</p>
+
+  <div class="good">Count Electric example: computing EV range efficiency (<code>range_km / battery_kwh</code>) → pure arithmetic → use <code>col("range_km") / col("battery_kwh")</code>, not a UDF. Applying an ML model to predict range decay by temperature → Pandas UDF iterator pattern, load model once per partition.</div>
+</div>
+
+<div id="quiz" class="panel">
+  <div class="score-bar"><div class="score-fill" id="score-fill" style="width:0%"></div></div>
+  <div id="quiz-container"></div>
+</div>
+
+<script>
+const questions = [
+  {
+    q: "You define @udf(returnType=StringType()) but your function returns None for null inputs. What happens when Spark encounters a NULL row?",
+    choices: ["Spark skips the row automatically", "The UDF is called and returns None, which maps to NULL in the output", "A NullPointerException is always raised", "Spark infers null-safety from the Python type hint"],
+    answer: 1,
+    exp: "UDFs are called on every row including NULLs by default. Returning None from Python correctly maps to a Spark NULL — but you must write the guard yourself. Spark does not skip NULL rows unless you explicitly handle it or declare the column non-nullable."
+  },
+  {
+    q: "What is the primary reason Python UDFs prevent Catalyst from applying predicate pushdown?",
+    choices: ["UDFs are always non-deterministic", "Catalyst cannot inspect the Python bytecode to understand the expression semantics", "UDFs always require a shuffle", "UDFs don't support nullable return types"],
+    answer: 1,
+    exp: "Catalyst works on an expression tree of known Spark expressions. A Python UDF is an opaque PythonUDF node — Catalyst cannot see what it computes, so it cannot safely push predicates to the scan layer. This is the core optimisation cost of UDFs."
+  },
+  {
+    q: "A Pandas scalar UDF receives inputs as:",
+    choices: ["One Python value per invocation (row-at-a-time)", "A pd.DataFrame per partition", "One pd.Series per column argument per batch", "A list of rows per executor"],
+    answer: 2,
+    exp: "Scalar Pandas UDFs receive one pd.Series per column argument and return one pd.Series. Arrow is used for serialisation, so the entire batch is transferred at once — far cheaper than row-at-a-time pickle serialisation in Python UDFs."
+  },
+  {
+    q: "You need to apply a scikit-learn model to score 2 billion rows. Loading the model takes 3 seconds. Which Pandas UDF pattern minimises total model-load overhead?",
+    choices: ["Scalar Pandas UDF — loads once per function call", "Iterator of Series — loads once per partition", "Grouped-map (applyInPandas) — loads once per group", "Python UDF — simplest to write"],
+    answer: 1,
+    exp: "The Iterator of Series pattern yields batches from a single partition to your function. You initialise expensive objects (model, DB connection) once before the for loop, then process each batch. This means one load per partition, not one load per batch — crucial for large models."
+  },
+  {
+    q: "spark.udf.register('fn', my_udf, StringType()) is required when:",
+    choices: ["Using the UDF in a DataFrame .withColumn() call", "Using the UDF inside spark.sql() or %sql magic", "Using a Pandas UDF inside applyInPandas", "Using the UDF with a broadcast join"],
+    answer: 1,
+    exp: "spark.udf.register makes a UDF callable by name in SQL strings and the %sql magic. Without it, the UDF only exists in the Python namespace and cannot be referenced in SQL. Note: registered UDFs don't survive cluster restarts unless persisted in Unity Catalog."
+  },
+  {
+    q: "In Tineretului–Română Transit you want to normalise Romanian diacritics in stop names before a join. Which approach keeps Catalyst optimisations intact?",
+    choices: [
+      "Python UDF with string.translate()",
+      "Pandas scalar UDF with Series.str.replace()",
+      "regexp_replace() chained with upper() — both built-in",
+      "applyInPandas per stop_id group"
+    ],
+    answer: 2,
+    exp: "regexp_replace() and upper() are Spark built-in functions. Catalyst can inline them into the query plan, push them alongside filters, and compile them with whole-stage codegen. A UDF — even a Pandas one — breaks that pipeline. Always prefer built-ins for string operations that are expressible without Python logic."
+  },
+  {
+    q: "applyInPandas sends each group as a full pd.DataFrame to the executor. What is the key risk of this approach?",
+    choices: [
+      "It requires a re-partition to single partition first",
+      "The entire group must fit in executor memory — OOM for very large groups",
+      "It cannot return more rows than the input group",
+      "The output schema must match the input schema exactly"
+    ],
+    answer: 1,
+    exp: "applyInPandas materialises the entire group as a Pandas DataFrame in executor memory. If a single group is very large (e.g. one bus route with millions of rows), this causes an OOM. The output schema is flexible — you define it explicitly and can return fewer or more columns."
+  },
+  {
+    q: "Which statement about UDFs and whole-stage codegen is correct?",
+    choices: [
+      "Pandas UDFs preserve whole-stage codegen because they use Arrow",
+      "Both Python UDFs and Pandas UDFs break whole-stage codegen",
+      "Only unregistered UDFs break whole-stage codegen",
+      "Whole-stage codegen only applies to joins, not UDFs"
+    ],
+    answer: 1,
+    exp: "Whole-stage codegen fuses multiple Spark operators into a single JVM bytecode method. Any Python UDF (including Pandas UDFs) breaks this fusion because execution must leave the JVM and enter the Python interpreter. Arrow reduces the serialisation cost of Pandas UDFs, but the codegen boundary break is the same."
+  }
+];
+
+let current = 0, answered = new Array(questions.length).fill(null);
+
+function renderQ(){
+  const {q,choices,answer,exp} = questions[current];
+  const answered_val = answered[current];
+  const score = answered.filter((v,i)=>v===questions[i].answer).length;
+  const total_answered = answered.filter(v=>v!==null).length;
+  document.getElementById('score-fill').style.width = total_answered ? Math.round(score/total_answered*100)+'%' : '0%';
+  document.getElementById('quiz-container').innerHTML = `
+    <div class="q-block">
+      <div class="q-text">${current+1}. ${q}</div>
+      <div class="choices">
+        ${choices.map((c,i)=>{
+          let cls='choice';
+          if(answered_val!==null){
+            cls+=' locked';
+            if(i===answer) cls+=' correct';
+            else if(i===answered_val && i!==answer) cls+=' wrong';
+          }
+          return `<button class="${cls}" onclick="pick(${i})">${c}</button>`;
+        }).join('')}
+      </div>
+      <div class="explanation" id="expl" style="display:${answered_val!==null?'block':'none'}">${exp}</div>
+      <div class="q-nav">
+        <span class="q-counter">${current+1} / ${questions.length}</span>
+        <button class="nav-btn" id="next-btn" onclick="nextQ()" style="display:${answered_val!==null?'inline-block':'none'}">Next →</button>
+      </div>
+    </div>`;
+}
+
+function pick(i){
+  if(answered[current]!==null) return;
+  answered[current]=i;
+  renderQ();
+}
+
+function nextQ(){
+  if(current<questions.length-1){current++;renderQ();}
+  else{
+    const score=answered.filter((v,i)=>v===questions[i].answer).length;
+    document.getElementById('score-fill').style.width=Math.round(score/questions.length*100)+'%';
+    document.getElementById('quiz-container').innerHTML=`<div style="padding:1rem 0;text-align:center"><p style="font-size:22px;font-weight:500;margin-bottom:8px">${score}/${questions.length}</p><p style="color:var(--muted);margin-bottom:16px">${score>=7?'UDF concepts solid — Day 13 ready.':score>=5?'Good foundation — review Catalyst & Pandas UDF patterns.':'Re-read the Catalyst and Pandas UDF tabs before moving on.'}</p><button class="nav-btn" style="display:inline-block" onclick="restart()">Restart quiz</button></div>`;
+  }
+}
+
+function restart(){current=0;answered=new Array(questions.length).fill(null);renderQ();}
+
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const ids=['udf-basics','pandas-udfs','catalyst','sql-reg','decision','quiz'];
+    t.classList.toggle('active',ids[i]===id);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+renderQ();
+</script>
